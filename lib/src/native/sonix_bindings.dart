@@ -116,5 +116,4 @@ class SonixNativeBindings {
   static late final SonixGetLastMp3DebugStatsDart getLastMp3DebugStats = lib
       .lookup<ffi.NativeFunction<SonixGetLastMp3DebugStatsNative>>('sonix_get_last_mp3_debug_stats')
       .asFunction();
-
 }
