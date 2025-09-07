@@ -1,0 +1,5 @@
+EXPORTS
+sonix_detect_format
+sonix_decode_audio
+sonix_free_audio_data
+sonix_get_error_message
