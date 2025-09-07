@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\sonix_native.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis\stb_vorbis_impl.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Development\Projects\Zooper\Sonix\native\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{093ACC09-3586-3343-AE37-4FF992E285D1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

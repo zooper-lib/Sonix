@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\Development\Projects\Zooper\Sonix\nativebuild\windows\CMakeFiles\35c64fde9d8313c5d53789965550d0d0\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{5C75FA19-34B6-375E-AC3E-1A259F60A422}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

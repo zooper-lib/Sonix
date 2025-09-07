@@ -34,6 +34,25 @@ final class SonixAudioData extends ffi.Struct {
   external int duration_ms;
 }
 
+/// Debug stats (development) for last MP3 decode
+final class SonixMp3DebugStats extends ffi.Struct {
+  @ffi.Uint32()
+  external int frame_count;
+  @ffi.Uint32()
+  external int total_samples; // interleaved stored samples
+  @ffi.Uint32()
+  external int channels;
+  @ffi.Uint32()
+  external int sample_rate;
+  @ffi.Uint64()
+  external int processed_bytes;
+  @ffi.Uint64()
+  external int file_size;
+}
+
+typedef SonixGetLastMp3DebugStatsNative = ffi.Pointer<SonixMp3DebugStats> Function();
+typedef SonixGetLastMp3DebugStatsDart = ffi.Pointer<SonixMp3DebugStats> Function();
+
 /// Function signatures for native library
 typedef SonixDetectFormatNative = ffi.Int32 Function(ffi.Pointer<ffi.Uint8> data, ffi.Size size);
 
@@ -92,4 +111,10 @@ class SonixNativeBindings {
   static late final SonixGetErrorMessageDart getErrorMessage = lib
       .lookup<ffi.NativeFunction<SonixGetErrorMessageNative>>('sonix_get_error_message')
       .asFunction();
+
+  // Debug: MP3 stats accessor (may return nullptr if not applicable)
+  static late final SonixGetLastMp3DebugStatsDart getLastMp3DebugStats = lib
+      .lookup<ffi.NativeFunction<SonixGetLastMp3DebugStatsNative>>('sonix_get_last_mp3_debug_stats')
+      .asFunction();
+
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:sonix/sonix.dart';
+import 'dart:ffi' as ffi;
+import 'package:flutter/foundation.dart'; // for kDebugMode
+import 'package:sonix/src/native/sonix_bindings.dart';
 
 void main() {
   runApp(const MyApp());
@@ -160,15 +163,30 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
                         _buildInfoRow('Sample Rate', '${_decodedAudio!.sampleRate} Hz'),
                         _buildInfoRow('Channels', '${_decodedAudio!.channels}'),
                         _buildInfoRow('Duration', '${_decodedAudio!.duration.inMilliseconds} ms'),
+                        if (kDebugMode) ...[
+                          // Recompute expected duration from raw sample buffer
+                          Builder(builder: (context) {
+                            final samples = _decodedAudio!.samples.length;
+                            final ch = _decodedAudio!.channels;
+                            final sr = _decodedAudio!.sampleRate;
+                            final recomputedMs = ((samples / ch) / sr * 1000).round();
+                            if (recomputedMs != _decodedAudio!.duration.inMilliseconds) {
+                              // Print detailed diagnostics once per build frame
+                              debugPrint('[DURATION_MISMATCH] native=${_decodedAudio!.duration.inMilliseconds}ms recomputed=$recomputedMs samples=$samples ch=$ch sr=$sr perCh=${samples ~/ ch}');
+                            }
+                            return _buildInfoRow('Debug Recomputed Duration', '$recomputedMs ms');
+                          }),
+                        ],
                         _buildInfoRow('Total Samples', '${_decodedAudio!.samples.length}'),
                         _buildInfoRow('Samples per Channel', '${_decodedAudio!.samples.length ~/ _decodedAudio!.channels}'),
+                        if (kDebugMode) _buildMp3Stats(),
                         const SizedBox(height: 16),
                         const Text('Sample Preview (first 10 values):', style: TextStyle(fontWeight: FontWeight.w500)),
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-                          child: Text(
+                          child: SelectableText(
                             _decodedAudio!.samples.take(10).map((s) => s.toStringAsFixed(4)).join(', '),
                             style: const TextStyle(fontFamily: 'monospace'),
                           ),
@@ -184,6 +202,28 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
     );
   }
 
+  Widget _buildMp3Stats() {
+    try {
+      final ptr = SonixNativeBindings.getLastMp3DebugStats();
+      if (ptr == ffi.nullptr) return const SizedBox.shrink();
+  final stats = ptr.ref;
+      if (stats.frame_count == 0) return const SizedBox.shrink();
+      final estDurationMs = ((stats.total_samples / stats.channels) / stats.sample_rate * 1000).round();
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Divider(),
+        const Text('MP3 Debug Stats', style: TextStyle(fontWeight: FontWeight.bold)),
+        _buildInfoRow('Frames', '${stats.frame_count}'),
+        _buildInfoRow('Total Samples(native)', '${stats.total_samples}'),
+        _buildInfoRow('Channels(native)', '${stats.channels}'),
+        _buildInfoRow('Sample Rate(native)', '${stats.sample_rate}'),
+        _buildInfoRow('Processed Bytes', '${stats.processed_bytes}/${stats.file_size}'),
+        _buildInfoRow('Est Duration (recalc)', '$estDurationMs ms'),
+      ]);
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -192,9 +232,9 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
         children: [
           SizedBox(
             width: 140,
-            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w500)),
+            child: SelectableText('$label:', style: const TextStyle(fontWeight: FontWeight.w500)),
           ),
-          Expanded(child: Text(value)),
+          Expanded(child: SelectableText(value)),
         ],
       ),
     );

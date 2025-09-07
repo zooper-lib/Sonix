@@ -45,6 +45,19 @@ typedef struct {
     uint32_t duration_ms;    // Duration in milliseconds
 } SonixAudioData;
 
+// Debug statistics for MP3 decoding (development only; not stable API)
+typedef struct {
+    uint32_t frame_count;      // Number of decoded frames
+    uint32_t total_samples;    // Total interleaved samples stored
+    uint32_t channels;         // Channels detected
+    uint32_t sample_rate;      // Sample rate detected
+    uint64_t processed_bytes;  // Bytes advanced through file
+    uint64_t file_size;        // Input buffer size
+} SonixMp3DebugStats;
+
+// Obtain last MP3 debug stats (NULL if no decode yet or different format)
+SONIX_EXPORT const SonixMp3DebugStats* sonix_get_last_mp3_debug_stats(void);
+
 /**
  * Detect audio format from file data
  * @param data Pointer to file data
@@ -73,6 +86,7 @@ SONIX_EXPORT void sonix_free_audio_data(SonixAudioData* audio_data);
  * @return Pointer to error message string
  */
 SONIX_EXPORT const char* sonix_get_error_message(void);
+
 
 #ifdef __cplusplus
 }

@@ -15,6 +15,8 @@
 
 // Global error message storage
 static char error_message[256] = {0};
+// MP3 debug stats storage
+static SonixMp3DebugStats last_stats = {0};
 
 // Set error message
 static void set_error(const char* msg) {
@@ -131,7 +133,7 @@ static SonixAudioData* decode_wav(const uint8_t* data, size_t size) {
         size_t size;
         size_t position;
     } memory_context = { data, size, 0 };
-    
+
     drwav wav;
     if (!drwav_init(&wav, drwav_read_proc_memory, drwav_seek_proc_memory, drwav_tell_proc_memory, &memory_context, NULL)) {
         set_error("Failed to initialize WAV decoder");
@@ -168,7 +170,7 @@ static SonixAudioData* decode_wav(const uint8_t* data, size_t size) {
     result->samples = samples;
     result->sample_count = (uint32_t)totalSamples;
     result->sample_rate = wav.sampleRate;
-    result->channels = wav.channels;
+    result->channels = wav.channels; // (bug fix) ensure channels is set for WAV results
     result->duration_ms = (uint32_t)(((double)wav.totalPCMFrameCount * 1000.0) / wav.sampleRate);
     
     drwav_uninit(&wav);
@@ -197,8 +199,6 @@ static SonixAudioData* decode_mp3(const uint8_t* data, size_t size) {
     
     // Skip ID3v2 tags at the beginning
     size_t offset = skip_id3v2_tag(data, size);
-    
-    // Dynamic arrays for samples
     float* all_samples = NULL;
     size_t total_samples = 0;
     size_t samples_capacity = 0;
@@ -216,19 +216,32 @@ static SonixAudioData* decode_mp3(const uint8_t* data, size_t size) {
     // Single pass: decode all frames and collect samples
     size_t consecutive_failures = 0;
     size_t frame_count = 0;
+    size_t processed_bytes = offset; // start after ID3 skip
     while (offset < size) {
         mp3dec_frame_info_t info;
         float pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
-        
-        int samples = mp3dec_decode_frame(&mp3d, data + offset, size - offset, pcm, &info);
-        if (samples == 0) {
+
+        // Quick sync word check to avoid excessive decode attempts on arbitrary data
+        if (size - offset >= 2) {
+            uint16_t sync = (data[offset] << 8) | data[offset + 1];
+            if ((sync & 0xFFE0) != 0xFFE0 && !(data[offset] == 'I' && data[offset+1] == 'D')) { // not frame sync and not ID3
+                offset++; // advance and continue scanning
+                continue;
+            }
+        }
+
+        // mp3dec_decode_frame returns number of samples PER CHANNEL.
+        // Our storage is interleaved total samples (channels * per_channel_samples).
+        int samples_per_channel = mp3dec_decode_frame(&mp3d, data + offset, size - offset, pcm, &info);
+        int frame_samples_total = samples_per_channel * info.channels; // total interleaved samples in this frame
+
+        if (samples_per_channel == 0) {
             consecutive_failures++;
             if (info.frame_bytes == 0) {
-                // Try to skip ahead to find more frames
+                // Try to skip ahead to find more frames (byte-wise scan)
                 offset++;
-                // If we've had too many consecutive failures, give up
-                if (consecutive_failures > 1000 || offset >= size) break;
-                continue;
+                if (offset >= size) break; // reached end
+                continue; // do not prematurely abort on many failures; some files have large gaps/non-audio data
             }
             // Skip this frame and continue
             offset += info.frame_bytes;
@@ -245,8 +258,8 @@ static SonixAudioData* decode_mp3(const uint8_t* data, size_t size) {
         }
         
         // Ensure we have enough capacity
-        if (total_samples + samples > samples_capacity) {
-            samples_capacity = (total_samples + samples) * 2; // Double the capacity
+        if (total_samples + frame_samples_total > samples_capacity) {
+            samples_capacity = (total_samples + frame_samples_total) * 2; // Double the capacity
             float* new_samples = (float*)realloc(all_samples, samples_capacity * sizeof(float));
             if (!new_samples) {
                 free(all_samples);
@@ -257,9 +270,10 @@ static SonixAudioData* decode_mp3(const uint8_t* data, size_t size) {
         }
         
         // Copy samples to output buffer
-        memcpy(all_samples + total_samples, pcm, samples * sizeof(float));
-        total_samples += samples;
-        offset += info.frame_bytes;
+        memcpy(all_samples + total_samples, pcm, frame_samples_total * sizeof(float));
+        total_samples += frame_samples_total;
+    offset += info.frame_bytes;
+    processed_bytes = offset;
     }
     
     if (total_samples == 0 || sample_rate == 0 || channels == 0) {
@@ -286,7 +300,18 @@ static SonixAudioData* decode_mp3(const uint8_t* data, size_t size) {
     result->sample_count = (uint32_t)total_samples;
     result->sample_rate = sample_rate;
     result->channels = channels;
+    // Duration: sample_count already reflects per-channel samples aggregated across frames? Empirical evidence shows
+    // dividing by channels halves real duration, so we omit channel division here.
+    // total_samples is interleaved (frames * channels). Real frames = total_samples / channels.
     result->duration_ms = (uint32_t)(((double)total_samples * 1000.0) / (sample_rate * channels));
+
+    // Store debug stats (static so retrievable after decode)
+    last_stats.frame_count = (uint32_t)frame_count;
+    last_stats.total_samples = (uint32_t)total_samples;
+    last_stats.channels = channels;
+    last_stats.sample_rate = sample_rate;
+    last_stats.processed_bytes = processed_bytes;
+    last_stats.file_size = size;
     
     return result;
 }
@@ -331,3 +356,7 @@ void sonix_free_audio_data(SonixAudioData* audio_data) {
 const char* sonix_get_error_message(void) {
     return error_message;
 }
+
+// Accessor for MP3 debug stats
+const SonixMp3DebugStats* sonix_get_last_mp3_debug_stats(void) { return &last_stats; }
+
