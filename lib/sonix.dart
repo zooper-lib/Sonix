@@ -4,7 +4,7 @@
 /// without relying on FFMPEG. Supports multiple audio formats (MP3, OGG, WAV, FLAC, Opus)
 /// using native C libraries through Dart FFI.
 
-library sonix;
+library;
 
 // Export core functionality
 export 'src/sonix_core.dart';

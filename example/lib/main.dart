@@ -30,10 +30,23 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
   String? _selectedFilePath;
   String? _fileName;
   AudioData? _decodedAudio;
+  WaveformData? _waveformData;
   bool _isDecoding = false;
+  bool _isGeneratingWaveform = false;
   String? _errorMessage;
   String? _detectedFormat;
+  double _playbackPosition = 0.0;
 
+  // Pre-create waveform styles to ensure consistent references
+  late final WaveformStyle _soundCloudStyle = WaveformStylePresets.soundCloud;
+  late final WaveformStyle _spotifyStyle = WaveformStylePresets.spotify;
+  late final WaveformStyle _minimalLineStyle = WaveformStylePresets.minimalLine;
+  late final WaveformStyle _filledGradientStyle = WaveformStylePresets.filledGradient();
+  late final WaveformStyle _professionalStyle = WaveformStylePresets.professional;
+  late final WaveformStyle _neonGlowStyle = WaveformStylePresets.neonGlow();
+
+  late WaveformStyle _selectedStyle = _soundCloudStyle;
+  DownsamplingAlgorithm _selectedAlgorithm = DownsamplingAlgorithm.rms;
   Future<void> _pickAudioFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -47,8 +60,11 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
           _selectedFilePath = result.files.single.path;
           _fileName = result.files.single.name;
           _decodedAudio = null;
+          _waveformData = null;
           _errorMessage = null;
           _detectedFormat = null;
+          _playbackPosition = 0.0;
+          _selectedAlgorithm = DownsamplingAlgorithm.rms;
         });
       }
     } catch (e) {
@@ -81,12 +97,49 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
       });
 
       decoder.dispose();
+
+      // Generate waveform data
+      _generateWaveform(audioData);
     } catch (e) {
       setState(() {
         _errorMessage = 'Error decoding audio: $e';
         _isDecoding = false;
       });
     }
+  }
+
+  Future<void> _generateWaveform(AudioData audioData) async {
+    setState(() {
+      _isGeneratingWaveform = true;
+    });
+
+    try {
+      // Generate waveform with optimal settings for visualization
+      final config =
+          WaveformGenerator.getOptimalConfig(
+            useCase: WaveformUseCase.musicVisualization,
+            customResolution: 200, // Good resolution for UI display
+          ).copyWith(
+            algorithm: _selectedAlgorithm, // Use the selected algorithm
+          );
+
+      final waveformData = await WaveformGenerator.generate(audioData, config: config);
+
+      setState(() {
+        _waveformData = waveformData;
+        _isGeneratingWaveform = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error generating waveform: $e';
+        _isGeneratingWaveform = false;
+      });
+    }
+  }
+
+  Future<void> _regenerateWaveform() async {
+    if (_decodedAudio == null) return;
+    await _generateWaveform(_decodedAudio!);
   }
 
   @override
@@ -173,6 +226,129 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
                             style: const TextStyle(fontFamily: 'monospace'),
                           ),
                         ),
+                        const SizedBox(height: 24),
+
+                        // Waveform Visualization Section
+                        const Text('Waveform Visualization', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+
+                        if (_isGeneratingWaveform)
+                          const Center(child: Column(children: [CircularProgressIndicator(), SizedBox(height: 8), Text('Generating waveform...')]))
+                        else if (_waveformData != null) ...[
+                          // Style selector
+                          Row(
+                            children: [
+                              const Text('Style: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                              DropdownButton<WaveformStyle>(
+                                value: _selectedStyle,
+                                onChanged: (style) {
+                                  if (style != null) {
+                                    setState(() {
+                                      _selectedStyle = style;
+                                    });
+                                  }
+                                },
+                                items: [
+                                  DropdownMenuItem(value: _soundCloudStyle, child: const Text('SoundCloud')),
+                                  DropdownMenuItem(value: _spotifyStyle, child: const Text('Spotify')),
+                                  DropdownMenuItem(value: _minimalLineStyle, child: const Text('Minimal Line')),
+                                  DropdownMenuItem(value: _filledGradientStyle, child: const Text('Filled Gradient')),
+                                  DropdownMenuItem(value: _professionalStyle, child: const Text('Professional')),
+                                  DropdownMenuItem(value: _neonGlowStyle, child: const Text('Neon Glow')),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Algorithm selector
+                          Row(
+                            children: [
+                              const Text('Algorithm: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                              DropdownButton<DownsamplingAlgorithm>(
+                                value: _selectedAlgorithm,
+                                onChanged: (algorithm) {
+                                  if (algorithm != null) {
+                                    setState(() {
+                                      _selectedAlgorithm = algorithm;
+                                    });
+                                    _regenerateWaveform();
+                                  }
+                                },
+                                items: const [
+                                  DropdownMenuItem(value: DownsamplingAlgorithm.rms, child: Text('RMS (Loudness)')),
+                                  DropdownMenuItem(value: DownsamplingAlgorithm.peak, child: Text('Peak (Maximum)')),
+                                  DropdownMenuItem(value: DownsamplingAlgorithm.average, child: Text('Average')),
+                                  DropdownMenuItem(value: DownsamplingAlgorithm.median, child: Text('Median')),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Waveform widget
+                          WaveformWidget(
+                            waveformData: _waveformData!,
+                            playbackPosition: _playbackPosition,
+                            style: _selectedStyle,
+                            onSeek: (position) {
+                              setState(() {
+                                _playbackPosition = position;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Playback controls
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _playbackPosition = 0.0;
+                                  });
+                                },
+                                icon: const Icon(Icons.skip_previous),
+                                label: const Text('Reset'),
+                              ),
+                              const SizedBox(width: 16),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _playbackPosition = (_playbackPosition + 0.1).clamp(0.0, 1.0);
+                                  });
+                                },
+                                icon: const Icon(Icons.play_arrow),
+                                label: const Text('Simulate Play'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Waveform info
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue.shade200),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Waveform Information:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 8),
+                                Text('Resolution: ${_waveformData!.amplitudes.length} points'),
+                                Text('Algorithm: ${_selectedAlgorithm.name.toUpperCase()}'),
+                                Text('Type: ${_waveformData!.metadata.type.name}'),
+                                Text('Normalized: ${_waveformData!.metadata.normalized}'),
+                                Text('Generated: ${_waveformData!.metadata.generatedAt.toString().split('.')[0]}'),
+                                Text('Playback Position: ${(_playbackPosition * 100).toStringAsFixed(1)}%'),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

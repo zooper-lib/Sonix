@@ -27,3 +27,6 @@ export 'processing/waveform_generator.dart';
 
 // Utilities
 export 'utils/streaming_memory_manager.dart';
+
+// Widgets
+export 'widgets/widgets.dart';
