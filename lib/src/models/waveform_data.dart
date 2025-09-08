@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../utils/lru_cache.dart';
+
 /// Types of waveform visualization
 enum WaveformType { bars, line, filled }
 
@@ -42,7 +44,7 @@ class WaveformMetadata {
 }
 
 /// Processed waveform data for visualization
-class WaveformData {
+class WaveformData implements Disposable {
   /// Amplitude values for each data point (0.0 to 1.0)
   final List<double> amplitudes;
 
@@ -100,6 +102,7 @@ class WaveformData {
   }
 
   /// Dispose of resources (for memory management)
+  @override
   void dispose() {
     // Clear the amplitudes list to help with garbage collection
     amplitudes.clear();

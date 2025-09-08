@@ -4,6 +4,9 @@ import 'decoders/audio_decoder_factory.dart';
 import 'models/waveform_data.dart';
 import 'processing/waveform_generator.dart';
 import 'exceptions/sonix_exceptions.dart';
+import 'exceptions/error_recovery.dart';
+import 'utils/memory_efficient_sonix_api.dart';
+import 'utils/resource_manager.dart';
 
 /// Main API class for the Sonix package
 ///
@@ -12,6 +15,28 @@ import 'exceptions/sonix_exceptions.dart';
 class Sonix {
   // Private constructor to prevent instantiation
   Sonix._();
+
+  static bool _isInitialized = false;
+
+  /// Initialize Sonix with memory management
+  ///
+  /// [memoryLimit] - Maximum memory usage in bytes (default: 100MB)
+  /// [maxWaveformCacheSize] - Maximum number of waveforms to cache (default: 50)
+  /// [maxAudioDataCacheSize] - Maximum number of audio data to cache (default: 20)
+  ///
+  /// This should be called once at the start of your application.
+  ///
+  /// Example:
+  /// ```dart
+  /// Sonix.initialize(memoryLimit: 50 * 1024 * 1024); // 50MB limit
+  /// ```
+  static void initialize({int? memoryLimit, int maxWaveformCacheSize = 50, int maxAudioDataCacheSize = 20}) {
+    if (_isInitialized) return;
+
+    MemoryEfficientSonixApi.initialize(memoryLimit: memoryLimit, maxWaveformCacheSize: maxWaveformCacheSize, maxAudioDataCacheSize: maxAudioDataCacheSize);
+
+    _isInitialized = true;
+  }
 
   /// Generate waveform data from an audio file
   ///
@@ -38,39 +63,49 @@ class Sonix {
     bool normalize = true,
     WaveformConfig? config,
   }) async {
-    try {
-      // Validate file format
-      if (!isFormatSupported(filePath)) {
-        final extension = _getFileExtension(filePath);
-        throw UnsupportedFormatException(extension, 'Unsupported audio format: $extension. Supported formats: ${getSupportedFormats().join(', ')}');
-      }
+    final operation = RecoverableOperation<WaveformData>(
+      () async {
+        // Validate file format
+        if (!isFormatSupported(filePath)) {
+          final extension = _getFileExtension(filePath);
+          throw UnsupportedFormatException(extension, 'Unsupported audio format: $extension. Supported formats: ${getSupportedFormats().join(', ')}');
+        }
 
-      // Create decoder for the file
-      final decoder = AudioDecoderFactory.createDecoder(filePath);
+        // Create decoder for the file
+        final decoder = AudioDecoderFactory.createDecoder(filePath);
 
-      try {
-        // Decode the audio file
-        final audioData = await decoder.decode(filePath);
+        try {
+          // Decode the audio file
+          final audioData = await decoder.decode(filePath);
 
-        // Use provided config or create default config
-        final waveformConfig = config ?? WaveformConfig(resolution: resolution, type: type, normalize: normalize);
+          // Use provided config or create default config
+          final waveformConfig = config ?? WaveformConfig(resolution: resolution, type: type, normalize: normalize);
 
-        // Generate waveform data
-        final waveformData = await WaveformGenerator.generate(audioData, config: waveformConfig);
+          // Generate waveform data
+          final waveformData = await WaveformGenerator.generate(audioData, config: waveformConfig);
 
-        return waveformData;
-      } finally {
-        // Always dispose of the decoder
-        decoder.dispose();
-      }
-    } catch (e) {
-      if (e is SonixException) {
-        rethrow;
-      }
+          return waveformData;
+        } finally {
+          // Always dispose of the decoder
+          decoder.dispose();
+        }
+      },
+      'generateWaveform',
+      {
+        'filePath': filePath,
+        'originalOperation': () async {
+          final decoder = AudioDecoderFactory.createDecoder(filePath);
+          try {
+            return await decoder.decode(filePath);
+          } finally {
+            decoder.dispose();
+          }
+        },
+        'operation': (String path) async => generateWaveform(path, resolution: resolution, type: type, normalize: normalize, config: config),
+      },
+    );
 
-      // Wrap other exceptions in DecodingException
-      throw DecodingException('Failed to generate waveform from file: $filePath', e.toString());
-    }
+    return await operation.execute();
   }
 
   /// Generate waveform data from an audio file using streaming processing
@@ -106,7 +141,7 @@ class Sonix {
     int chunkSize = 100,
     WaveformConfig? config,
   }) async* {
-    try {
+    final streamOperation = RecoverableStreamOperation<WaveformChunk>(() async* {
       // Validate file format
       if (!isFormatSupported(filePath)) {
         final extension = _getFileExtension(filePath);
@@ -129,14 +164,9 @@ class Sonix {
         // Always dispose of the decoder
         decoder.dispose();
       }
-    } catch (e) {
-      if (e is SonixException) {
-        rethrow;
-      }
+    }, 'generateWaveformStream');
 
-      // Wrap other exceptions in DecodingException
-      throw DecodingException('Failed to generate waveform stream from file: $filePath', e.toString());
-    }
+    yield* streamOperation.execute();
   }
 
   /// Get a list of supported audio format names
@@ -230,6 +260,8 @@ class Sonix {
     int maxMemoryUsage = 50 * 1024 * 1024, // 50MB default
     WaveformConfig? config,
   }) async {
+    _ensureInitialized();
+
     try {
       // Validate file format
       if (!isFormatSupported(filePath)) {
@@ -265,6 +297,76 @@ class Sonix {
     }
   }
 
+  /// Generate waveform with automatic caching and memory management
+  ///
+  /// This method uses intelligent caching and memory management to optimize
+  /// performance and memory usage. It automatically adjusts quality based
+  /// on memory pressure.
+  ///
+  /// [filePath] - Path to the audio file
+  /// [resolution] - Number of data points in the waveform (default: 1000)
+  /// [type] - Type of waveform visualization (default: bars)
+  /// [normalize] - Whether to normalize amplitude values (default: true)
+  /// [config] - Advanced configuration options (optional)
+  /// [useCache] - Whether to use caching (default: true)
+  ///
+  /// Returns [WaveformData] containing amplitude values and metadata
+  ///
+  /// Example:
+  /// ```dart
+  /// final waveformData = await Sonix.generateWaveformCached('audio.mp3');
+  /// ```
+  static Future<WaveformData> generateWaveformCached(
+    String filePath, {
+    int resolution = 1000,
+    WaveformType type = WaveformType.bars,
+    bool normalize = true,
+    WaveformConfig? config,
+    bool useCache = true,
+  }) async {
+    _ensureInitialized();
+
+    return MemoryEfficientSonixApi.generateWaveformCached(
+      filePath,
+      resolution: resolution,
+      type: type,
+      normalize: normalize,
+      config: config,
+      useCache: useCache,
+    );
+  }
+
+  /// Generate waveform with adaptive quality based on file size
+  ///
+  /// This method automatically chooses the best approach based on file size:
+  /// - Small files: Regular generation with caching
+  /// - Large files: Memory-efficient generation
+  /// - Huge files: Lazy loading
+  ///
+  /// [filePath] - Path to the audio file
+  /// [resolution] - Number of data points in the waveform (default: 1000)
+  /// [type] - Type of waveform visualization (default: bars)
+  /// [normalize] - Whether to normalize amplitude values (default: true)
+  /// [config] - Advanced configuration options (optional)
+  ///
+  /// Returns [WaveformData] containing amplitude values and metadata
+  ///
+  /// Example:
+  /// ```dart
+  /// final waveformData = await Sonix.generateWaveformAdaptive('any_size_audio.wav');
+  /// ```
+  static Future<WaveformData> generateWaveformAdaptive(
+    String filePath, {
+    int resolution = 1000,
+    WaveformType type = WaveformType.bars,
+    bool normalize = true,
+    WaveformConfig? config,
+  }) async {
+    _ensureInitialized();
+
+    return MemoryEfficientSonixApi.generateWaveformAdaptive(filePath, resolution: resolution, type: type, normalize: normalize, config: config);
+  }
+
   /// Get optimal configuration for different use cases
   ///
   /// [useCase] - The intended use case for the waveform
@@ -287,6 +389,86 @@ class Sonix {
     return WaveformGenerator.getOptimalConfig(useCase: useCase, customResolution: customResolution);
   }
 
+  /// Get memory and resource usage statistics
+  ///
+  /// Returns detailed information about current memory usage, cache statistics,
+  /// and active resources.
+  ///
+  /// Example:
+  /// ```dart
+  /// final stats = Sonix.getResourceStatistics();
+  /// print('Memory usage: ${stats.memoryUsagePercentage * 100}%');
+  /// ```
+  static ResourceStatistics getResourceStatistics() {
+    _ensureInitialized();
+    return MemoryEfficientSonixApi.getResourceStatistics();
+  }
+
+  /// Force cleanup of all cached resources and memory
+  ///
+  /// This method clears all caches and disposes of managed resources
+  /// to free up memory. Use this when you need to free up memory
+  /// or when shutting down your application.
+  ///
+  /// Example:
+  /// ```dart
+  /// await Sonix.forceCleanup();
+  /// ```
+  static Future<void> forceCleanup() async {
+    if (!_isInitialized) return;
+    await MemoryEfficientSonixApi.forceCleanup();
+  }
+
+  /// Clear specific file from all caches
+  ///
+  /// [filePath] - Path to the file to remove from caches
+  ///
+  /// This is useful when you know a file has been modified or deleted
+  /// and want to ensure fresh data on next access.
+  ///
+  /// Example:
+  /// ```dart
+  /// Sonix.clearFileFromCaches('modified_audio.mp3');
+  /// ```
+  static void clearFileFromCaches(String filePath) {
+    if (!_isInitialized) return;
+    MemoryEfficientSonixApi.clearFileFromCaches(filePath);
+  }
+
+  /// Preload audio data into cache for faster waveform generation
+  ///
+  /// [filePath] - Path to the audio file to preload
+  ///
+  /// This method loads and caches the audio data without generating
+  /// a waveform, which can speed up subsequent waveform generation.
+  ///
+  /// Example:
+  /// ```dart
+  /// await Sonix.preloadAudioData('upcoming_audio.mp3');
+  /// // Later...
+  /// final waveform = await Sonix.generateWaveformCached('upcoming_audio.mp3');
+  /// ```
+  static Future<void> preloadAudioData(String filePath) async {
+    _ensureInitialized();
+    await MemoryEfficientSonixApi.preloadAudioData(filePath);
+  }
+
+  /// Dispose of all Sonix resources
+  ///
+  /// This should be called when shutting down your application
+  /// to ensure all resources are properly disposed of.
+  ///
+  /// Example:
+  /// ```dart
+  /// await Sonix.dispose();
+  /// ```
+  static Future<void> dispose() async {
+    if (!_isInitialized) return;
+
+    await MemoryEfficientSonixApi.dispose();
+    _isInitialized = false;
+  }
+
   /// Extract file extension from a file path
   static String _getFileExtension(String filePath) {
     final lastDot = filePath.lastIndexOf('.');
@@ -294,5 +476,13 @@ class Sonix {
       return '';
     }
     return filePath.substring(lastDot + 1);
+  }
+
+  /// Ensure Sonix is initialized
+  static void _ensureInitialized() {
+    if (!_isInitialized) {
+      // Auto-initialize with default settings
+      initialize();
+    }
   }
 }

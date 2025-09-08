@@ -19,5 +19,14 @@ export 'src/processing/waveform_algorithms.dart' show DownsamplingAlgorithm, Nor
 // Exceptions that users should be able to catch
 export 'src/exceptions/sonix_exceptions.dart';
 
+// Error recovery utilities for advanced users
+export 'src/exceptions/error_recovery.dart' show RecoverableOperation, RecoverableStreamOperation;
+
 // UI widgets for displaying waveforms
 export 'src/widgets/widgets.dart';
+
+// Memory management utilities
+export 'src/utils/memory_manager.dart' show MemoryManager, QualityReductionSuggestion;
+export 'src/utils/resource_manager.dart' show ResourceManager, ResourceStatistics, ResourceInfo;
+export 'src/utils/lazy_waveform_data.dart' show LazyWaveformData;
+export 'src/utils/lru_cache.dart' show CacheStatistics;

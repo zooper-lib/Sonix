@@ -100,3 +100,29 @@ class InvalidWaveformDataException extends SonixException {
     return 'InvalidWaveformDataException: $message';
   }
 }
+
+/// Exception thrown when configuration validation fails
+class ConfigurationException extends SonixException {
+  const ConfigurationException(super.message, [super.details]);
+
+  @override
+  String toString() {
+    if (details != null) {
+      return 'ConfigurationException: $message\nDetails: $details';
+    }
+    return 'ConfigurationException: $message';
+  }
+}
+
+/// Exception thrown when streaming operations fail
+class StreamingException extends SonixException {
+  const StreamingException(super.message, [super.details]);
+
+  @override
+  String toString() {
+    if (details != null) {
+      return 'StreamingException: $message\nDetails: $details';
+    }
+    return 'StreamingException: $message';
+  }
+}
