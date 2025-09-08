@@ -29,7 +29,6 @@ class AudioDecoderPage extends StatefulWidget {
 class _AudioDecoderPageState extends State<AudioDecoderPage> {
   String? _selectedFilePath;
   String? _fileName;
-  AudioData? _decodedAudio;
   WaveformData? _waveformData;
   bool _isDecoding = false;
   bool _isGeneratingWaveform = false;
@@ -59,7 +58,6 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
         setState(() {
           _selectedFilePath = result.files.single.path;
           _fileName = result.files.single.name;
-          _decodedAudio = null;
           _waveformData = null;
           _errorMessage = null;
           _detectedFormat = null;
@@ -79,67 +77,39 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
 
     setState(() {
       _isDecoding = true;
-      _errorMessage = null;
-    });
-
-    try {
-      // Detect the format first
-      final format = AudioDecoderFactory.detectFormat(_selectedFilePath!);
-
-      // Use the factory to create the appropriate decoder for the file
-      final decoder = AudioDecoderFactory.createDecoder(_selectedFilePath!);
-      final audioData = await decoder.decode(_selectedFilePath!);
-
-      setState(() {
-        _decodedAudio = audioData;
-        _detectedFormat = format.name;
-        _isDecoding = false;
-      });
-
-      decoder.dispose();
-
-      // Generate waveform data
-      _generateWaveform(audioData);
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error decoding audio: $e';
-        _isDecoding = false;
-      });
-    }
-  }
-
-  Future<void> _generateWaveform(AudioData audioData) async {
-    setState(() {
       _isGeneratingWaveform = true;
+      _errorMessage = null;
     });
 
     try {
       // Generate waveform with optimal settings for visualization
       final config =
-          WaveformGenerator.getOptimalConfig(
+          Sonix.getOptimalConfig(
             useCase: WaveformUseCase.musicVisualization,
             customResolution: 200, // Good resolution for UI display
           ).copyWith(
             algorithm: _selectedAlgorithm, // Use the selected algorithm
           );
 
-      final waveformData = await WaveformGenerator.generate(audioData, config: config);
+      final waveformData = await Sonix.generateWaveform(_selectedFilePath!, config: config);
 
       setState(() {
         _waveformData = waveformData;
+        _isDecoding = false;
         _isGeneratingWaveform = false;
       });
     } catch (e) {
       setState(() {
         _errorMessage = 'Error generating waveform: $e';
+        _isDecoding = false;
         _isGeneratingWaveform = false;
       });
     }
   }
 
   Future<void> _regenerateWaveform() async {
-    if (_decodedAudio == null) return;
-    await _generateWaveform(_decodedAudio!);
+    if (_selectedFilePath == null) return;
+    await _decodeAudioFile(); // Just regenerate with current settings
   }
 
   @override
@@ -199,7 +169,7 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
                   ),
                 ),
               ),
-            if (_decodedAudio != null)
+            if (_waveformData != null)
               Expanded(
                 child: Card(
                   child: Padding(
@@ -210,23 +180,8 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
                         const Text('Decoded Audio Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 16),
                         if (_detectedFormat != null) _buildInfoRow('Detected Format', _detectedFormat!),
-                        _buildInfoRow('Sample Rate', '${_decodedAudio!.sampleRate} Hz'),
-                        _buildInfoRow('Channels', '${_decodedAudio!.channels}'),
-                        _buildInfoRow('Duration', '${_decodedAudio!.duration.inMilliseconds} ms'),
-                        _buildInfoRow('Total Samples', '${_decodedAudio!.samples.length}'),
-                        _buildInfoRow('Samples per Channel', '${_decodedAudio!.samples.length ~/ _decodedAudio!.channels}'),
-                        const SizedBox(height: 16),
                         const Text('Sample Preview (first 10 values):', style: TextStyle(fontWeight: FontWeight.w500)),
                         const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-                          child: SelectableText(
-                            _decodedAudio!.samples.take(10).map((s) => s.toStringAsFixed(4)).join(', '),
-                            style: const TextStyle(fontFamily: 'monospace'),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
 
                         // Waveform Visualization Section
                         const Text('Waveform Visualization', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

@@ -116,19 +116,17 @@
 
 - [x] 6. Implement pre-generated waveform data support
 
-
-
-
   - Add validation for pre-generated waveform data
   - Create WaveformData.fromJson constructor
   - Implement data format compatibility checks
   - Add error handling for invalid data formats
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 7. Create main Sonix API class
+- [x] 7. Create main Sonix API class
 
   - Implement static generateWaveform method
   - Add generateWaveformStream for streaming processing
+
   - Create getSupportedFormats utility method
   - Add isFormatSupported validation method
   - _Requirements: 10.2, 10.4_
