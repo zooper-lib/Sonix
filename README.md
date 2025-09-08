@@ -289,6 +289,137 @@ Pre-configured styles for common use cases:
 
 ## Performance Optimization
 
+Sonix includes comprehensive performance optimization tools for production applications.
+
+### Performance Optimizer
+
+Automatically optimize waveform generation based on system conditions:
+
+```dart
+// Initialize performance optimizer
+final optimizer = PerformanceOptimizer();
+await optimizer.initialize(settings: OptimizationSettings(
+  enableProfiling: true,
+  memoryLimit: 150 * 1024 * 1024, // 150MB
+  enableAutoOptimization: true,
+));
+
+// Optimize waveform generation automatically
+final waveformData = await optimizer.optimizeWaveformGeneration(audioData);
+
+// Get real-time performance metrics
+final metrics = optimizer.getCurrentMetrics();
+print('Memory usage: ${(metrics.memoryUsagePercentage * 100).toStringAsFixed(1)}%');
+print('Cache hit rate: ${(metrics.cacheHitRate * 100).toStringAsFixed(1)}%');
+
+// Get optimization suggestions
+final suggestions = optimizer.getOptimizationSuggestions();
+for (final suggestion in suggestions) {
+  print('${suggestion.priority.name.toUpperCase()}: ${suggestion.title}');
+  print('  ${suggestion.description}');
+  print('  Action: ${suggestion.action}');
+}
+
+// Optimize widget rendering
+final renderingOpt = optimizer.optimizeWidgetRendering(waveformData, widgetWidth);
+print('Rendering strategy: ${renderingOpt.strategy.name}');
+```
+
+### Performance Profiling
+
+Profile operations to identify bottlenecks and optimize performance:
+
+```dart
+final profiler = PerformanceProfiler();
+profiler.enable();
+
+// Profile individual operations
+final result = await profiler.profile('waveform_generation', () async {
+  return await Sonix.generateWaveform('audio.mp3');
+}, metadata: {'file_size': fileSize, 'format': 'mp3'});
+
+// Profile synchronous operations
+final processedData = profiler.profileSync('data_processing', () {
+  return processAudioData(rawData);
+});
+
+// Run comprehensive benchmarks
+final waveformBenchmark = await profiler.benchmarkWaveformGeneration(
+  resolutions: [500, 1000, 2000],
+  durations: [10.0, 30.0, 60.0],
+  iterations: 3,
+);
+
+final renderingBenchmark = await profiler.benchmarkWidgetRendering(
+  amplitudeCounts: [1000, 2000, 5000],
+  iterations: 5,
+);
+
+// Generate detailed performance report
+final report = profiler.generateReport();
+print(report.toString());
+
+// Export profiling data
+final jsonData = profiler.exportToJson();
+await File('performance_data.json').writeAsString(jsonEncode(jsonData));
+```
+
+### Platform Validation
+
+Validate platform compatibility and get optimization recommendations:
+
+```dart
+final validator = PlatformValidator();
+
+// Validate current platform
+final validation = await validator.validatePlatform();
+print('Platform: ${validation.platformInfo.operatingSystem}');
+print('Supported: ${validation.isSupported}');
+
+if (validation.hasIssues) {
+  for (final issue in validation.issues) {
+    print('${issue.severity.name.toUpperCase()}: ${issue.message}');
+  }
+}
+
+// Check format support
+final mp3Support = await validator.validateFormatSupport('mp3');
+print('MP3 supported: ${mp3Support.isSupported}');
+
+// Get platform-specific recommendations
+final recommendations = validator.getOptimizationRecommendations();
+for (final rec in recommendations) {
+  print('${rec.category}: ${rec.title}');
+  print('  ${rec.description}');
+}
+```
+
+### Package Finalization
+
+Comprehensive package validation and optimization for production:
+
+```dart
+final finalizer = PackageFinalizer();
+
+// Run complete finalization process
+final result = await finalizer.finalizePackage(
+  runPerformanceTests: true,
+  validatePlatforms: true,
+  generateDocumentation: true,
+  optimizeForProduction: true,
+);
+
+print('Ready for publication: ${result.isReady}');
+print('Issues: ${result.issues.length}');
+print('Warnings: ${result.warnings.length}');
+
+if (!result.isReady) {
+  for (final issue in result.criticalIssues) {
+    print('CRITICAL: ${issue.message}');
+  }
+}
+```
+
 ### Memory Management
 
 ```dart
@@ -303,6 +434,17 @@ Sonix.initialize(
 final stats = Sonix.getResourceStatistics();
 print('Memory usage: ${stats.memoryUsagePercentage * 100}%');
 
+// Advanced memory management
+final memoryManager = MemoryManager();
+memoryManager.initialize(memoryLimit: 100 * 1024 * 1024);
+
+// Get quality reduction suggestions under memory pressure
+final suggestion = memoryManager.getSuggestedQualityReduction();
+if (suggestion.shouldReduce) {
+  print('Reduce resolution to: ${(suggestion.resolutionReduction * 100).toStringAsFixed(0)}%');
+  print('Enable streaming: ${suggestion.enableStreaming}');
+}
+
 // Clean up when needed
 await Sonix.forceCleanup();
 ```
@@ -314,6 +456,9 @@ await Sonix.forceCleanup();
 3. **Stream large files**: Use `generateWaveformStream()` for files > 50MB
 4. **Dispose resources**: Call `dispose()` on WaveformData when no longer needed
 5. **Monitor memory**: Check `getResourceStatistics()` in memory-constrained environments
+6. **Profile in production**: Use `PerformanceProfiler` to identify bottlenecks
+7. **Validate platforms**: Use `PlatformValidator` for cross-platform compatibility
+8. **Optimize automatically**: Use `PerformanceOptimizer` for adaptive performance tuning
 
 ### Platform-Specific Considerations
 

@@ -77,3 +77,9 @@ export 'src/utils/memory_manager.dart' show MemoryManager, QualityReductionSugge
 export 'src/utils/resource_manager.dart' show ResourceManager, ResourceStatistics, ResourceInfo;
 export 'src/utils/lazy_waveform_data.dart' show LazyWaveformData;
 export 'src/utils/lru_cache.dart' show CacheStatistics;
+
+// Performance optimization utilities
+export 'src/utils/performance_profiler.dart' show PerformanceProfiler, PerformanceReport, BenchmarkResult;
+export 'src/utils/performance_optimizer.dart'
+    show PerformanceOptimizer, OptimizationSettings, PerformanceMetrics, OptimizationSuggestion, SuggestionPriority, RenderingOptimization, RenderingStrategy;
+export 'src/utils/platform_validator.dart' show PlatformValidator, PlatformValidationResult, PlatformInfo, OptimizationRecommendation, RecommendationPriority;
