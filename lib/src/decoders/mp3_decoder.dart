@@ -92,33 +92,6 @@ class MP3Decoder implements AudioDecoder {
   }
 
   @override
-  Future<AudioMetadata> getMetadata(String filePath) async {
-    _checkDisposed();
-
-    try {
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        throw FileAccessException(filePath, 'File does not exist');
-      }
-
-      final fileSize = await file.length();
-
-      // For basic metadata, we can estimate bitrate from file size and duration
-      // This is a simplified implementation - full ID3 parsing would be more complex
-      return AudioMetadata(
-        format: 'mp3',
-        fileSize: fileSize,
-        // Additional metadata would require ID3 tag parsing
-      );
-    } catch (e) {
-      if (e is SonixException) {
-        rethrow;
-      }
-      throw DecodingException('Failed to get MP3 metadata', 'Error reading metadata from $filePath: $e');
-    }
-  }
-
-  @override
   void dispose() {
     if (!_disposed) {
       // Clean up any native resources if needed

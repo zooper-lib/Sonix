@@ -8,9 +8,6 @@ abstract class AudioDecoder {
   /// Decode audio file as a stream of chunks for memory efficiency
   Stream<AudioChunk> decodeStream(String filePath);
 
-  /// Get metadata from an audio file without full decoding
-  Future<AudioMetadata> getMetadata(String filePath);
-
   /// Clean up resources
   void dispose();
 }

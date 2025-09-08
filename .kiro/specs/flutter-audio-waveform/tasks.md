@@ -133,7 +133,6 @@
 
 - [x] 8. Implement comprehensive error handling
 
-
   - Create SonixException hierarchy
   - Add UnsupportedFormatException for format errors
   - Create DecodingException for decode failures
@@ -150,7 +149,8 @@
   - Add explicit disposal methods for all resources
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 10. Create comprehensive unit tests
+- [x] 10. Create comprehensive unit tests
+
 
   - Write tests for audio decoding accuracy for each format
   - Create tests for waveform generation algorithms
@@ -159,7 +159,7 @@
   - Create performance benchmark tests
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.6_
 
-- [ ] 10.1 Create test audio files and data
+- [x] 10.1 Create test audio files and data
 
   - Generate test audio files for each supported format
   - Create corrupted files for error testing

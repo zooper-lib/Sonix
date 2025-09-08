@@ -49,32 +49,3 @@ class AudioChunk {
         'isLast: $isLast)';
   }
 }
-
-/// Metadata about an audio file
-class AudioMetadata {
-  /// File format (e.g., 'mp3', 'wav', 'flac')
-  final String format;
-
-  /// Bitrate in kbps
-  final int? bitrate;
-
-  /// File size in bytes
-  final int? fileSize;
-
-  /// Title metadata
-  final String? title;
-
-  /// Artist metadata
-  final String? artist;
-
-  /// Album metadata
-  final String? album;
-
-  const AudioMetadata({required this.format, this.bitrate, this.fileSize, this.title, this.artist, this.album});
-
-  @override
-  String toString() {
-    return 'AudioMetadata(format: $format, bitrate: $bitrate, '
-        'fileSize: $fileSize, title: $title, artist: $artist, album: $album)';
-  }
-}

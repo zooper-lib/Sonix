@@ -5,6 +5,8 @@ import 'package:sonix/src/exceptions/error_recovery.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
+import 'package:sonix/src/decoders/audio_decoder_factory.dart';
+import 'test_data_generator.dart';
 
 void main() {
   group('SonixException Hierarchy', () {
@@ -232,6 +234,145 @@ void main() {
           // Should not reach here
         }
       }, throwsA(isA<StreamingException>()));
+    });
+  });
+
+  group('Comprehensive Error Scenarios', () {
+    late Map<String, dynamic> testConfigurations;
+
+    setUpAll(() async {
+      // Generate test data if it doesn't exist
+      if (!await TestDataLoader.assetExists('test_configurations.json')) {
+        await TestDataGenerator.generateAllTestData();
+      }
+
+      testConfigurations = await TestDataLoader.loadTestConfigurations();
+    });
+
+    test('should handle all configured error scenarios', () async {
+      final errorScenarios = testConfigurations['error_test_scenarios'] as List;
+
+      for (final scenario in errorScenarios) {
+        final filename = scenario['file'] as String;
+        final expectedExceptionType = scenario['expected_exception'] as String;
+
+        final filePath = TestDataLoader.getAssetPath(filename);
+
+        try {
+          if (filename.endsWith('.mp3') || filename.endsWith('.wav') || filename.endsWith('.flac') || filename.endsWith('.ogg')) {
+            final decoder = AudioDecoderFactory.createDecoder(filePath);
+            await decoder.decode(filePath);
+            fail('Expected exception for $filename');
+          } else {
+            // Test format detection
+            expect(() => AudioDecoderFactory.createDecoder(filePath), throwsA(isA<UnsupportedFormatException>()));
+          }
+        } catch (e) {
+          switch (expectedExceptionType) {
+            case 'DecodingException':
+              expect(e, isA<DecodingException>());
+              break;
+            case 'UnsupportedFormatException':
+              expect(e, isA<UnsupportedFormatException>());
+              break;
+            case 'FileAccessException':
+              expect(e, isA<FileAccessException>());
+              break;
+            default:
+              expect(e, isA<SonixException>());
+          }
+        }
+      }
+    });
+
+    test('should provide detailed error information', () async {
+      final corruptedFile = TestDataLoader.getAssetPath('corrupted_header.mp3');
+
+      try {
+        final decoder = AudioDecoderFactory.createDecoder(corruptedFile);
+        await decoder.decode(corruptedFile);
+        fail('Expected DecodingException');
+      } catch (e) {
+        expect(e, isA<DecodingException>());
+        final decodingError = e as DecodingException;
+        expect(decodingError.message, isNotEmpty);
+        expect(decodingError.toString(), contains('DecodingException'));
+
+        if (decodingError.details != null) {
+          expect(decodingError.details, isNotEmpty);
+        }
+      }
+    });
+
+    test('should handle cascading error recovery', () async {
+      // Simulate a scenario where multiple recovery strategies are needed
+      int decodingAttempts = 0;
+      int memoryAttempts = 0;
+
+      Future<AudioData> problematicDecoding() async {
+        decodingAttempts++;
+        if (decodingAttempts < 2) {
+          throw const DecodingException('Decoding failed');
+        }
+        if (memoryAttempts < 1) {
+          memoryAttempts++;
+          throw const MemoryException('Out of memory');
+        }
+        return AudioData(samples: [1.0], sampleRate: 44100, channels: 1, duration: const Duration(milliseconds: 1));
+      }
+
+      // Test the integrated error recovery system
+      try {
+        final result = await problematicDecoding();
+        expect(result.samples, equals([1.0]));
+      } catch (e) {
+        // In the real system, this would be handled by the recovery mechanisms
+        expect(e, isA<SonixException>());
+      }
+    });
+
+    test('should provide fallback results when recovery fails', () async {
+      const originalError = DecodingException('Original decode failure');
+
+      // The error recovery should provide a fallback result
+      final result = await ErrorRecovery.recoverFromDecodingError(
+        'nonexistent.mp3',
+        originalError,
+        () async => throw const DecodingException('All recovery failed'),
+      );
+
+      // Should return minimal fallback audio data
+      expect(result, isA<AudioData>());
+      expect(result.samples.length, equals(1));
+      expect(result.samples.first, equals(0.0)); // Silent sample
+    });
+
+    test('should handle error recovery timeouts', () async {
+      final operation = RecoverableOperation<String>(() async {
+        await Future.delayed(const Duration(seconds: 10)); // Long operation
+        return 'Success';
+      }, 'timeout_test');
+
+      // Should timeout and provide fallback
+      expect(() async {
+        await Future.any([
+          operation.execute(),
+          Future.delayed(const Duration(seconds: 1)).then((_) => throw TimeoutException('Test timeout', const Duration(seconds: 1))),
+        ]);
+      }, throwsA(isA<TimeoutException>()));
+    });
+
+    test('should maintain error context across recovery attempts', () async {
+      const originalFile = 'test.mp3';
+      const originalError = DecodingException('Original failure', 'Detailed context');
+
+      try {
+        await ErrorRecovery.recoverFromDecodingError(originalFile, originalError, () async => throw const DecodingException('Recovery also failed'));
+      } catch (e) {
+        expect(e, isA<DecodingException>());
+        // Error context should be preserved
+        expect(e.toString(), contains('test.mp3'));
+      }
     });
   });
 

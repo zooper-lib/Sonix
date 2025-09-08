@@ -77,29 +77,6 @@ class OpusDecoder implements AudioDecoder {
   }
 
   @override
-  Future<AudioMetadata> getMetadata(String filePath) async {
-    _checkDisposed();
-
-    try {
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        throw FileAccessException(filePath, 'File does not exist');
-      }
-
-      final fileSize = await file.length();
-
-      // Opus files (usually in OGG container) contain comment headers for metadata
-      // This is a simplified implementation
-      return AudioMetadata(format: 'opus', fileSize: fileSize);
-    } catch (e) {
-      if (e is SonixException) {
-        rethrow;
-      }
-      throw DecodingException('Failed to get Opus metadata', 'Error reading metadata from $filePath: $e');
-    }
-  }
-
-  @override
   void dispose() {
     if (!_disposed) {
       // Clean up any native resources if needed

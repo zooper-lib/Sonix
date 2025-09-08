@@ -78,29 +78,6 @@ class WAVDecoder implements AudioDecoder {
   }
 
   @override
-  Future<AudioMetadata> getMetadata(String filePath) async {
-    _checkDisposed();
-
-    try {
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        throw FileAccessException(filePath, 'File does not exist');
-      }
-
-      final fileSize = await file.length();
-
-      // For WAV files, we could parse the header to get more detailed metadata
-      // This is a simplified implementation
-      return AudioMetadata(format: 'wav', fileSize: fileSize);
-    } catch (e) {
-      if (e is SonixException) {
-        rethrow;
-      }
-      throw DecodingException('Failed to get WAV metadata', 'Error reading metadata from $filePath: $e');
-    }
-  }
-
-  @override
   void dispose() {
     if (!_disposed) {
       // Clean up any native resources if needed

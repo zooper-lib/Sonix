@@ -77,29 +77,6 @@ class FLACDecoder implements AudioDecoder {
   }
 
   @override
-  Future<AudioMetadata> getMetadata(String filePath) async {
-    _checkDisposed();
-
-    try {
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        throw FileAccessException(filePath, 'File does not exist');
-      }
-
-      final fileSize = await file.length();
-
-      // FLAC files contain metadata blocks that could be parsed for detailed info
-      // This is a simplified implementation
-      return AudioMetadata(format: 'flac', fileSize: fileSize);
-    } catch (e) {
-      if (e is SonixException) {
-        rethrow;
-      }
-      throw DecodingException('Failed to get FLAC metadata', 'Error reading metadata from $filePath: $e');
-    }
-  }
-
-  @override
   void dispose() {
     if (!_disposed) {
       // Clean up any native resources if needed
