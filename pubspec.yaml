@@ -1,7 +1,10 @@
 name: sonix
-description: "A new Flutter package project."
+description: "Flutter audio waveform package with multi-format support (MP3, WAV, FLAC, OGG, Opus) using native C libraries. No FFMPEG dependency required."
 version: 0.0.1
-homepage:
+homepage: https://github.com/your-repo/sonix
+repository: https://github.com/your-repo/sonix
+issue_tracker: https://github.com/your-repo/sonix/issues
+documentation: https://pub.dev/documentation/sonix/latest/
 
 environment:
   sdk: ^3.9.0

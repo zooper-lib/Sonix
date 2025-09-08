@@ -2,7 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:sonix/sonix.dart';
 
+// Import example screens
+import 'examples/basic_usage_example.dart';
+import 'examples/playback_position_example.dart';
+import 'examples/style_customization_example.dart';
+import 'examples/memory_efficient_example.dart';
+import 'examples/pre_generated_data_example.dart';
+
 void main() {
+  // Initialize Sonix with optimal settings
+  Sonix.initialize(
+    memoryLimit: 50 * 1024 * 1024, // 50MB
+    maxWaveformCacheSize: 30,
+    maxAudioDataCacheSize: 15,
+  );
+
   runApp(const MyApp());
 }
 
@@ -12,9 +26,184 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sonix Audio Decoder',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
-      home: const AudioDecoderPage(),
+      title: 'Sonix Examples',
+      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple), useMaterial3: true),
+      home: const ExampleHomePage(),
+    );
+  }
+}
+
+class ExampleHomePage extends StatelessWidget {
+  const ExampleHomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sonix Examples'), backgroundColor: Theme.of(context).colorScheme.inversePrimary),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Sonix Audio Waveform Package',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Explore different features and capabilities',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.2,
+                children: [
+                  _buildExampleCard(
+                    context,
+                    'Basic Usage',
+                    'Simple waveform generation and display',
+                    Icons.graphic_eq,
+                    Colors.blue,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BasicUsageExample())),
+                  ),
+                  _buildExampleCard(
+                    context,
+                    'Playback Position',
+                    'Interactive waveform with playback visualization',
+                    Icons.play_circle_outline,
+                    Colors.green,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlaybackPositionExample())),
+                  ),
+                  _buildExampleCard(
+                    context,
+                    'Style Customization',
+                    'Explore different visual styles and options',
+                    Icons.palette,
+                    Colors.purple,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StyleCustomizationExample())),
+                  ),
+                  _buildExampleCard(
+                    context,
+                    'Memory Efficient',
+                    'Memory-efficient processing for large files',
+                    Icons.memory,
+                    Colors.orange,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MemoryEfficientExample())),
+                  ),
+                  _buildExampleCard(
+                    context,
+                    'Pre-generated Data',
+                    'Using pre-computed waveform data',
+                    Icons.data_object,
+                    Colors.teal,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PreGeneratedDataExample())),
+                  ),
+                  _buildExampleCard(
+                    context,
+                    'Full Demo',
+                    'Complete audio decoder demonstration',
+                    Icons.audiotrack,
+                    Colors.red,
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AudioDecoderPage())),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                border: Border.all(color: Colors.blue.shade200),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text('About Sonix', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Sonix is a comprehensive Flutter package for generating and displaying '
+                    'audio waveforms without relying on FFMPEG. It supports multiple audio '
+                    'formats using native C libraries for optimal performance.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _buildFeatureChip('MP3'),
+                      _buildFeatureChip('WAV'),
+                      _buildFeatureChip('FLAC'),
+                      _buildFeatureChip('OGG'),
+                      _buildFeatureChip('Opus'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExampleCard(BuildContext context, String title, String description, IconData icon, Color color, VoidCallback onTap) {
+    return Card(
+      elevation: 4,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 32, color: color),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                description,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureChip(String label) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: Colors.blue.shade100, borderRadius: BorderRadius.circular(12)),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w500),
+      ),
     );
   }
 }

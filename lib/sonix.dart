@@ -3,6 +3,53 @@
 /// A comprehensive solution for generating and displaying audio waveforms
 /// without relying on FFMPEG. Supports multiple audio formats (MP3, OGG, WAV, FLAC, Opus)
 /// using native C libraries through Dart FFI.
+///
+/// ## Quick Start
+///
+/// ```dart
+/// import 'package:sonix/sonix.dart';
+///
+/// // Generate waveform from audio file
+/// final waveformData = await Sonix.generateWaveform('audio.mp3');
+///
+/// // Display with playback position
+/// WaveformWidget(
+///   waveformData: waveformData,
+///   playbackPosition: 0.3, // 30% played
+///   style: WaveformStylePresets.soundCloud,
+///   onSeek: (position) {
+///     // Handle seek to position
+///   },
+/// )
+/// ```
+///
+/// ## Key Features
+///
+/// - **Multi-format Support**: MP3, OGG, WAV, FLAC, Opus
+/// - **High Performance**: Native C libraries via Dart FFI
+/// - **Memory Efficient**: Streaming processing and caching
+/// - **Interactive UI**: Real-time playback position and seeking
+/// - **Extensive Customization**: Colors, gradients, styles
+/// - **Error Recovery**: Comprehensive error handling
+///
+/// ## Memory Management
+///
+/// Initialize Sonix with memory limits for optimal performance:
+///
+/// ```dart
+/// Sonix.initialize(
+///   memoryLimit: 50 * 1024 * 1024, // 50MB
+///   maxWaveformCacheSize: 50,
+/// );
+/// ```
+///
+/// ## Performance Tips
+///
+/// 1. Use `generateWaveformCached()` for frequently accessed files
+/// 2. Use `generateWaveformStream()` for large files (>50MB)
+/// 3. Use `generateWaveformAdaptive()` for automatic optimization
+/// 4. Call `dispose()` on WaveformData when no longer needed
+/// 5. Monitor memory usage with `getResourceStatistics()`
 
 library;
 

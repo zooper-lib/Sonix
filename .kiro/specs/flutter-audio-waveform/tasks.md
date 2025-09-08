@@ -151,7 +151,6 @@
 
 - [x] 10. Create comprehensive unit tests
 
-
   - Write tests for audio decoding accuracy for each format
   - Create tests for waveform generation algorithms
   - Add tests for memory management and disposal
@@ -167,7 +166,8 @@
   - Create reference waveform data for validation
   - _Requirements: 8.1, 8.2, 8.6_
 
-- [ ] 11. Add documentation and examples
+- [x] 11. Add documentation and examples
+
 
   - Write comprehensive API documentation
   - Create usage examples for common scenarios

@@ -161,25 +161,3 @@ class TestResult {
 
   TestResult(this.passed, this.failed);
 }
-
-/// Print usage information
-void _printUsage() {
-  print('''
-Usage: dart test/run_all_tests.dart [options]
-
-Options:
-  --category=<name>    Run tests for specific category only
-                       Categories: audio_decoding, waveform_generation, 
-                                 memory_management, error_handling,
-                                 performance_benchmark, waveform_algorithms,
-                                 sonix_api
-  --coverage          Generate test coverage report
-  --verbose           Show detailed test output
-  --help              Show this help message
-
-Examples:
-  dart test/run_all_tests.dart
-  dart test/run_all_tests.dart --category=audio_decoding
-  dart test/run_all_tests.dart --coverage --verbose
-''');
-}
