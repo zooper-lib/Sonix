@@ -131,7 +131,6 @@ class WaveformGenerator {
 
     // For normalization across the entire stream
     final allAmplitudes = <double>[];
-    bool isFirstPass = true;
 
     await for (final chunk in audioStream) {
       // Initialize parameters from first chunk
@@ -179,7 +178,7 @@ class WaveformGenerator {
           }
 
           // Calculate time for this chunk
-          final chunkDuration = Duration(microseconds: (chunkSamples.length * Duration.microsecondsPerSecond) ~/ sampleRate!);
+          final chunkDuration = Duration(microseconds: (chunkSamples.length * Duration.microsecondsPerSecond) ~/ sampleRate);
 
           yield WaveformChunk(amplitudes: chunkAmplitudes, startTime: currentTime, isLast: chunk.isLast);
 

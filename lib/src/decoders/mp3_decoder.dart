@@ -9,7 +9,6 @@ import 'audio_decoder.dart';
 /// MP3 audio decoder using minimp3 library
 class MP3Decoder implements AudioDecoder {
   bool _disposed = false;
-  static const int _chunkSize = 64 * 1024; // 64KB chunks for streaming
 
   @override
   Future<AudioData> decode(String filePath) async {

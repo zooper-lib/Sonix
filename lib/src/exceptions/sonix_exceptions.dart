@@ -87,3 +87,16 @@ class FFIException extends SonixException {
     return 'FFIException: $message';
   }
 }
+
+/// Exception thrown when waveform data validation fails
+class InvalidWaveformDataException extends SonixException {
+  const InvalidWaveformDataException(super.message, [super.details]);
+
+  @override
+  String toString() {
+    if (details != null) {
+      return 'InvalidWaveformDataException: $message\nDetails: $details';
+    }
+    return 'InvalidWaveformDataException: $message';
+  }
+}

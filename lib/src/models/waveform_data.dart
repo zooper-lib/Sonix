@@ -72,10 +72,26 @@ class WaveformData {
     );
   }
 
+  /// Create from pre-generated amplitude data (simplified for display only)
+  factory WaveformData.fromAmplitudes(List<double> amplitudes) {
+    return WaveformData(
+      amplitudes: amplitudes,
+      duration: const Duration(seconds: 1), // Default duration
+      sampleRate: 44100, // Default sample rate
+      metadata: WaveformMetadata(resolution: amplitudes.length, type: WaveformType.bars, normalized: true, generatedAt: DateTime.now()),
+    );
+  }
+
   /// Create from JSON string
   factory WaveformData.fromJsonString(String jsonString) {
     final Map<String, dynamic> json = jsonDecode(jsonString);
     return WaveformData.fromJson(json);
+  }
+
+  /// Create from amplitude list in JSON string format
+  factory WaveformData.fromAmplitudeString(String amplitudeString) {
+    final List<double> amplitudes = (jsonDecode(amplitudeString) as List).cast<double>();
+    return WaveformData.fromAmplitudes(amplitudes);
   }
 
   /// Convert to JSON string

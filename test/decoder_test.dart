@@ -89,7 +89,7 @@ void main() {
       expect(() => decoder.decode('test.mp3'), throwsA(isA<StateError>()));
       expect(() => decoder.getMetadata('test.mp3'), throwsA(isA<StateError>()));
       expect(() async {
-        await for (final chunk in decoder.decodeStream('test.mp3')) {
+        await for (final _ in decoder.decodeStream('test.mp3')) {
           // This should not execute
         }
       }(), throwsA(isA<StateError>()));

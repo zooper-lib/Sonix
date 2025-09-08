@@ -1,5 +1,5 @@
 // Generated FFI bindings for Sonix native audio library
-// ignore_for_file: always_specify_types
+// ignore_for_file: always_specify_types, constant_identifier_names
 // ignore_for_file: camel_case_types
 // ignore_for_file: non_constant_identifier_names
 
@@ -99,21 +99,19 @@ class SonixNativeBindings {
   static ffi.DynamicLibrary get lib => _loadLibrary();
 
   /// Detect audio format from file data
-  static late final SonixDetectFormatDart detectFormat = lib.lookup<ffi.NativeFunction<SonixDetectFormatNative>>('sonix_detect_format').asFunction();
+  static final SonixDetectFormatDart detectFormat = lib.lookup<ffi.NativeFunction<SonixDetectFormatNative>>('sonix_detect_format').asFunction();
 
   /// Decode audio data from memory
-  static late final SonixDecodeAudioDart decodeAudio = lib.lookup<ffi.NativeFunction<SonixDecodeAudioNative>>('sonix_decode_audio').asFunction();
+  static final SonixDecodeAudioDart decodeAudio = lib.lookup<ffi.NativeFunction<SonixDecodeAudioNative>>('sonix_decode_audio').asFunction();
 
   /// Free audio data allocated by decode_audio
-  static late final SonixFreeAudioDataDart freeAudioData = lib.lookup<ffi.NativeFunction<SonixFreeAudioDataNative>>('sonix_free_audio_data').asFunction();
+  static final SonixFreeAudioDataDart freeAudioData = lib.lookup<ffi.NativeFunction<SonixFreeAudioDataNative>>('sonix_free_audio_data').asFunction();
 
   /// Get error message for the last error
-  static late final SonixGetErrorMessageDart getErrorMessage = lib
-      .lookup<ffi.NativeFunction<SonixGetErrorMessageNative>>('sonix_get_error_message')
-      .asFunction();
+  static final SonixGetErrorMessageDart getErrorMessage = lib.lookup<ffi.NativeFunction<SonixGetErrorMessageNative>>('sonix_get_error_message').asFunction();
 
   // Debug: MP3 stats accessor (may return nullptr if not applicable)
-  static late final SonixGetLastMp3DebugStatsDart getLastMp3DebugStats = lib
+  static final SonixGetLastMp3DebugStatsDart getLastMp3DebugStats = lib
       .lookup<ffi.NativeFunction<SonixGetLastMp3DebugStatsNative>>('sonix_get_last_mp3_debug_stats')
       .asFunction();
 }

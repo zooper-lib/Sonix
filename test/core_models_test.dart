@@ -55,7 +55,7 @@ void main() {
     });
 
     test('WaveformData serialization', () {
-      final metadata = WaveformMetadata(resolution: 100, type: WaveformType.line, normalized: false, generatedAt: DateTime.now());
+      final metadata = WaveformMetadata(resolution: 5, type: WaveformType.line, normalized: false, generatedAt: DateTime.now());
 
       final waveformData = WaveformData(amplitudes: [0.1, 0.5, 0.8, 0.3, 0.0], duration: const Duration(seconds: 5), sampleRate: 44100, metadata: metadata);
 
