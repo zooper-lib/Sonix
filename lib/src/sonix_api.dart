@@ -93,14 +93,6 @@ class Sonix {
       'generateWaveform',
       {
         'filePath': filePath,
-        'originalOperation': () async {
-          final decoder = AudioDecoderFactory.createDecoder(filePath);
-          try {
-            return await decoder.decode(filePath);
-          } finally {
-            decoder.dispose();
-          }
-        },
         'operation': (String path) async => generateWaveform(path, resolution: resolution, type: type, normalize: normalize, config: config),
       },
     );

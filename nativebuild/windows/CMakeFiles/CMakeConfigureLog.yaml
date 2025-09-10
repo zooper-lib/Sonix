@@ -57,8 +57,8 @@ events:
         - "C:\\ProgramData\\chocolatey\\bin"
         - "C:\\Program Files (x86)\\dotnet\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
-        - "%NVM_HOME%"
-        - "%NVM_SYMLINK%"
+        - "C:\\Users\\daniel\\AppData\\Roaming\\nvm"
+        - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\nodejs\\"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -103,7 +103,7 @@ events:
       Microsoft (R) Build Engine version 16.11.6+a918ceb31 for .NET Framework
       Copyright (C) Microsoft Corporation. All rights reserved.
       
-      Build started 07/09/2025 18:23:51.
+      Build started 10/09/2025 15:14:29.
       Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\4.1.1\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
       PrepareForBuild:
         Creating directory "Debug\\".
@@ -129,7 +129,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.64
+      Time Elapsed 00:00:00.60
       
       
       Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -184,8 +184,7 @@ events:
       - "C:/ProgramData/chocolatey/bin/"
       - "C:/Program Files (x86)/dotnet/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/"
+      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Program Files/nodejs/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
@@ -200,7 +199,6 @@ events:
       - "C:/Users/daniel/AppData/Local/gitkraken/bin/"
       - "C:/Users/daniel/.dotnet/tools/"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/"
-      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/"
       - "C:/Users/daniel/AppData/Roaming/npm/"
       - "C:/Users/daniel/AppData/Local/Programs/cursor/resources/app/bin/"
@@ -234,8 +232,8 @@ events:
         - "C:\\ProgramData\\chocolatey\\bin"
         - "C:\\Program Files (x86)\\dotnet\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
-        - "%NVM_HOME%"
-        - "%NVM_SYMLINK%"
+        - "C:\\Users\\daniel\\AppData\\Roaming\\nvm"
+        - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\nodejs\\"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -307,8 +305,7 @@ events:
       - "C:/ProgramData/chocolatey/bin/"
       - "C:/Program Files (x86)/dotnet/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/"
+      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Program Files/nodejs/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
@@ -323,7 +320,6 @@ events:
       - "C:/Users/daniel/AppData/Local/gitkraken/bin/"
       - "C:/Users/daniel/.dotnet/tools/"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/"
-      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/"
       - "C:/Users/daniel/AppData/Roaming/npm/"
       - "C:/Users/daniel/AppData/Local/Programs/cursor/resources/app/bin/"
@@ -400,12 +396,9 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/lld-link.com"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/lld-link.exe"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/lld-link"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/lld-link.com"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/lld-link.exe"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/lld-link"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/lld-link.com"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/lld-link.exe"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/lld-link"
+      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link.com"
+      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link.exe"
+      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link"
       - "C:/Program Files/nodejs/lld-link.com"
       - "C:/Program Files/nodejs/lld-link.exe"
       - "C:/Program Files/nodejs/lld-link"
@@ -448,9 +441,6 @@ events:
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/lld-link.com"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/lld-link.exe"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/lld-link"
-      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link.com"
-      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link.exe"
-      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/lld-link.com"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/lld-link.exe"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/lld-link"
@@ -494,8 +484,8 @@ events:
         - "C:\\ProgramData\\chocolatey\\bin"
         - "C:\\Program Files (x86)\\dotnet\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
-        - "%NVM_HOME%"
-        - "%NVM_SYMLINK%"
+        - "C:\\Users\\daniel\\AppData\\Roaming\\nvm"
+        - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\nodejs\\"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -565,8 +555,7 @@ events:
       - "C:/ProgramData/chocolatey/bin/"
       - "C:/Program Files (x86)/dotnet/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/"
+      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Program Files/nodejs/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
@@ -581,7 +570,6 @@ events:
       - "C:/Users/daniel/AppData/Local/gitkraken/bin/"
       - "C:/Users/daniel/.dotnet/tools/"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/"
-      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/"
       - "C:/Users/daniel/AppData/Roaming/npm/"
       - "C:/Users/daniel/AppData/Local/Programs/cursor/resources/app/bin/"
@@ -615,8 +603,8 @@ events:
         - "C:\\ProgramData\\chocolatey\\bin"
         - "C:\\Program Files (x86)\\dotnet\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
-        - "%NVM_HOME%"
-        - "%NVM_SYMLINK%"
+        - "C:\\Users\\daniel\\AppData\\Roaming\\nvm"
+        - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\nodejs\\"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -686,8 +674,7 @@ events:
       - "C:/ProgramData/chocolatey/bin/"
       - "C:/Program Files (x86)/dotnet/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/"
+      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Program Files/nodejs/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
@@ -702,7 +689,6 @@ events:
       - "C:/Users/daniel/AppData/Local/gitkraken/bin/"
       - "C:/Users/daniel/.dotnet/tools/"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/"
-      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/"
       - "C:/Users/daniel/AppData/Roaming/npm/"
       - "C:/Users/daniel/AppData/Local/Programs/cursor/resources/app/bin/"
@@ -779,12 +765,9 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/mt.com"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/mt.exe"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/mt"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/mt.com"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/mt.exe"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/mt"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/mt.com"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/mt.exe"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/mt"
+      - "C:/Users/daniel/AppData/Roaming/nvm/mt.com"
+      - "C:/Users/daniel/AppData/Roaming/nvm/mt.exe"
+      - "C:/Users/daniel/AppData/Roaming/nvm/mt"
       - "C:/Program Files/nodejs/mt.com"
       - "C:/Program Files/nodejs/mt.exe"
       - "C:/Program Files/nodejs/mt"
@@ -827,9 +810,6 @@ events:
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/mt.com"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/mt.exe"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/mt"
-      - "C:/Users/daniel/AppData/Roaming/nvm/mt.com"
-      - "C:/Users/daniel/AppData/Roaming/nvm/mt.exe"
-      - "C:/Users/daniel/AppData/Roaming/nvm/mt"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/mt.com"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/mt.exe"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/mt"
@@ -873,8 +853,8 @@ events:
         - "C:\\ProgramData\\chocolatey\\bin"
         - "C:\\Program Files (x86)\\dotnet\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
-        - "%NVM_HOME%"
-        - "%NVM_SYMLINK%"
+        - "C:\\Users\\daniel\\AppData\\Roaming\\nvm"
+        - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\nodejs\\"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -944,8 +924,7 @@ events:
       - "C:/ProgramData/chocolatey/bin/"
       - "C:/Program Files (x86)/dotnet/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/"
+      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Program Files/nodejs/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
@@ -960,7 +939,6 @@ events:
       - "C:/Users/daniel/AppData/Local/gitkraken/bin/"
       - "C:/Users/daniel/.dotnet/tools/"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/"
-      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/"
       - "C:/Users/daniel/AppData/Roaming/npm/"
       - "C:/Users/daniel/AppData/Local/Programs/cursor/resources/app/bin/"
@@ -994,8 +972,8 @@ events:
         - "C:\\ProgramData\\chocolatey\\bin"
         - "C:\\Program Files (x86)\\dotnet\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
-        - "%NVM_HOME%"
-        - "%NVM_SYMLINK%"
+        - "C:\\Users\\daniel\\AppData\\Roaming\\nvm"
+        - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\nodejs\\"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1071,8 +1049,8 @@ events:
         - "C:\\ProgramData\\chocolatey\\bin"
         - "C:\\Program Files (x86)\\dotnet\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
-        - "%NVM_HOME%"
-        - "%NVM_SYMLINK%"
+        - "C:\\Users\\daniel\\AppData\\Roaming\\nvm"
+        - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\nodejs\\"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1117,7 +1095,7 @@ events:
       Microsoft (R) Build Engine version 16.11.6+a918ceb31 for .NET Framework
       Copyright (C) Microsoft Corporation. All rights reserved.
       
-      Build started 07/09/2025 18:23:51.
+      Build started 10/09/2025 15:14:29.
       Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\4.1.1\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
         Creating directory "Debug\\".
@@ -1143,7 +1121,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.51
+      Time Elapsed 00:00:00.47
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -1198,8 +1176,7 @@ events:
       - "C:/ProgramData/chocolatey/bin/"
       - "C:/Program Files (x86)/dotnet/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/"
+      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Program Files/nodejs/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
@@ -1214,7 +1191,6 @@ events:
       - "C:/Users/daniel/AppData/Local/gitkraken/bin/"
       - "C:/Users/daniel/.dotnet/tools/"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/"
-      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/"
       - "C:/Users/daniel/AppData/Roaming/npm/"
       - "C:/Users/daniel/AppData/Local/Programs/cursor/resources/app/bin/"
@@ -1291,12 +1267,9 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/lld-link.com"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/lld-link.exe"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/lld-link"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/lld-link.com"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/lld-link.exe"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/lld-link"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/lld-link.com"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/lld-link.exe"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/lld-link"
+      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link.com"
+      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link.exe"
+      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link"
       - "C:/Program Files/nodejs/lld-link.com"
       - "C:/Program Files/nodejs/lld-link.exe"
       - "C:/Program Files/nodejs/lld-link"
@@ -1339,9 +1312,6 @@ events:
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/lld-link.com"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/lld-link.exe"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/lld-link"
-      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link.com"
-      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link.exe"
-      - "C:/Users/daniel/AppData/Roaming/nvm/lld-link"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/lld-link.com"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/lld-link.exe"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/lld-link"
@@ -1385,8 +1355,8 @@ events:
         - "C:\\ProgramData\\chocolatey\\bin"
         - "C:\\Program Files (x86)\\dotnet\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
-        - "%NVM_HOME%"
-        - "%NVM_SYMLINK%"
+        - "C:\\Users\\daniel\\AppData\\Roaming\\nvm"
+        - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\nodejs\\"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1458,8 +1428,7 @@ events:
       - "C:/ProgramData/chocolatey/bin/"
       - "C:/Program Files (x86)/dotnet/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/"
+      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Program Files/nodejs/"
       - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
       - "C:/Program Files/Docker/Docker/resources/bin/"
@@ -1474,7 +1443,6 @@ events:
       - "C:/Users/daniel/AppData/Local/gitkraken/bin/"
       - "C:/Users/daniel/.dotnet/tools/"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/"
-      - "C:/Users/daniel/AppData/Roaming/nvm/"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/"
       - "C:/Users/daniel/AppData/Roaming/npm/"
       - "C:/Users/daniel/AppData/Local/Programs/cursor/resources/app/bin/"
@@ -1560,12 +1528,9 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/rc.com"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/rc.exe"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/rc"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/rc.com"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/rc.exe"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_HOME%/rc"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/rc.com"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/rc.exe"
-      - "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/%NVM_SYMLINK%/rc"
+      - "C:/Users/daniel/AppData/Roaming/nvm/rc.com"
+      - "C:/Users/daniel/AppData/Roaming/nvm/rc.exe"
+      - "C:/Users/daniel/AppData/Roaming/nvm/rc"
       - "C:/Program Files/nodejs/rc.com"
       - "C:/Program Files/nodejs/rc.exe"
       - "C:/Program Files/nodejs/rc"
@@ -1608,9 +1573,6 @@ events:
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/rc.com"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/rc.exe"
       - "C:/Users/daniel/AppData/Local/Pub/Cache/bin/rc"
-      - "C:/Users/daniel/AppData/Roaming/nvm/rc.com"
-      - "C:/Users/daniel/AppData/Roaming/nvm/rc.exe"
-      - "C:/Users/daniel/AppData/Roaming/nvm/rc"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/rc.com"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/rc.exe"
       - "C:/Users/daniel/AppData/Local/Microsoft/WinGet/Links/rc"
@@ -1690,8 +1652,8 @@ events:
         - "C:\\ProgramData\\chocolatey\\bin"
         - "C:\\Program Files (x86)\\dotnet\\"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
-        - "%NVM_HOME%"
-        - "%NVM_SYMLINK%"
+        - "C:\\Users\\daniel\\AppData\\Roaming\\nvm"
+        - "C:\\Program Files\\nodejs"
         - "C:\\Program Files\\nodejs\\"
         - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
         - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
@@ -1733,8 +1695,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-dbr49k"
-      binary: "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-dbr49k"
+      source: "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-7b1vz4"
+      binary: "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-7b1vz4"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
       CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
@@ -1743,39 +1705,39 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-dbr49k'
+        Change Dir: 'D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-7b1vz4'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe" cmTC_ff0fa.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe" cmTC_22c25.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:n
         Microsoft (R) Build Engine version 16.11.6+a918ceb31 for .NET Framework
         Copyright (C) Microsoft Corporation. All rights reserved.
         
-        Build started 07/09/2025 18:23:52.
-        Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-dbr49k\\cmTC_ff0fa.vcxproj" on node 1 (default targets).
+        Build started 10/09/2025 15:14:30.
+        Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-7b1vz4\\cmTC_22c25.vcxproj" on node 1 (default targets).
         PrepareForBuild:
-          Creating directory "cmTC_ff0fa.dir\\Debug\\".
-          Creating directory "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-dbr49k\\Debug\\".
-          Creating directory "cmTC_ff0fa.dir\\Debug\\cmTC_ff0fa.tlog\\".
+          Creating directory "cmTC_22c25.dir\\Debug\\".
+          Creating directory "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-7b1vz4\\Debug\\".
+          Creating directory "cmTC_22c25.dir\\Debug\\cmTC_22c25.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_ff0fa.dir\\Debug\\cmTC_ff0fa.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Creating "cmTC_22c25.dir\\Debug\\cmTC_22c25.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Fo"cmTC_ff0fa.dir\\Debug\\\\" /Fd"cmTC_ff0fa.dir\\Debug\\vc142.pdb" /external:W3 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Fo"cmTC_22c25.dir\\Debug\\\\" /Fd"cmTC_22c25.dir\\Debug\\vc142.pdb" /external:W3 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.29.30159 for x64
           CMakeCCompilerABI.c
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Fo"cmTC_ff0fa.dir\\Debug\\\\" /Fd"cmTC_ff0fa.dir\\Debug\\vc142.pdb" /external:W3 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Fo"cmTC_22c25.dir\\Debug\\\\" /Fd"cmTC_22c25.dir\\Debug\\vc142.pdb" /external:W3 /Gd /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCCompilerABI.c"
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-dbr49k\\Debug\\cmTC_ff0fa.exe" /INCREMENTAL /ILK:"cmTC_ff0fa.dir\\Debug\\cmTC_ff0fa.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-dbr49k/Debug/cmTC_ff0fa.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-dbr49k/Debug/cmTC_ff0fa.lib" /MACHINE:X64  /machine:x64 cmTC_ff0fa.dir\\Debug\\CMakeCCompilerABI.obj
-          cmTC_ff0fa.vcxproj -> D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-dbr49k\\Debug\\cmTC_ff0fa.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-7b1vz4\\Debug\\cmTC_22c25.exe" /INCREMENTAL /ILK:"cmTC_22c25.dir\\Debug\\cmTC_22c25.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-7b1vz4/Debug/cmTC_22c25.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-7b1vz4/Debug/cmTC_22c25.lib" /MACHINE:X64  /machine:x64 cmTC_22c25.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_22c25.vcxproj -> D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-7b1vz4\\Debug\\cmTC_22c25.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_ff0fa.dir\\Debug\\cmTC_ff0fa.tlog\\unsuccessfulbuild".
-          Touching "cmTC_ff0fa.dir\\Debug\\cmTC_ff0fa.tlog\\cmTC_ff0fa.lastbuildstate".
-        Done Building Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-dbr49k\\cmTC_ff0fa.vcxproj" (default targets).
+          Deleting file "cmTC_22c25.dir\\Debug\\cmTC_22c25.tlog\\unsuccessfulbuild".
+          Touching "cmTC_22c25.dir\\Debug\\cmTC_22c25.tlog\\cmTC_22c25.lastbuildstate".
+        Done Building Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-7b1vz4\\cmTC_22c25.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.49
+        Time Elapsed 00:00:00.42
         
       exitCode: 0
   -
@@ -1815,8 +1777,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-hjaomo"
-      binary: "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-hjaomo"
+      source: "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-vn31iw"
+      binary: "D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-vn31iw"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /W3 /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
@@ -1826,39 +1788,39 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-hjaomo'
+        Change Dir: 'D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-vn31iw'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe" cmTC_e51dc.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe" cmTC_03400.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:n
         Microsoft (R) Build Engine version 16.11.6+a918ceb31 for .NET Framework
         Copyright (C) Microsoft Corporation. All rights reserved.
         
-        Build started 07/09/2025 18:23:53.
-        Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-hjaomo\\cmTC_e51dc.vcxproj" on node 1 (default targets).
+        Build started 10/09/2025 15:14:31.
+        Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-vn31iw\\cmTC_03400.vcxproj" on node 1 (default targets).
         PrepareForBuild:
-          Creating directory "cmTC_e51dc.dir\\Debug\\".
-          Creating directory "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-hjaomo\\Debug\\".
-          Creating directory "cmTC_e51dc.dir\\Debug\\cmTC_e51dc.tlog\\".
+          Creating directory "cmTC_03400.dir\\Debug\\".
+          Creating directory "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-vn31iw\\Debug\\".
+          Creating directory "cmTC_03400.dir\\Debug\\cmTC_03400.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_e51dc.dir\\Debug\\cmTC_e51dc.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Creating "cmTC_03400.dir\\Debug\\cmTC_03400.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /GR /Fo"cmTC_e51dc.dir\\Debug\\\\" /Fd"cmTC_e51dc.dir\\Debug\\vc142.pdb" /external:W3 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /GR /Fo"cmTC_03400.dir\\Debug\\\\" /Fd"cmTC_03400.dir\\Debug\\vc142.pdb" /external:W3 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.29.30159 for x64
           CMakeCXXCompilerABI.cpp
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /GR /Fo"cmTC_e51dc.dir\\Debug\\\\" /Fd"cmTC_e51dc.dir\\Debug\\vc142.pdb" /external:W3 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GS /fp:precise /GR /Fo"cmTC_03400.dir\\Debug\\\\" /Fd"cmTC_03400.dir\\Debug\\vc142.pdb" /external:W3 /Gd /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.1\\Modules\\CMakeCXXCompilerABI.cpp"
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-hjaomo\\Debug\\cmTC_e51dc.exe" /INCREMENTAL /ILK:"cmTC_e51dc.dir\\Debug\\cmTC_e51dc.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-hjaomo/Debug/cmTC_e51dc.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-hjaomo/Debug/cmTC_e51dc.lib" /MACHINE:X64  /machine:x64 cmTC_e51dc.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_e51dc.vcxproj -> D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-hjaomo\\Debug\\cmTC_e51dc.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-vn31iw\\Debug\\cmTC_03400.exe" /INCREMENTAL /ILK:"cmTC_03400.dir\\Debug\\cmTC_03400.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-vn31iw/Debug/cmTC_03400.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/Development/Projects/Zooper/Sonix/nativebuild/windows/CMakeFiles/CMakeScratch/TryCompile-vn31iw/Debug/cmTC_03400.lib" /MACHINE:X64  /machine:x64 cmTC_03400.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_03400.vcxproj -> D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-vn31iw\\Debug\\cmTC_03400.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_e51dc.dir\\Debug\\cmTC_e51dc.tlog\\unsuccessfulbuild".
-          Touching "cmTC_e51dc.dir\\Debug\\cmTC_e51dc.tlog\\cmTC_e51dc.lastbuildstate".
-        Done Building Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-hjaomo\\cmTC_e51dc.vcxproj" (default targets).
+          Deleting file "cmTC_03400.dir\\Debug\\cmTC_03400.tlog\\unsuccessfulbuild".
+          Touching "cmTC_03400.dir\\Debug\\cmTC_03400.tlog\\cmTC_03400.lastbuildstate".
+        Done Building Project "D:\\Development\\Projects\\Zooper\\Sonix\\nativebuild\\windows\\CMakeFiles\\CMakeScratch\\TryCompile-vn31iw\\cmTC_03400.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.51
+        Time Elapsed 00:00:00.42
         
       exitCode: 0
   -

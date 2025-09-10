@@ -297,11 +297,10 @@ class RecoverableOperation<T> {
   Future<T> execute() async {
     try {
       return await _operation();
-    } on DecodingException catch (e) {
-      if (_context.containsKey('filePath') && _context.containsKey('originalOperation')) {
-        return await ErrorRecovery.recoverFromDecodingError(_context['filePath'] as String, e, _context['originalOperation'] as Future<AudioData> Function())
-            as T;
-      }
+    } on DecodingException {
+      // For decoding exceptions, we don't have a direct recovery path for WaveformData operations
+      // The original operation was designed for AudioData recovery only
+      // Instead, let's rethrow and let the caller handle it, or implement proper recovery
       rethrow;
     } on MemoryException catch (e) {
       if (_context.containsKey('audioData') && _context.containsKey('config')) {

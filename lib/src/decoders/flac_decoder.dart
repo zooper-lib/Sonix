@@ -1,26 +1,33 @@
 import 'dart:io';
 
-import '../models/audio_data.dart';
-import '../exceptions/sonix_exceptions.dart';
-import '../native/native_audio_bindings.dart';
+import 'package:sonix/src/models/audio_data.dart';
+import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
+import 'package:sonix/src/utils/streaming_memory_manager.dart';
 import 'audio_decoder.dart';
 
 /// FLAC audio decoder using dr_flac library
 class FLACDecoder implements AudioDecoder {
   bool _disposed = false;
-  static const int _chunkSize = 64 * 1024; // 64KB chunks for streaming
 
   @override
   Future<AudioData> decode(String filePath) async {
     _checkDisposed();
 
     try {
-      // Read the entire file
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        throw FileAccessException(filePath, 'File does not exist');
+      // Check file size and memory requirements
+      final fileSize = await StreamingMemoryManager.getFileSize(filePath);
+
+      // Check if we should use streaming instead
+      if (StreamingMemoryManager.shouldUseStreaming(fileSize, AudioFormat.flac)) {
+        final qualityReduction = StreamingMemoryManager.suggestQualityReduction(fileSize, AudioFormat.flac);
+        if (qualityReduction['shouldReduce'] == true) {
+          throw MemoryException('File too large for direct decoding', 'Consider using streaming decode. ${qualityReduction['reason']}');
+        }
       }
 
+      // Read the entire file
+      final file = File(filePath);
       final fileData = await file.readAsBytes();
       if (fileData.isEmpty) {
         throw DecodingException('File is empty', 'Cannot decode empty FLAC file: $filePath');
@@ -47,7 +54,12 @@ class FLACDecoder implements AudioDecoder {
         throw FileAccessException(filePath, 'File does not exist');
       }
 
-      // FLAC supports streaming decode, but for simplicity we'll decode and stream results
+      // Get optimal chunk size based on file size and memory constraints
+      final fileSize = await StreamingMemoryManager.getFileSize(filePath);
+      final optimalChunkSize = StreamingMemoryManager.calculateOptimalChunkSize(fileSize, AudioFormat.flac);
+
+      // For FLAC, we decode the entire file first due to the compressed nature
+      // Then we can stream the decoded audio data in chunks
       final audioData = await decode(filePath);
 
       // Stream the decoded samples in chunks
@@ -55,7 +67,10 @@ class FLACDecoder implements AudioDecoder {
       int currentIndex = 0;
 
       while (currentIndex < samples.length) {
-        final endIndex = (currentIndex + _chunkSize).clamp(0, samples.length);
+        // Check memory pressure before each chunk
+        StreamingMemoryManager.checkMemoryPressure();
+
+        final endIndex = (currentIndex + optimalChunkSize).clamp(0, samples.length);
         final chunkSamples = samples.sublist(currentIndex, endIndex);
         final isLast = endIndex >= samples.length;
 
