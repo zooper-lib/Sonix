@@ -135,7 +135,7 @@ static drwav_bool32 drwav_seek_proc_memory(void *pUserData, int offset, drwav_se
 }
 
 // Memory tell callback for dr_wav
-static drwav_uint64 drwav_tell_proc_memory(void *pUserData)
+static drwav_bool32 drwav_tell_proc_memory(void *pUserData, drwav_int64 *pCursor)
 {
     struct
     {
@@ -144,7 +144,13 @@ static drwav_uint64 drwav_tell_proc_memory(void *pUserData)
         size_t position;
     } *pMemory = (void *)pUserData;
 
-    return pMemory->position;
+    if (pCursor == NULL)
+    {
+        return DRWAV_FALSE;
+    }
+
+    *pCursor = (drwav_int64)pMemory->position;
+    return DRWAV_TRUE;
 }
 
 static SonixAudioData *decode_wav(const uint8_t *data, size_t size)
@@ -164,8 +170,52 @@ static SonixAudioData *decode_wav(const uint8_t *data, size_t size)
         return NULL;
     }
 
+    // Validate WAV parameters before allocation
+    if (wav.channels == 0 || wav.channels > 8)
+    {
+        drwav_uninit(&wav);
+        set_error("WAV decode failed: invalid channel count");
+        return NULL;
+    }
+
+    if (wav.sampleRate == 0 || wav.sampleRate > 192000)
+    {
+        drwav_uninit(&wav);
+        set_error("WAV decode failed: invalid sample rate");
+        return NULL;
+    }
+
+    // Check for invalid or corrupted frame count (common with malformed WAV files)
+    if (wav.totalPCMFrameCount == 0 || wav.totalPCMFrameCount > 1000000000ULL)
+    {
+        drwav_uninit(&wav);
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+                 "WAV decode failed: invalid frame count (%llu)", wav.totalPCMFrameCount);
+        set_error(error_msg);
+        return NULL;
+    }
+
+    // Calculate total sample count (frames * channels)
+    drwav_uint64 totalSamples = wav.totalPCMFrameCount * wav.channels;
+
+    // Sanity check for obvious corruption (but allow large legitimate files)
+    if (totalSamples == 0)
+    {
+        drwav_uninit(&wav);
+        set_error("WAV decode failed: no audio data found");
+        return NULL;
+    }
+
+    // Additional sanity check - if totalSamples is suspiciously large, it's likely a callback issue
+    if (totalSamples > 1000000000)
+    { // More than 1 billion samples (~6 hours at 44.1kHz stereo)
+        drwav_uninit(&wav);
+        set_error("WAV file appears corrupted (invalid sample count)");
+        return NULL;
+    }
+
     // Allocate memory for decoded samples
-    size_t totalSamples = wav.totalPCMFrameCount * wav.channels;
     float *samples = (float *)malloc(totalSamples * sizeof(float));
     if (!samples)
     {

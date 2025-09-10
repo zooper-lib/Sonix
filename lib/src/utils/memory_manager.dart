@@ -11,7 +11,9 @@ class MemoryManager {
   MemoryManager._internal();
 
   // Memory thresholds and limits
-  static const int _defaultMemoryLimit = 100 * 1024 * 1024; // 100MB
+  // Default memory limit - set very high to not artificially restrict large audio files
+  // Most systems can handle multi-GB audio files; let OS memory management handle limits
+  static const int _defaultMemoryLimit = 16 * 1024 * 1024 * 1024; // 16GB - practically unlimited
   static const double _warningThresholdRatio = 0.8; // 80% of memory limit
   static const double _criticalThresholdRatio = 0.9; // 90% of memory limit
 

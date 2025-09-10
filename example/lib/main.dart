@@ -10,12 +10,9 @@ import 'examples/memory_efficient_example.dart';
 import 'examples/pre_generated_data_example.dart';
 
 void main() {
-  // Initialize Sonix with optimal settings
-  Sonix.initialize(
-    memoryLimit: 50 * 1024 * 1024, // 50MB
-    maxWaveformCacheSize: 30,
-    maxAudioDataCacheSize: 15,
-  );
+  // Initialize Sonix without artificial memory limits
+  // Default is now 16GB - let the OS handle memory allocation naturally
+  Sonix.initialize(maxWaveformCacheSize: 30, maxAudioDataCacheSize: 15);
 
   runApp(const MyApp());
 }

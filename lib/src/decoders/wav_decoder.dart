@@ -8,7 +8,6 @@ import 'audio_decoder.dart';
 /// WAV audio decoder using dr_wav library
 class WAVDecoder implements AudioDecoder {
   bool _disposed = false;
-  static const int _chunkSize = 64 * 1024; // 64KB chunks for streaming
 
   @override
   Future<AudioData> decode(String filePath) async {
@@ -42,21 +41,18 @@ class WAVDecoder implements AudioDecoder {
     _checkDisposed();
 
     try {
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        throw FileAccessException(filePath, 'File does not exist');
-      }
-
-      // WAV files have a known structure, so we can potentially stream decode
-      // For now, we'll decode the entire file and stream the results
+      // For WAV, we decode the entire file first then stream the decoded audio data in chunks
+      // WAV files with dr_wav don't support true streaming decode at the native level
       final audioData = await decode(filePath);
 
-      // Stream the decoded samples in chunks
+      // Stream the decoded samples in chunks of ~1 second worth of audio
+      final int chunkSize = (audioData.sampleRate * audioData.channels); // 1 second worth of samples
+
       final samples = audioData.samples;
       int currentIndex = 0;
 
       while (currentIndex < samples.length) {
-        final endIndex = (currentIndex + _chunkSize).clamp(0, samples.length);
+        final endIndex = (currentIndex + chunkSize).clamp(0, samples.length);
         final chunkSamples = samples.sublist(currentIndex, endIndex);
         final isLast = endIndex >= samples.length;
 

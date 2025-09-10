@@ -13,14 +13,11 @@ import 'utils/resource_manager.dart';
 /// Provides static methods for generating waveforms from audio files
 /// and utility methods for format validation.
 class Sonix {
-  // Private constructor to prevent instantiation
-  Sonix._();
-
   static bool _isInitialized = false;
 
-  /// Initialize Sonix with memory management
+  /// Initialize Sonix with optional memory and cache settings
   ///
-  /// [memoryLimit] - Maximum memory usage in bytes (default: 100MB)
+  /// [memoryLimit] - Memory limit in bytes (default: 16GB - effectively unlimited)
   /// [maxWaveformCacheSize] - Maximum number of waveforms to cache (default: 50)
   /// [maxAudioDataCacheSize] - Maximum number of audio data to cache (default: 20)
   ///
@@ -28,7 +25,9 @@ class Sonix {
   ///
   /// Example:
   /// ```dart
-  /// Sonix.initialize(memoryLimit: 50 * 1024 * 1024); // 50MB limit
+  /// Sonix.initialize(); // Uses 16GB default - handles very large audio files
+  /// // Or set a custom limit if needed:
+  /// // Sonix.initialize(memoryLimit: 100 * 1024 * 1024); // 100MB limit
   /// ```
   static void initialize({int? memoryLimit, int maxWaveformCacheSize = 50, int maxAudioDataCacheSize = 20}) {
     if (_isInitialized) return;
