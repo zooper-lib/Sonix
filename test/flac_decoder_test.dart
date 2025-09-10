@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,14 +52,14 @@ void main() {
         }
 
         final bytes = await testFile.readAsBytes();
-        
+
         // FLAC files should start with "fLaC" signature (0x66 0x4C 0x61 0x43)
         expect(bytes.length, greaterThan(4));
         expect(bytes[0], equals(0x66)); // 'f'
         expect(bytes[1], equals(0x4C)); // 'L'
         expect(bytes[2], equals(0x61)); // 'a'
         expect(bytes[3], equals(0x43)); // 'C'
-        
+
         print('FLAC signature verified: ${bytes.take(4).map((b) => '0x${b.toRadixString(16).padLeft(2, '0')}').join(' ')}');
       });
     });
@@ -71,10 +73,7 @@ void main() {
         }
 
         final bytes = await testFile.readAsBytes();
-        final audioData = NativeAudioBindings.decodeAudio(
-          Uint8List.fromList(bytes),
-          AudioFormat.flac,
-        );
+        final audioData = NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.flac);
 
         // Verify basic audio properties
         expect(audioData.samples.length, greaterThan(0));
@@ -105,7 +104,7 @@ void main() {
         expect(audioData.samples.length, greaterThan(0));
         expect(audioData.sampleRate, greaterThan(0));
         expect(audioData.channels, inInclusiveRange(1, 2));
-        
+
         // Clean up
         decoder.dispose();
       });
@@ -118,16 +117,13 @@ void main() {
         }
 
         final bytes = await testFile.readAsBytes();
-        final audioData = NativeAudioBindings.decodeAudio(
-          Uint8List.fromList(bytes),
-          AudioFormat.flac,
-        );
+        final audioData = NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.flac);
 
         // Verify reasonable audio characteristics for a music file
         expect(audioData.sampleRate, anyOf(44100, 48000, 96000, 192000, 22050, 16000)); // Common sample rates
         expect(audioData.channels, anyOf(1, 2)); // Mono or stereo
         expect(audioData.duration.inSeconds, greaterThan(10)); // Should be a reasonable length song
-        
+
         // Calculate expected sample count (allowing for small rounding differences)
         final expectedSamples = audioData.channels * (audioData.sampleRate * audioData.duration.inMilliseconds / 1000).round();
         expect(audioData.samples.length, closeTo(expectedSamples, 100)); // Allow small tolerance for rounding
@@ -138,7 +134,7 @@ void main() {
       test('should decode FLAC and MP3 versions with similar characteristics', () async {
         final flacFile = File(testFilePath);
         final mp3File = File('test/assets/Double-F the King - Your Blessing.mp3');
-        
+
         if (!flacFile.existsSync() || !mp3File.existsSync()) {
           markTestSkipped('Test files not found for comparison');
           return;
@@ -147,7 +143,7 @@ void main() {
         // Decode both files
         final flacBytes = await flacFile.readAsBytes();
         final mp3Bytes = await mp3File.readAsBytes();
-        
+
         final flacData = NativeAudioBindings.decodeAudio(Uint8List.fromList(flacBytes), AudioFormat.flac);
         final mp3Data = NativeAudioBindings.decodeAudio(Uint8List.fromList(mp3Bytes), AudioFormat.mp3);
 
@@ -156,7 +152,7 @@ void main() {
         expect(flacData.sampleRate, anyOf(44100, 48000, 96000)); // Common sample rates
         expect(mp3Data.sampleRate, anyOf(44100, 48000)); // MP3 common sample rates
         expect(flacData.channels, equals(mp3Data.channels)); // Should be same channels
-        
+
         // Duration should be very close (within 1 second)
         final durationDiff = (flacData.duration.inMilliseconds - mp3Data.duration.inMilliseconds).abs();
         expect(durationDiff, lessThan(1000));
@@ -181,29 +177,20 @@ void main() {
         }
 
         final bytes = await truncatedFile.readAsBytes();
-        
-        expect(
-          () => NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.flac),
-          throwsA(isA<DecodingException>()),
-        );
+
+        expect(() => NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.flac), throwsA(isA<DecodingException>()));
       });
 
       test('should handle invalid FLAC signature', () {
         final invalidData = Uint8List.fromList([0x66, 0x4C, 0x61, 0x00]); // Invalid last byte
-        
-        expect(
-          () => NativeAudioBindings.decodeAudio(invalidData, AudioFormat.flac),
-          throwsA(isA<DecodingException>()),
-        );
+
+        expect(() => NativeAudioBindings.decodeAudio(invalidData, AudioFormat.flac), throwsA(isA<DecodingException>()));
       });
 
       test('should handle null or empty data', () {
         final emptyData = Uint8List(0);
-        
-        expect(
-          () => NativeAudioBindings.decodeAudio(emptyData, AudioFormat.flac),
-          throwsA(isA<DecodingException>()),
-        );
+
+        expect(() => NativeAudioBindings.decodeAudio(emptyData, AudioFormat.flac), throwsA(isA<DecodingException>()));
       });
 
       test('should handle corrupted FLAC metadata', () {
@@ -213,11 +200,8 @@ void main() {
           0xFF, 0xFF, 0xFF, 0xFF, // Corrupted metadata block
           0x00, 0x00, 0x00, 0x00,
         ]);
-        
-        expect(
-          () => NativeAudioBindings.decodeAudio(corruptedData, AudioFormat.flac),
-          throwsA(isA<DecodingException>()),
-        );
+
+        expect(() => NativeAudioBindings.decodeAudio(corruptedData, AudioFormat.flac), throwsA(isA<DecodingException>()));
       });
     });
 
@@ -230,10 +214,7 @@ void main() {
         }
 
         final bytes = await testFile.readAsBytes();
-        final audioData = NativeAudioBindings.decodeAudio(
-          Uint8List.fromList(bytes),
-          AudioFormat.flac,
-        );
+        final audioData = NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.flac);
 
         // Check that samples are within valid range [-1.0, 1.0]
         for (int i = 0; i < audioData.samples.length && i < 1000; i++) {
@@ -253,7 +234,7 @@ void main() {
         }
 
         final bytes = await testFile.readAsBytes();
-        
+
         // Decode the same file multiple times
         final audioData1 = NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.flac);
         final audioData2 = NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.flac);
@@ -273,7 +254,7 @@ void main() {
       test('should demonstrate lossless quality vs MP3', () async {
         final flacFile = File(testFilePath);
         final mp3File = File('test/assets/Double-F the King - Your Blessing.mp3');
-        
+
         if (!flacFile.existsSync() || !mp3File.existsSync()) {
           markTestSkipped('Test files not found for quality comparison');
           return;
@@ -281,14 +262,14 @@ void main() {
 
         final flacBytes = await flacFile.readAsBytes();
         final mp3Bytes = await mp3File.readAsBytes();
-        
+
         final flacData = NativeAudioBindings.decodeAudio(Uint8List.fromList(flacBytes), AudioFormat.flac);
         final mp3Data = NativeAudioBindings.decodeAudio(Uint8List.fromList(mp3Bytes), AudioFormat.mp3);
 
         // FLAC should typically have higher bit depth precision
         // This is demonstrated by file size difference
         expect(flacBytes.length, greaterThan(mp3Bytes.length));
-        
+
         print('Quality Comparison:');
         print('  FLAC file: ${flacBytes.length} bytes (lossless)');
         print('  MP3 file: ${mp3Bytes.length} bytes (lossy)');
@@ -308,17 +289,14 @@ void main() {
 
         final bytes = await testFile.readAsBytes();
         final stopwatch = Stopwatch()..start();
-        
-        final audioData = NativeAudioBindings.decodeAudio(
-          Uint8List.fromList(bytes),
-          AudioFormat.flac,
-        );
-        
+
+        final audioData = NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.flac);
+
         stopwatch.stop();
-        
+
         // FLAC decoding should complete in reasonable time (may be slower than MP3 due to lossless)
         expect(stopwatch.elapsedMilliseconds, lessThan(2000)); // Allow more time for lossless decoding
-        
+
         print('FLAC decoding performance:');
         print('  File size: ${bytes.length} bytes');
         print('  Decode time: ${stopwatch.elapsedMilliseconds} ms');
@@ -329,7 +307,7 @@ void main() {
       test('should compare FLAC vs MP3 decoding performance', () async {
         final flacFile = File(testFilePath);
         final mp3File = File('test/assets/Double-F the King - Your Blessing.mp3');
-        
+
         if (!flacFile.existsSync() || !mp3File.existsSync()) {
           markTestSkipped('Test files not found for performance comparison');
           return;
@@ -353,7 +331,7 @@ void main() {
         print('  MP3 decode time: ${mp3Stopwatch.elapsedMilliseconds} ms');
         print('  FLAC samples/sec: ${(flacData.samples.length / flacStopwatch.elapsedMilliseconds * 1000).round()}');
         print('  MP3 samples/sec: ${(mp3Data.samples.length / mp3Stopwatch.elapsedMilliseconds * 1000).round()}');
-        
+
         // Both should complete within reasonable time
         expect(flacStopwatch.elapsedMilliseconds, lessThan(2000));
         expect(mp3Stopwatch.elapsedMilliseconds, lessThan(1000));

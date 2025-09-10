@@ -129,7 +129,7 @@ void main() {
 
     group('Audio Decoding Performance', () {
       test('should decode audio files within reasonable time limits', () async {
-        final testFiles = ['test_mono_44100.wav', 'test_stereo_44100.wav', 'test_mono_48000.wav'];
+        final testFiles = ['Double-F the King - Your Blessing.mp3', 'Double-F the King - Your Blessing.flac'];
 
         for (final filename in testFiles) {
           if (!await TestDataLoader.assetExists(filename)) {
