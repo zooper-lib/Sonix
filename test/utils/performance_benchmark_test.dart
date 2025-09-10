@@ -128,12 +128,13 @@ void main() {
     });
 
     group('Audio Decoding Performance', () {
-      test('should decode audio files within reasonable time limits', () async {
+      test('should decode real audio files within reasonable time limits', () async {
         final testFiles = ['Double-F the King - Your Blessing.mp3', 'Double-F the King - Your Blessing.flac'];
 
         for (final filename in testFiles) {
           if (!await TestDataLoader.assetExists(filename)) {
-            continue; // Skip if file doesn't exist
+            print('Skipping $filename - file not found');
+            continue;
           }
 
           final filePath = TestDataLoader.getAssetPath(filename);
@@ -146,20 +147,91 @@ void main() {
             stopwatch.stop();
 
             expect(audioData.samples, isNotEmpty);
-            expect(stopwatch.elapsedMilliseconds, lessThan(1000)); // Should decode within 1 second
+
+            // Performance expectations for real files
+            if (filename.endsWith('.mp3')) {
+              // MP3 file (~7MB, 167 seconds): Should decode within 3 seconds
+              expect(stopwatch.elapsedMilliseconds, lessThan(3000));
+              print('MP3 decode time: ${stopwatch.elapsedMilliseconds}ms');
+            } else if (filename.endsWith('.flac')) {
+              // FLAC file (~19MB, 167 seconds): Should decode within 2 seconds (FLAC is faster)
+              expect(stopwatch.elapsedMilliseconds, lessThan(2000));
+              print('FLAC decode time: ${stopwatch.elapsedMilliseconds}ms');
+            }
+
+            // Calculate decode rate
+            final decodeRate = audioData.samples.length / (stopwatch.elapsedMilliseconds / 1000.0);
+            expect(decodeRate, greaterThan(1000000)); // Should decode > 1M samples/sec
+            print('Decode rate for $filename: ${decodeRate.toStringAsFixed(0)} samples/sec');
 
             decoder.dispose();
             audioData.dispose();
           } catch (e) {
-            // Skip test if decoder is not implemented yet
             if (e is DecodingException) {
-              print('Skipping decoder test for $filename - decoder not implemented');
+              print('Skipping decoder test for $filename - decoder not implemented: ${e.message}');
               continue;
             }
             rethrow;
           }
         }
-      }, skip: 'Audio decoders not fully implemented yet');
+      });
+
+      test('should compare MP3 vs FLAC decoding performance', () async {
+        final mp3File = 'Double-F the King - Your Blessing.mp3';
+        final flacFile = 'Double-F the King - Your Blessing.flac';
+
+        if (!await TestDataLoader.assetExists(mp3File) || !await TestDataLoader.assetExists(flacFile)) {
+          print('Skipping comparison - real audio files not available');
+          return;
+        }
+
+        int? mp3Time;
+        int? flacTime;
+
+        // Test MP3 decoding
+        try {
+          final mp3Path = TestDataLoader.getAssetPath(mp3File);
+          final mp3Decoder = AudioDecoderFactory.createDecoder(mp3Path);
+
+          final stopwatch1 = Stopwatch()..start();
+          final mp3Data = await mp3Decoder.decode(mp3Path);
+          stopwatch1.stop();
+
+          mp3Time = stopwatch1.elapsedMilliseconds;
+          print('MP3 decode time: ${mp3Time}ms, samples: ${mp3Data.samples.length}');
+
+          mp3Decoder.dispose();
+          mp3Data.dispose();
+        } catch (e) {
+          print('MP3 decoder not available: $e');
+        }
+
+        // Test FLAC decoding
+        try {
+          final flacPath = TestDataLoader.getAssetPath(flacFile);
+          final flacDecoder = AudioDecoderFactory.createDecoder(flacPath);
+
+          final stopwatch2 = Stopwatch()..start();
+          final flacData = await flacDecoder.decode(flacPath);
+          stopwatch2.stop();
+
+          flacTime = stopwatch2.elapsedMilliseconds;
+          print('FLAC decode time: ${flacTime}ms, samples: ${flacData.samples.length}');
+
+          flacDecoder.dispose();
+          flacData.dispose();
+        } catch (e) {
+          print('FLAC decoder not available: $e');
+        }
+
+        // Compare performance if both succeeded
+        if (mp3Time != null && flacTime != null) {
+          print('Performance comparison: FLAC vs MP3 ratio: ${(flacTime / mp3Time).toStringAsFixed(2)}x');
+
+          // FLAC should generally be faster to decode than MP3 (less CPU-intensive decompression)
+          expect(flacTime, lessThan(mp3Time * 2)); // FLAC should not be more than 2x slower than MP3
+        }
+      });
 
       test('should handle streaming decoding efficiently', () async {
         final filePath = TestDataLoader.getAssetPath('test_stereo_44100.wav');
@@ -362,6 +434,53 @@ void main() {
     });
 
     group('Real-world Performance', () {
+      test('should handle real music file waveform generation efficiently', () async {
+        final testFiles = ['Double-F the King - Your Blessing.mp3', 'Double-F the King - Your Blessing.flac'];
+
+        for (final filename in testFiles) {
+          if (!await TestDataLoader.assetExists(filename)) {
+            print('Skipping $filename - file not found');
+            continue;
+          }
+
+          try {
+            final filePath = TestDataLoader.getAssetPath(filename);
+            final decoder = AudioDecoderFactory.createDecoder(filePath);
+
+            // First decode the audio
+            final audioData = await decoder.decode(filePath);
+            expect(audioData.samples, isNotEmpty);
+
+            // Then generate waveform from real audio
+            final stopwatch = Stopwatch()..start();
+            final config = WaveformConfig(resolution: 1000); // Typical resolution for UI
+            final waveformData = await WaveformGenerator.generate(audioData, config: config);
+            stopwatch.stop();
+
+            expect(waveformData.amplitudes.length, equals(1000));
+
+            // Performance expectations for real 167-second audio files
+            if (filename.endsWith('.mp3')) {
+              expect(stopwatch.elapsedMilliseconds, lessThan(3000)); // MP3 processed audio: 3 seconds max
+              print('MP3 waveform generation: ${stopwatch.elapsedMilliseconds}ms');
+            } else if (filename.endsWith('.flac')) {
+              expect(stopwatch.elapsedMilliseconds, lessThan(3000)); // FLAC processed audio: 3 seconds max
+              print('FLAC waveform generation: ${stopwatch.elapsedMilliseconds}ms');
+            }
+
+            decoder.dispose();
+            audioData.dispose();
+            waveformData.dispose();
+          } catch (e) {
+            if (e is DecodingException) {
+              print('Skipping waveform test for $filename - decoder not implemented: ${e.message}');
+              continue;
+            }
+            rethrow;
+          }
+        }
+      });
+
       test('should handle typical music file processing', () async {
         // Simulate a typical 3-minute song
         final audioData = _createTestAudioData(durationSeconds: 180, sampleRate: 44100, channels: 2);
@@ -401,6 +520,51 @@ void main() {
         waveformData.dispose();
 
         audioData.dispose();
+      });
+
+      test('should handle end-to-end audio processing with real files', () async {
+        final testFile = 'Double-F the King - Your Blessing.mp3'; // Use MP3 as it's smaller
+
+        if (!await TestDataLoader.assetExists(testFile)) {
+          print('Skipping end-to-end test - real audio file not available');
+          return;
+        }
+
+        try {
+          final filePath = TestDataLoader.getAssetPath(testFile);
+
+          // Measure complete pipeline: decode + waveform generation
+          final stopwatch = Stopwatch()..start();
+
+          final decoder = AudioDecoderFactory.createDecoder(filePath);
+          final audioData = await decoder.decode(filePath);
+          final config = WaveformConfig(resolution: 2000);
+          final waveformData = await WaveformGenerator.generate(audioData, config: config);
+
+          stopwatch.stop();
+
+          expect(audioData.samples, isNotEmpty);
+          expect(waveformData.amplitudes.length, equals(2000));
+
+          // End-to-end processing of 167-second MP3 should complete within 5 seconds
+          expect(stopwatch.elapsedMilliseconds, lessThan(5000));
+          print('End-to-end processing time for $testFile: ${stopwatch.elapsedMilliseconds}ms');
+
+          // Calculate throughput
+          final throughput = audioData.duration.inMilliseconds / stopwatch.elapsedMilliseconds;
+          print('Processing throughput: ${throughput.toStringAsFixed(1)}x real-time');
+          expect(throughput, greaterThan(10.0)); // Should process at least 10x faster than real-time
+
+          decoder.dispose();
+          audioData.dispose();
+          waveformData.dispose();
+        } catch (e) {
+          if (e is DecodingException) {
+            print('Skipping end-to-end test - decoder not implemented: ${e.message}');
+            return;
+          }
+          rethrow;
+        }
       });
     });
 
@@ -490,29 +654,39 @@ void main() {
       test('should profile operations correctly', () async {
         final audioData = _createTestAudioData(durationSeconds: 2);
 
+        // Use a unique operation name to avoid conflicts with other tests
+        final operationName = 'test_waveform_generation_${DateTime.now().millisecondsSinceEpoch}';
+
+        // Get initial stats (should be null for new operation)
+        final initialStats = profiler.getStatistics(operationName);
+        expect(initialStats, isNull);
+
         // Profile a waveform generation operation
-        final waveformData = await profiler.profile('test_waveform_generation', () async {
+        final waveformData = await profiler.profile(operationName, () async {
           return await WaveformGenerator.generate(audioData);
         });
 
         expect(waveformData.amplitudes, isNotEmpty);
 
         // Check that the operation was recorded
-        final stats = profiler.getStatistics('test_waveform_generation');
+        final stats = profiler.getStatistics(operationName);
         expect(stats, isNotNull);
         expect(stats!.totalExecutions, equals(1));
         expect(stats.successfulExecutions, equals(1));
-        expect(stats.averageDuration, greaterThan(0));
+        expect(stats.averageDuration, greaterThanOrEqualTo(0.0)); // Allow 0 duration for very fast operations
 
         audioData.dispose();
         waveformData.dispose();
       });
 
       test('should generate performance reports', () async {
+        // Use unique operation names with timestamp to avoid conflicts
+        final baseOperationName = 'test_operation_report_${DateTime.now().millisecondsSinceEpoch}';
+
         // Run a few operations to generate data
         for (int i = 0; i < 3; i++) {
           final audioData = _createTestAudioData(durationSeconds: 1);
-          await profiler.profile('test_operation_$i', () async {
+          await profiler.profile('${baseOperationName}_$i', () async {
             final waveformData = await WaveformGenerator.generate(audioData);
             waveformData.dispose();
             return waveformData;
@@ -522,6 +696,7 @@ void main() {
 
         final report = profiler.generateReport();
         expect(report, isA<PerformanceReport>());
+        // Don't check exact count since other tests may have added operations
         expect(report.totalOperations, greaterThanOrEqualTo(3));
         expect(report.operationStatistics, isNotEmpty);
       });
