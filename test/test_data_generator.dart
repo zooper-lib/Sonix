@@ -281,13 +281,6 @@ class TestDataGenerator {
         {'name': 'invalid_format', 'file': 'invalid_format.xyz', 'expected_exception': 'UnsupportedFormatException'},
         {'name': 'empty_file', 'file': 'empty_file.mp3', 'expected_exception': 'DecodingException'},
       ],
-      'format_test_files': {
-        'mp3': ['test_short.mp3', 'test_medium.mp3', 'test_large.mp3'],
-        'wav': ['test_mono_44100.wav', 'test_stereo_44100.wav', 'test_mono_48000.wav'],
-        'flac': ['test_sample.flac'],
-        'ogg': ['test_sample.ogg'],
-        'opus': ['test_sample.opus'],
-      },
     };
 
     final file = File('$assetsPath/test_configurations.json');

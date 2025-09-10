@@ -9,7 +9,7 @@ import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/utils/performance_profiler.dart';
 import 'package:sonix/src/utils/performance_optimizer.dart';
 import 'package:sonix/src/utils/platform_validator.dart';
-import 'test_data_generator.dart';
+import '../test_data_generator.dart';
 import 'dart:math' as math;
 
 void main() {

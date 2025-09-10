@@ -3,7 +3,7 @@ import 'package:sonix/src/processing/waveform_generator.dart';
 import 'package:sonix/src/processing/waveform_algorithms.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/models/waveform_data.dart';
-import 'test_data_generator.dart';
+import '../test_data_generator.dart';
 import 'dart:math' as math;
 
 void main() {
