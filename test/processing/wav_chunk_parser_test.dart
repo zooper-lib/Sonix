@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/models/file_chunk.dart';
-import 'package:sonix/src/models/chunk_boundary.dart';
 import 'package:sonix/src/processing/wav_chunk_parser.dart';
 
 void main() {

@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/wav_decoder.dart';
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/utils/chunked_file_reader.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';

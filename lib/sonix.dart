@@ -82,6 +82,10 @@ export 'src/utils/lru_cache.dart' show CacheStatistics;
 export 'src/utils/chunked_file_reader.dart' show ChunkedFileReader, ChunkedFileReaderInfo, ChunkedFileReaderFactory;
 export 'src/models/file_chunk.dart' show FileChunk, ChunkValidationResult, FileChunkUtils;
 
+// Chunked audio decoding interfaces and models
+export 'src/decoders/chunked_audio_decoder.dart' show ChunkedAudioDecoder;
+export 'src/models/chunked_processing_models.dart' show SeekResult, ChunkSizeRecommendation;
+
 // Performance optimization utilities
 export 'src/utils/performance_profiler.dart' show PerformanceProfiler, PerformanceReport, BenchmarkResult;
 export 'src/utils/performance_optimizer.dart'
