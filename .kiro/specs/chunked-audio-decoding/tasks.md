@@ -224,7 +224,6 @@
 
 - [x] 8. Create chunked processing configuration system
 
-
   - Implement ChunkedProcessingConfig with adaptive settings
   - Add forFileSize() factory method for automatic configuration
   - Create configuration validation and optimization
@@ -250,7 +249,8 @@
   - Write unit tests for configuration persistence
   - _Requirements: 2.5, 2.6, 8.5, 8.6_
 
-- [ ] 9. Update main Sonix API for seamless chunked processing
+- [x] 9. Update main Sonix API for seamless chunked processing
+
 
   - Modify existing generateWaveform() to use chunked processing automatically
   - Update generateWaveformStream() to use new chunked infrastructure
@@ -259,7 +259,7 @@
   - Ensure backward compatibility with existing API usage
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [ ] 9.1 Update core API methods for chunked processing
+- [x] 9.1 Update core API methods for chunked processing
 
   - Modify generateWaveform() to automatically detect and use chunked processing
   - Update generateWaveformStream() to use new chunked infrastructure
@@ -268,7 +268,7 @@
   - Write unit tests ensuring API compatibility
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 9.2 Add new chunked-specific API methods
+- [x] 9.2 Add new chunked-specific API methods
 
   - Implement generateWaveformChunked() for explicit chunked processing
   - Add generateWaveformWithProgress() for progress reporting
