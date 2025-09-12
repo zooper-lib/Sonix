@@ -96,3 +96,8 @@ export 'src/utils/performance_profiler.dart' show PerformanceProfiler, Performan
 export 'src/utils/performance_optimizer.dart'
     show PerformanceOptimizer, OptimizationSettings, PerformanceMetrics, OptimizationSuggestion, SuggestionPriority, RenderingOptimization, RenderingStrategy;
 export 'src/utils/platform_validator.dart' show PlatformValidator, PlatformValidationResult, PlatformInfo, OptimizationRecommendation, RecommendationPriority;
+
+// Chunked processing configuration system
+export 'src/models/chunked_processing_config.dart' show ChunkedProcessingConfig, ChunkedProcessingConfigValidation;
+export 'src/utils/chunked_processing_config_manager.dart'
+    show ChunkedProcessingConfigManager, ChunkedProcessingConfigCacheStats, ChunkedProcessingConfigException;
