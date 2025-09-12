@@ -24,6 +24,9 @@ comments:
 structs:
   include:
     - SonixAudioData
+    - SonixFileChunk
+    - SonixAudioChunk
+    - SonixChunkResult
 
 functions:
   include:
@@ -31,6 +34,12 @@ functions:
     - sonix_decode_audio
     - sonix_free_audio_data
     - sonix_get_error_message
+    - sonix_init_chunked_decoder
+    - sonix_process_file_chunk
+    - sonix_seek_to_time
+    - sonix_get_optimal_chunk_size
+    - sonix_cleanup_chunked_decoder
+    - sonix_free_chunk_result
 
 enums:
   include: []

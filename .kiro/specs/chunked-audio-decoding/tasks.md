@@ -170,7 +170,6 @@
 
 - [x] 6. Implement comprehensive error handling and recovery
 
-
   - Create ChunkedProcessingErrorHandler for error management
   - Implement multiple error recovery strategies
   - Add chunk-level error handling with continuation
@@ -196,7 +195,8 @@
   - Write unit tests for error recovery scenarios
   - _Requirements: 6.1, 6.2, 6.5, 6.6_
 
-- [ ] 7. Enhance native library with chunked processing support
+- [x] 7. Enhance native library with chunked processing support
+
 
   - Update native C interface to support chunked operations
   - Implement sonix_init_chunked_decoder() for decoder initialization
@@ -205,7 +205,7 @@
   - Create memory management functions for chunked operations
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3_
 
-- [ ] 7.1 Update native C interface for chunked processing
+- [x] 7.1 Update native C interface for chunked processing
 
   - Define SonixFileChunk and SonixAudioChunk structures
   - Implement chunked decoder initialization and cleanup
@@ -214,7 +214,7 @@
   - Update FFI bindings generation for new interface
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 4.1, 4.2_
 
-- [ ] 7.2 Implement native chunked decoding for each format
+- [x] 7.2 Implement native chunked decoding for each format
 
   - Update minimp3 integration for chunked MP3 processing
   - Enhance dr_flac integration for chunked FLAC processing
