@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sonix/sonix.dart';
+import 'package:file_picker/file_picker.dart';
 
 /// Example showing memory-efficient processing for large audio files
 class MemoryEfficientExample extends StatefulWidget {
@@ -14,6 +15,7 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
   bool _isLoading = false;
   String? _error;
   ResourceStatistics? _resourceStats;
+  String _selectedFilePath = '';
 
   // Processing options
   ProcessingMethod _selectedMethod = ProcessingMethod.adaptive;
@@ -67,6 +69,11 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
 
             const SizedBox(height: 16),
 
+            // File selection
+            _buildFileSelectionCard(),
+
+            const SizedBox(height: 16),
+
             // Processing options
             _buildProcessingOptionsCard(),
 
@@ -74,7 +81,7 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
 
             // Generate button
             ElevatedButton(
-              onPressed: _isLoading ? null : _generateWaveform,
+              onPressed: (_isLoading || _selectedFilePath.isEmpty) ? null : _generateWaveform,
               child: _isLoading
                   ? const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -99,6 +106,50 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
 
             // Memory management actions
             _buildMemoryActionsCard(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileSelectionCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.folder_open, color: Colors.blue),
+                SizedBox(width: 8),
+                Text('Audio File Selection', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _selectedFilePath.isEmpty ? 'No file selected' : 'Selected: ${_selectedFilePath.split('/').last}',
+                    style: TextStyle(color: _selectedFilePath.isEmpty ? Colors.grey : Colors.black87),
+                  ),
+                ),
+                ElevatedButton.icon(onPressed: _selectFile, icon: const Icon(Icons.folder_open), label: const Text('Select Audio File')),
+              ],
+            ),
+            if (_selectedFilePath.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Text('Ready to process: ${_selectedFilePath.split('/').last}'),
+              ),
+            ],
           ],
         ),
       ),
@@ -362,6 +413,28 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
     );
   }
 
+  Future<void> _selectFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['wav', 'mp3', 'flac', 'ogg', 'opus'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          _selectedFilePath = result.files.single.path!;
+          _error = null;
+          _waveformData = null;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Error selecting file: $e';
+      });
+    }
+  }
+
   Future<void> _generateWaveform() async {
     setState(() {
       _isLoading = true;
@@ -373,20 +446,17 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
 
       switch (_selectedMethod) {
         case ProcessingMethod.standard:
-          waveformData = await Sonix.generateWaveform(
-            'assets/sample_audio.mp3', // Replace with your audio file
-            resolution: 200,
-          );
+          waveformData = await Sonix.generateWaveform(_selectedFilePath, resolution: 200);
           break;
 
         case ProcessingMethod.memoryEfficient:
-          waveformData = await Sonix.generateWaveformMemoryEfficient('assets/sample_audio.mp3', maxMemoryUsage: _memoryLimit * 1024 * 1024);
+          waveformData = await Sonix.generateWaveformMemoryEfficient(_selectedFilePath, maxMemoryUsage: _memoryLimit * 1024 * 1024);
           break;
 
         case ProcessingMethod.streaming:
           // For demonstration, we'll collect the stream into a single waveform
           final chunks = <WaveformChunk>[];
-          await for (final chunk in Sonix.generateWaveformStream('assets/sample_audio.mp3')) {
+          await for (final chunk in Sonix.generateWaveformStream(_selectedFilePath)) {
             chunks.add(chunk);
           }
           // Combine chunks (simplified for demo)
@@ -395,11 +465,11 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
           break;
 
         case ProcessingMethod.adaptive:
-          waveformData = await Sonix.generateWaveformAdaptive('assets/sample_audio.mp3', resolution: 200);
+          waveformData = await Sonix.generateWaveformAdaptive(_selectedFilePath, resolution: 200);
           break;
 
         case ProcessingMethod.cached:
-          waveformData = await Sonix.generateWaveformCached('assets/sample_audio.mp3', useCache: _useCache);
+          waveformData = await Sonix.generateWaveformCached(_selectedFilePath, useCache: _useCache);
           break;
       }
 
@@ -428,7 +498,9 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
 
   void _clearCaches() {
     // Clear specific file from caches (example)
-    Sonix.clearFileFromCaches('assets/sample_audio.mp3');
+    if (_selectedFilePath.isNotEmpty) {
+      Sonix.clearFileFromCaches(_selectedFilePath);
+    }
     _updateResourceStats();
 
     if (mounted) {
@@ -437,8 +509,15 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
   }
 
   Future<void> _preloadAudioData() async {
+    if (_selectedFilePath.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a file first'), backgroundColor: Colors.red));
+      }
+      return;
+    }
+
     try {
-      await Sonix.preloadAudioData('assets/sample_audio.mp3');
+      await Sonix.preloadAudioData(_selectedFilePath);
       _updateResourceStats();
 
       if (mounted) {

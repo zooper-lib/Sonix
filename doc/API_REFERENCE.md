@@ -34,12 +34,17 @@ Initialize Sonix with memory management settings.
 Sonix.initialize(
   memoryLimit: 50 * 1024 * 1024, // 50MB
   maxWaveformCacheSize: 30,
+  defaultChunkedConfig: ChunkedProcessingConfig(
+    fileChunkSize: 10 * 1024 * 1024,
+    maxMemoryUsage: 100 * 1024 * 1024,
+    enableProgressReporting: true,
+  ),
 );
 ```
 
-##### `generateWaveform(String filePath, {int resolution = 1000, WaveformType type = WaveformType.bars, bool normalize = true, WaveformConfig? config}) → Future<WaveformData>`
+##### `generateWaveform(String filePath, {int resolution = 1000, WaveformType type = WaveformType.bars, bool normalize = true, WaveformConfig? config, bool forceTraditionalProcessing = false, bool enableAutoChunking = true, ChunkedProcessingConfig? chunkedConfig}) → Future<WaveformData>`
 
-Generate waveform data from an audio file.
+Generate waveform data from an audio file. Automatically uses chunked processing for large files (>50MB) unless disabled.
 
 **Parameters:**
 - `filePath`: Path to the audio file
@@ -47,6 +52,117 @@ Generate waveform data from an audio file.
 - `type`: Type of waveform visualization (default: bars)
 - `normalize`: Whether to normalize amplitude values (default: true)
 - `config`: Advanced configuration options (optional)
+- `forceTraditionalProcessing`: Force v1.x processing method (default: false)
+- `enableAutoChunking`: Automatically enable chunked processing for large files (default: true)
+- `chunkedConfig`: Configuration for chunked processing (optional)
+
+**Example:**
+```dart
+// Basic usage (automatically uses optimal processing method)
+final waveform = await Sonix.generateWaveform('audio_file.mp3');
+
+// Force traditional processing
+final traditionalWaveform = await Sonix.generateWaveform(
+  'audio_file.mp3',
+  forceTraditionalProcessing: true,
+);
+
+// Custom chunked processing configuration
+final chunkedWaveform = await Sonix.generateWaveform(
+  'large_audio_file.mp3',
+  chunkedConfig: ChunkedProcessingConfig(
+    fileChunkSize: 20 * 1024 * 1024, // 20MB chunks
+    enableProgressReporting: true,
+  ),
+);
+```
+
+##### `generateWaveformChunked(String filePath, {ChunkedProcessingConfig? config, WaveformConfig? waveformConfig, ProgressCallback? onProgress, Duration? seekPosition}) → Future<WaveformData>`
+
+Generate waveform data using chunked processing for optimal memory usage and performance with large files.
+
+**Parameters:**
+- `filePath`: Path to the audio file
+- `config`: Chunked processing configuration (optional)
+- `waveformConfig`: Waveform generation settings (optional)
+- `onProgress`: Progress callback function (optional)
+- `seekPosition`: Start processing from specific time position (optional)
+
+**Example:**
+```dart
+final waveform = await Sonix.generateWaveformChunked(
+  'large_audio_file.mp3',
+  config: ChunkedProcessingConfig(
+    fileChunkSize: 10 * 1024 * 1024, // 10MB chunks
+    maxMemoryUsage: 100 * 1024 * 1024, // 100MB memory limit
+    enableProgressReporting: true,
+  ),
+  onProgress: (progress) {
+    print('Progress: ${(progress.progressPercentage * 100).toStringAsFixed(1)}%');
+    if (progress.estimatedTimeRemaining != null) {
+      print('ETA: ${progress.estimatedTimeRemaining!.inSeconds} seconds');
+    }
+  },
+);
+```
+
+##### `generateWaveformStream(String filePath, {ChunkedProcessingConfig? config, WaveformConfig? waveformConfig}) → Stream<WaveformChunk>`
+
+Generate waveform data as a stream of chunks for real-time processing and display.
+
+**Parameters:**
+- `filePath`: Path to the audio file
+- `config`: Chunked processing configuration (optional)
+- `waveformConfig`: Waveform generation settings (optional)
+
+**Returns:** Stream of `WaveformChunk` objects containing partial waveform data.
+
+**Example:**
+```dart
+await for (final waveformChunk in Sonix.generateWaveformStream('audio_file.mp3')) {
+  // Update UI with streaming waveform data
+  updateWaveformDisplay(waveformChunk);
+  
+  if (waveformChunk.isLast) {
+    print('Waveform generation complete');
+  }
+}
+```
+
+##### `seekAndGenerateWaveform(String filePath, Duration startTime, Duration duration, {ChunkedProcessingConfig? config, WaveformConfig? waveformConfig}) → Future<WaveformData>`
+
+Generate waveform for a specific time range without processing the entire file.
+
+**Parameters:**
+- `filePath`: Path to the audio file
+- `startTime`: Start time position
+- `duration`: Duration of audio to process
+- `config`: Chunked processing configuration (optional)
+- `waveformConfig`: Waveform generation settings (optional)
+
+**Example:**
+```dart
+// Generate waveform for 30 seconds starting at 2 minutes
+final waveform = await Sonix.seekAndGenerateWaveform(
+  'long_audio_file.mp3',
+  Duration(minutes: 2),
+  Duration(seconds: 30),
+);
+```
+
+##### `getChunkedProcessingStats() → ChunkedProcessingStats`
+
+Get current statistics about chunked processing operations.
+
+**Returns:** `ChunkedProcessingStats` object with current processing information.
+
+**Example:**
+```dart
+final stats = Sonix.getChunkedProcessingStats();
+print('Active chunks: ${stats.activeChunks}');
+print('Memory usage: ${stats.currentMemoryUsage} bytes');
+print('Processing queue size: ${stats.queueSize}');
+```
 
 **Returns:** `Future<WaveformData>` containing amplitude values and metadata
 
@@ -190,6 +306,76 @@ Force cleanup of all cached resources and memory.
 Dispose of all Sonix resources. Call when shutting down your application.
 
 ## Data Models
+
+### Chunked Processing Models
+
+#### `ChunkedProcessingConfig`
+
+Configuration class for chunked audio processing.
+
+```dart
+class ChunkedProcessingConfig {
+  final int fileChunkSize;              // Size of file chunks in bytes (default: 10MB)
+  final int maxMemoryUsage;             // Maximum memory usage in bytes (default: 100MB)
+  final int maxConcurrentChunks;        // Maximum concurrent chunk processing (default: 3)
+  final bool enableSeeking;             // Enable seeking capabilities (default: true)
+  final bool enableProgressReporting;   // Enable progress callbacks (default: true)
+  final Duration progressUpdateInterval; // Progress update frequency (default: 100ms)
+  final ErrorRecoveryStrategy errorRecoveryStrategy; // Error recovery strategy
+  final int maxRetries;                 // Maximum retry attempts (default: 3)
+  final Duration retryDelay;            // Delay between retries (default: 100ms)
+  
+  // Factory constructors
+  ChunkedProcessingConfig.forFileSize(int fileSize);  // Optimal config for file size
+  ChunkedProcessingConfig.forPlatform();              // Platform-optimized config
+}
+```
+
+#### `ProgressInfo`
+
+Progress information provided to progress callbacks.
+
+```dart
+class ProgressInfo {
+  final int processedChunks;            // Number of chunks processed
+  final int totalChunks;                // Total number of chunks
+  final bool hasErrors;                 // Whether errors occurred
+  final Object? lastError;              // Last error encountered
+  final Duration? estimatedTimeRemaining; // Estimated time to completion
+  
+  double get progressPercentage;        // Progress as 0.0 to 1.0
+}
+```
+
+#### `WaveformChunk`
+
+Partial waveform data from streaming generation.
+
+```dart
+class WaveformChunk {
+  final List<double> amplitudes;        // Amplitude values for this chunk
+  final int startSample;                // Starting sample position
+  final bool isLast;                    // Whether this is the final chunk
+  final Duration? timeOffset;           // Time offset of this chunk
+  final WaveformMetadata? metadata;     // Optional metadata
+}
+```
+
+#### `ChunkedProcessingStats`
+
+Statistics about current chunked processing operations.
+
+```dart
+class ChunkedProcessingStats {
+  final int activeChunks;               // Number of active chunks
+  final int currentMemoryUsage;         // Current memory usage in bytes
+  final int queueSize;                  // Processing queue size
+  final double averageChunkTime;        // Average chunk processing time in ms
+  final double throughputMBps;          // Processing throughput in MB/s
+}
+```
+
+### Core Data Models
 
 ### `WaveformData`
 

@@ -8,6 +8,10 @@ import 'examples/playback_position_example.dart';
 import 'examples/style_customization_example.dart';
 import 'examples/memory_efficient_example.dart';
 import 'examples/pre_generated_data_example.dart';
+import 'examples/chunked_large_file_example.dart';
+import 'examples/chunked_progress_example.dart';
+import 'examples/seeking_partial_waveform_example.dart';
+import 'examples/performance_comparison_example.dart';
 
 void main() {
   // Initialize Sonix without artificial memory limits
@@ -56,61 +60,122 @@ class ExampleHomePage extends StatelessWidget {
             const SizedBox(height: 32),
 
             Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.2,
-                children: [
-                  _buildExampleCard(
-                    context,
-                    'Basic Usage',
-                    'Simple waveform generation and display',
-                    Icons.graphic_eq,
-                    Colors.blue,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BasicUsageExample())),
-                  ),
-                  _buildExampleCard(
-                    context,
-                    'Playback Position',
-                    'Interactive waveform with playback visualization',
-                    Icons.play_circle_outline,
-                    Colors.green,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlaybackPositionExample())),
-                  ),
-                  _buildExampleCard(
-                    context,
-                    'Style Customization',
-                    'Explore different visual styles and options',
-                    Icons.palette,
-                    Colors.purple,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StyleCustomizationExample())),
-                  ),
-                  _buildExampleCard(
-                    context,
-                    'Memory Efficient',
-                    'Memory-efficient processing for large files',
-                    Icons.memory,
-                    Colors.orange,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MemoryEfficientExample())),
-                  ),
-                  _buildExampleCard(
-                    context,
-                    'Pre-generated Data',
-                    'Using pre-computed waveform data',
-                    Icons.data_object,
-                    Colors.teal,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PreGeneratedDataExample())),
-                  ),
-                  _buildExampleCard(
-                    context,
-                    'Full Demo',
-                    'Complete audio decoder demonstration',
-                    Icons.audiotrack,
-                    Colors.red,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AudioDecoderPage())),
-                  ),
-                ],
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Basic Examples Section
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text('Basic Examples', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    ),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.2,
+                      children: [
+                        _buildExampleCard(
+                          context,
+                          'Basic Usage',
+                          'Simple waveform generation and display',
+                          Icons.graphic_eq,
+                          Colors.blue,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BasicUsageExample())),
+                        ),
+                        _buildExampleCard(
+                          context,
+                          'Playback Position',
+                          'Interactive waveform with playback visualization',
+                          Icons.play_circle_outline,
+                          Colors.green,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlaybackPositionExample())),
+                        ),
+                        _buildExampleCard(
+                          context,
+                          'Style Customization',
+                          'Explore different visual styles and options',
+                          Icons.palette,
+                          Colors.purple,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StyleCustomizationExample())),
+                        ),
+                        _buildExampleCard(
+                          context,
+                          'Pre-generated Data',
+                          'Using pre-computed waveform data',
+                          Icons.data_object,
+                          Colors.teal,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PreGeneratedDataExample())),
+                        ),
+                      ],
+                    ),
+
+                    // Chunked Processing Examples Section
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text('Chunked Processing Examples', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    ),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.2,
+                      children: [
+                        _buildExampleCard(
+                          context,
+                          'Large File Processing',
+                          'Chunked processing for large audio files',
+                          Icons.storage,
+                          Colors.deepPurple,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChunkedLargeFileExample())),
+                        ),
+                        _buildExampleCard(
+                          context,
+                          'Progress Reporting',
+                          'Real-time progress updates and metrics',
+                          Icons.analytics,
+                          Colors.indigo,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChunkedProgressExample())),
+                        ),
+                        _buildExampleCard(
+                          context,
+                          'Seeking & Partial',
+                          'Generate waveforms for specific sections',
+                          Icons.fast_forward,
+                          Colors.teal,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SeekingPartialWaveformExample())),
+                        ),
+                        _buildExampleCard(
+                          context,
+                          'Memory Efficient',
+                          'Memory-efficient processing for large files',
+                          Icons.memory,
+                          Colors.orange,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MemoryEfficientExample())),
+                        ),
+                        _buildExampleCard(
+                          context,
+                          'Performance Comparison',
+                          'Benchmark different processing methods',
+                          Icons.speed,
+                          Colors.deepOrange,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PerformanceComparisonExample())),
+                        ),
+                        _buildExampleCard(
+                          context,
+                          'Full Demo',
+                          'Complete audio decoder demonstration',
+                          Icons.audiotrack,
+                          Colors.red,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AudioDecoderPage())),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
 

@@ -48,6 +48,7 @@ export 'src/models/chunked_processing_config.dart';
 // Processing and generation
 export 'src/processing/waveform_generator.dart' show WaveformConfig, WaveformUseCase;
 export 'src/processing/waveform_algorithms.dart' show DownsamplingAlgorithm, NormalizationMethod, ScalingCurve;
+export 'src/processing/progressive_waveform_generator.dart' show ProgressInfo, ProgressCallback;
 
 // Exceptions
 export 'src/exceptions/sonix_exceptions.dart';
