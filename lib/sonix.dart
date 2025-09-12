@@ -86,6 +86,11 @@ export 'src/models/file_chunk.dart' show FileChunk, ChunkValidationResult, FileC
 export 'src/decoders/chunked_audio_decoder.dart' show ChunkedAudioDecoder;
 export 'src/models/chunked_processing_models.dart' show SeekResult, ChunkSizeRecommendation;
 
+// Progressive waveform generation for streaming processing
+export 'src/processing/progressive_waveform_generator.dart'
+    show ProgressiveWaveformGenerator, ProgressInfo, ProgressCallback, WaveformChunkEnhanced, ChunkProcessingStats, ProcessedChunk;
+export 'src/processing/waveform_aggregator.dart' show WaveformAggregator, WaveformAggregatorStats, ChunkSequenceValidation;
+
 // Performance optimization utilities
 export 'src/utils/performance_profiler.dart' show PerformanceProfiler, PerformanceReport, BenchmarkResult;
 export 'src/utils/performance_optimizer.dart'

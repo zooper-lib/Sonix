@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/vorbis_decoder.dart';
 import 'package:sonix/src/models/file_chunk.dart';
-import 'package:sonix/src/models/chunked_processing_models.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 void main() {
