@@ -127,24 +127,49 @@ class StreamingException extends SonixException {
   }
 }
 
-/// Exception thrown when file operations fail
-class SonixFileException extends SonixException {
-  /// The file path that caused the error
-  final String? filePath;
-
-  const SonixFileException(super.message, [this.filePath, super.details]);
+/// Exception thrown when a file is not found (alias for FileAccessException)
+class FileNotFoundException extends FileAccessException {
+  const FileNotFoundException(String filePath, [String? details]) : super(filePath, 'File not found: $filePath', details);
 
   @override
   String toString() {
-    final fileInfo = filePath != null ? ' (File: $filePath)' : '';
     if (details != null) {
-      return 'SonixFileException: $message$fileInfo\nDetails: $details';
+      return 'FileNotFoundException: File not found: $filePath\nDetails: $details';
     }
-    return 'SonixFileException: $message$fileInfo';
+    return 'FileNotFoundException: File not found: $filePath';
   }
 }
 
-/// Exception thrown when an unsupported operation is attempted
+/// Exception thrown when a file is corrupted or contains invalid data
+class CorruptedFileException extends SonixException {
+  /// The file path that is corrupted
+  final String filePath;
+
+  const CorruptedFileException(this.filePath, [String? details]) : super('Corrupted or invalid audio file: $filePath', details);
+
+  @override
+  String toString() {
+    if (details != null) {
+      return 'CorruptedFileException: Corrupted or invalid audio file: $filePath\nDetails: $details';
+    }
+    return 'CorruptedFileException: Corrupted or invalid audio file: $filePath';
+  }
+}
+
+/// General Sonix error (alias for SonixException for backwards compatibility)
+class SonixError extends SonixException {
+  const SonixError(super.message, [super.details]);
+
+  @override
+  String toString() {
+    if (details != null) {
+      return 'SonixError: $message\nDetails: $details';
+    }
+    return 'SonixError: $message';
+  }
+}
+
+/// Exception thrown when an unsupported operation is attempted (alias for UnsupportedFormatException)
 class SonixUnsupportedOperationException extends SonixException {
   const SonixUnsupportedOperationException(super.message, [super.details]);
 
@@ -154,5 +179,18 @@ class SonixUnsupportedOperationException extends SonixException {
       return 'SonixUnsupportedOperationException: $message\nDetails: $details';
     }
     return 'SonixUnsupportedOperationException: $message';
+  }
+}
+
+/// Exception thrown when file operations fail (alias for FileAccessException)
+class SonixFileException extends FileAccessException {
+  const SonixFileException(String message, [String? details]) : super('', message, details);
+
+  @override
+  String toString() {
+    if (details != null) {
+      return 'SonixFileException: $message\nDetails: $details';
+    }
+    return 'SonixFileException: $message';
   }
 }

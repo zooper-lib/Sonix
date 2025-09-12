@@ -241,9 +241,9 @@ void main() {
     late Map<String, dynamic> testConfigurations;
 
     setUpAll(() async {
-      // Generate test data if it doesn't exist
+      // Generate essential test data if it doesn't exist (faster)
       if (!await TestDataLoader.assetExists('test_configurations.json')) {
-        await TestDataGenerator.generateAllTestData();
+        await TestDataGenerator.generateEssentialTestData();
       }
 
       testConfigurations = await TestDataLoader.loadTestConfigurations();
