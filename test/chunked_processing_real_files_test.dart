@@ -46,8 +46,19 @@ void main() {
           }
 
           // Test chunk processing with real data
-          final testChunkSize = 64 * 1024; // 64KB chunk
-          final chunkData = fileBytes.take(testChunkSize).toList();
+          // Skip ID3 metadata and start from actual MP3 audio data
+          int audioStart = 0;
+          if (fileBytes.length >= 10 && fileBytes[0] == 0x49 && fileBytes[1] == 0x44 && fileBytes[2] == 0x33) {
+            // Calculate ID3v2 tag size
+            final tagSize = ((fileBytes[6] & 0x7F) << 21) | ((fileBytes[7] & 0x7F) << 14) | ((fileBytes[8] & 0x7F) << 7) | (fileBytes[9] & 0x7F);
+            audioStart = 10 + tagSize;
+            print('MP3 ID3v2 tag size: ${(tagSize / 1024).toStringAsFixed(1)}KB, audio starts at byte $audioStart');
+          }
+
+          // Take a chunk starting from the actual audio data
+          final testChunkSize = 256 * 1024; // 256KB chunk of actual audio
+          final chunkEnd = (audioStart + testChunkSize < fileBytes.length) ? audioStart + testChunkSize : fileBytes.length;
+          final chunkData = fileBytes.sublist(audioStart, chunkEnd);
           final chunkPtr = malloc<ffi.Uint8>(chunkData.length);
           final chunkNativeData = chunkPtr.asTypedList(chunkData.length);
           chunkNativeData.setAll(0, chunkData);
@@ -56,8 +67,8 @@ void main() {
           final fileChunk = fileChunkPtr.ref;
           fileChunk.data = chunkPtr;
           fileChunk.size = chunkData.length;
-          fileChunk.position = 0;
-          fileChunk.is_last = chunkData.length == fileBytes.length ? 1 : 0;
+          fileChunk.position = audioStart;
+          fileChunk.is_last = chunkEnd == fileBytes.length ? 1 : 0;
 
           try {
             final result = SonixNativeBindings.processFileChunk(decoder, fileChunkPtr);
@@ -68,11 +79,20 @@ void main() {
 
               if (resultData.error_code == SONIX_OK && resultData.chunk_count > 0) {
                 // Verify audio chunks
+                var totalSamples = 0;
                 for (int i = 0; i < resultData.chunk_count; i++) {
                   final audioChunk = resultData.chunks.elementAt(i).ref;
                   expect(audioChunk.sample_count, greaterThan(0));
-                  print('Audio chunk $i: ${audioChunk.sample_count} samples, start=${audioChunk.start_sample}');
+                  totalSamples += audioChunk.sample_count;
+
+                  // Print details for first few and last few chunks
+                  if (i < 3 || i >= resultData.chunk_count - 3) {
+                    print('Audio chunk $i: ${audioChunk.sample_count} samples, start=${audioChunk.start_sample}');
+                  } else if (i == 3) {
+                    print('... (${resultData.chunk_count - 6} more chunks) ...');
+                  }
                 }
+                print('Total samples decoded: $totalSamples');
               }
 
               SonixNativeBindings.freeChunkResult(result);
