@@ -126,3 +126,33 @@ class StreamingException extends SonixException {
     return 'StreamingException: $message';
   }
 }
+
+/// Exception thrown when file operations fail
+class SonixFileException extends SonixException {
+  /// The file path that caused the error
+  final String? filePath;
+
+  const SonixFileException(super.message, [this.filePath, super.details]);
+
+  @override
+  String toString() {
+    final fileInfo = filePath != null ? ' (File: $filePath)' : '';
+    if (details != null) {
+      return 'SonixFileException: $message$fileInfo\nDetails: $details';
+    }
+    return 'SonixFileException: $message$fileInfo';
+  }
+}
+
+/// Exception thrown when an unsupported operation is attempted
+class SonixUnsupportedOperationException extends SonixException {
+  const SonixUnsupportedOperationException(super.message, [super.details]);
+
+  @override
+  String toString() {
+    if (details != null) {
+      return 'SonixUnsupportedOperationException: $message\nDetails: $details';
+    }
+    return 'SonixUnsupportedOperationException: $message';
+  }
+}

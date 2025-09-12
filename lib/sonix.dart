@@ -78,6 +78,10 @@ export 'src/utils/resource_manager.dart' show ResourceManager, ResourceStatistic
 export 'src/utils/lazy_waveform_data.dart' show LazyWaveformData;
 export 'src/utils/lru_cache.dart' show CacheStatistics;
 
+// Chunked file reading infrastructure
+export 'src/utils/chunked_file_reader.dart' show ChunkedFileReader, ChunkedFileReaderInfo, ChunkedFileReaderFactory;
+export 'src/models/file_chunk.dart' show FileChunk, ChunkValidationResult, FileChunkUtils;
+
 // Performance optimization utilities
 export 'src/utils/performance_profiler.dart' show PerformanceProfiler, PerformanceReport, BenchmarkResult;
 export 'src/utils/performance_optimizer.dart'
