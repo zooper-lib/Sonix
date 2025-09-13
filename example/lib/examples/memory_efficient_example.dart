@@ -454,14 +454,41 @@ class _MemoryEfficientExampleState extends State<MemoryEfficientExample> {
           break;
 
         case ProcessingMethod.streaming:
-          // For demonstration, we'll collect the stream into a single waveform
+          // Stream -> combine to a single WaveformData
+          // Why: Streaming paths may not expose full metadata; compute duration from chunk timing and fall back if empty
+          const int defaultSampleRate = 44100; // Conservative default for duration estimation in streaming paths
           final chunks = <WaveformChunk>[];
-          await for (final chunk in Sonix.generateWaveformStream(_selectedFilePath)) {
+
+          await for (final chunk in Sonix.generateWaveformStream(_selectedFilePath, resolution: 200, chunkSize: 100)) {
+            // Keep all chunks so we preserve the final end-marker timing
             chunks.add(chunk);
           }
-          // Combine chunks (simplified for demo)
-          final allAmplitudes = chunks.expand((c) => c.amplitudes).toList();
-          waveformData = WaveformData.fromAmplitudes(allAmplitudes);
+
+          if (chunks.isEmpty) {
+            // Fallback: guarantee output while keeping memory usage reasonable.
+            waveformData = await Sonix.generateWaveformChunked(_selectedFilePath, resolution: 200);
+            break;
+          }
+
+          // Combine amplitudes (ignore empty chunks for data accumulation)
+          final allAmplitudes = chunks.where((c) => c.amplitudes.isNotEmpty).expand((c) => c.amplitudes).toList(growable: false);
+
+          // Estimate total duration from chunk start times + last chunk length (assume default sample rate)
+          Duration totalDuration = Duration.zero;
+          final last = chunks.last;
+          if (last.amplitudes.isNotEmpty) {
+            final lastChunkDuration = Duration(microseconds: (last.amplitudes.length * Duration.microsecondsPerSecond) ~/ defaultSampleRate);
+            totalDuration = last.startTime + lastChunkDuration;
+          } else {
+            totalDuration = last.startTime; // Best effort if last chunk is empty
+          }
+
+          waveformData = WaveformData(
+            amplitudes: allAmplitudes,
+            duration: totalDuration,
+            sampleRate: defaultSampleRate,
+            metadata: WaveformMetadata(resolution: allAmplitudes.length, type: WaveformType.bars, normalized: true, generatedAt: DateTime.now()),
+          );
           break;
 
         case ProcessingMethod.adaptive:

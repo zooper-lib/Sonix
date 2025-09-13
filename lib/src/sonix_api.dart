@@ -8,6 +8,7 @@ import 'models/waveform_data.dart';
 import 'models/chunked_processing_config.dart';
 import 'processing/waveform_generator.dart';
 import 'processing/progressive_waveform_generator.dart';
+import 'processing/waveform_aggregator.dart';
 import 'utils/chunked_file_reader.dart';
 import 'exceptions/sonix_exceptions.dart';
 import 'exceptions/error_recovery.dart';
@@ -662,7 +663,27 @@ class Sonix {
       // Process file chunks and generate waveform stream
       final processedChunks = _processFileChunks(fileReader, decoder, chunkedConfig);
 
-      await for (final waveformChunk in progressiveGenerator.generateFromChunks(processedChunks)) {
+      // Estimate totals for better resolution/timing control
+      int? estimatedTotalSamples;
+      Duration? estimatedDuration;
+      try {
+        final duration = await decoder.estimateDuration();
+        final meta = decoder.getFormatMetadata();
+        final sr = (meta['sampleRate'] as int?) ?? 44100;
+        final ch = (meta['channels'] as int?) ?? 1;
+        if (duration != null) {
+          estimatedDuration = duration;
+          estimatedTotalSamples = ((duration.inMicroseconds * sr * ch) / Duration.microsecondsPerSecond).round();
+        }
+      } catch (_) {}
+
+      final stream = progressiveGenerator.generateFromChunks(
+        processedChunks,
+        expectedTotalSamples: estimatedTotalSamples,
+        expectedTotalDuration: estimatedDuration,
+      );
+
+      await for (final waveformChunk in stream) {
         // Convert enhanced chunk to regular chunk for compatibility
         yield WaveformChunk(amplitudes: waveformChunk.amplitudes, startTime: waveformChunk.startTime, isLast: waveformChunk.isLast);
       }
@@ -784,6 +805,35 @@ class Sonix {
 
             // Process file chunks and generate waveform
             final processedChunks = _processFileChunks(fileReader, chunkedDecoder, effectiveChunkedConfig);
+
+            // Try to estimate total samples and duration for better control
+            int? estimatedTotalSamples;
+            Duration? estimatedDuration;
+            try {
+              final duration = await chunkedDecoder.estimateDuration();
+              final meta = chunkedDecoder.getFormatMetadata();
+              final sr = (meta['sampleRate'] as int?) ?? 44100;
+              final ch = (meta['channels'] as int?) ?? 1;
+              if (duration != null) {
+                estimatedDuration = duration;
+                estimatedTotalSamples = ((duration.inMicroseconds * sr * ch) / Duration.microsecondsPerSecond).round();
+              }
+            } catch (_) {}
+
+            // If we have an estimate, stream chunks with expected totals so aggregator targets resolution
+            if (estimatedTotalSamples != null && estimatedTotalSamples > 0) {
+              final chunks = <WaveformChunk>[];
+              await for (final wc in progressiveGenerator.generateFromChunks(
+                processedChunks,
+                expectedTotalSamples: estimatedTotalSamples,
+                expectedTotalDuration: estimatedDuration,
+              )) {
+                chunks.add(WaveformChunk(amplitudes: wc.amplitudes, startTime: wc.startTime, isLast: wc.isLast));
+              }
+              final waveformData = WaveformAggregator.combineChunks(chunks, waveformConfig);
+              return waveformData;
+            }
+
             final waveformData = await progressiveGenerator.generateCompleteWaveform(processedChunks);
 
             return waveformData;

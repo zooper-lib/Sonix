@@ -23,9 +23,6 @@ class WaveformAggregator {
   /// Sample rate of the audio (determined from first chunk)
   int? _sampleRate;
 
-  /// Number of channels (determined from first chunk)
-  int? _channels;
-
   /// Samples per waveform point (calculated based on expected total samples)
   int? _samplesPerPoint;
 
@@ -71,7 +68,7 @@ class WaveformAggregator {
       // We need to estimate sample rate and channels
       // In a real implementation, this would come from the decoder
       _sampleRate = 44100; // Default assumption
-      _channels = 1; // Default assumption
+      // Default channels assumption would be handled upstream if needed
 
       // If we don't have expected total samples, use a reasonable default
       if (_expectedTotalSamples == null) {
@@ -100,6 +97,12 @@ class WaveformAggregator {
 
   /// Finalize processing and return any remaining waveform data
   WaveformChunk? finalize() {
+    // If we already reached target resolution, don’t emit extra point
+    if (_currentPointIndex >= config.resolution) {
+      _accumulatedSamples.clear();
+      return null;
+    }
+
     if (_accumulatedSamples.isNotEmpty) {
       // Force generation of a chunk with remaining samples
       final amplitude = _calculateAmplitude(_accumulatedSamples);
@@ -124,7 +127,7 @@ class WaveformAggregator {
 
     // Process complete points
     int samplesProcessed = 0;
-    while (_accumulatedSamples.length >= samplesPerPoint) {
+    while (_accumulatedSamples.length >= samplesPerPoint && _currentPointIndex < config.resolution) {
       final pointSamples = _accumulatedSamples.take(samplesPerPoint).toList();
       _accumulatedSamples.removeRange(0, samplesPerPoint);
 
@@ -135,7 +138,7 @@ class WaveformAggregator {
     }
 
     // Handle remaining samples if this is the last chunk
-    if (isLast && _accumulatedSamples.isNotEmpty) {
+    if (isLast && _accumulatedSamples.isNotEmpty && _currentPointIndex < config.resolution) {
       final amplitude = _calculateAmplitude(_accumulatedSamples);
       amplitudes.add(amplitude);
       samplesProcessed += _accumulatedSamples.length;
@@ -144,7 +147,7 @@ class WaveformAggregator {
     }
 
     // If no amplitudes were generated but we have samples, create at least one point
-    if (amplitudes.isEmpty && _accumulatedSamples.isNotEmpty) {
+    if (amplitudes.isEmpty && _accumulatedSamples.isNotEmpty && _currentPointIndex < config.resolution) {
       final amplitude = _calculateAmplitude(_accumulatedSamples);
       amplitudes.add(amplitude);
       samplesProcessed += _accumulatedSamples.length;
@@ -199,7 +202,7 @@ class WaveformAggregator {
     _totalSamplesProcessed = 0;
     _totalDurationProcessed = Duration.zero;
     _sampleRate = null;
-    _channels = null;
+    // No channel state kept here
     _samplesPerPoint = null;
     _expectedTotalSamples = null;
     _currentPointIndex = 0;

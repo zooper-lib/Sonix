@@ -144,17 +144,24 @@ class ProgressiveWaveformGenerator {
   int _totalChunks = 0;
   int _errorCount = 0;
   final List<Object> _errors = [];
-  DateTime? _startTime;
+  // start time tracking not currently used for external APIs
   final List<double> _processingTimes = [];
 
   ProgressiveWaveformGenerator({required this.config, this.onProgress, this.onError, this.continueOnError = true, this.maxErrors = 10});
 
   /// Generate waveform from streaming processed chunks
-  Stream<WaveformChunkEnhanced> generateFromChunks(Stream<ProcessedChunk> processedChunks) async* {
+  Stream<WaveformChunkEnhanced> generateFromChunks(
+    Stream<ProcessedChunk> processedChunks, {
+    int? expectedTotalSamples,
+    Duration? expectedTotalDuration,
+  }) async* {
     _reset();
-    _startTime = DateTime.now();
+    // no-op: start time tracking removed
 
     final aggregator = WaveformAggregator(config);
+    if (expectedTotalSamples != null && expectedTotalSamples > 0) {
+      aggregator.setExpectedTotalSamples(expectedTotalSamples);
+    }
 
     await for (final processedChunk in processedChunks) {
       final chunkStartTime = DateTime.now();
@@ -208,7 +215,7 @@ class ProgressiveWaveformGenerator {
       }
     }
 
-    // Yield final chunk if any remaining data
+    // Yield final chunk (ensuring end-of-stream is signaled with correct timing)
     final finalChunk = aggregator.finalize();
     if (finalChunk != null) {
       yield WaveformChunkEnhanced(
@@ -218,6 +225,16 @@ class ProgressiveWaveformGenerator {
         startSample: aggregator.totalSamplesProcessed,
         metadata: WaveformMetadata(resolution: finalChunk.amplitudes.length, type: config.type, normalized: config.normalize, generatedAt: DateTime.now()),
       );
+    } else {
+      // Emit a terminal marker chunk with accurate end time even if no amplitudes remain
+      final endTime = expectedTotalDuration ?? aggregator.totalDurationProcessed;
+      yield WaveformChunkEnhanced(
+        amplitudes: const [],
+        startTime: endTime,
+        isLast: true,
+        startSample: aggregator.totalSamplesProcessed,
+        metadata: WaveformMetadata(resolution: 0, type: config.type, normalized: config.normalize, generatedAt: DateTime.now()),
+      );
     }
   }
 
@@ -225,16 +242,13 @@ class ProgressiveWaveformGenerator {
   Future<WaveformData> generateCompleteWaveform(Stream<ProcessedChunk> processedChunks) async {
     final chunks = <WaveformChunkEnhanced>[];
     Duration totalDuration = Duration.zero;
-    int totalSamples = 0;
     int sampleRate = 44100; // Default, will be updated from first chunk
 
     await for (final waveformChunk in generateFromChunks(processedChunks)) {
       chunks.add(waveformChunk);
 
       // Update total duration and sample information
-      if (waveformChunk.stats != null) {
-        totalSamples += waveformChunk.stats!.samplesProcessed;
-      }
+      // Stats accumulation optional; duration computed by chunk timing
 
       // Calculate duration from the last chunk's end time
       if (waveformChunk.isLast) {
@@ -275,7 +289,7 @@ class ProgressiveWaveformGenerator {
     _totalChunks = 0;
     _errorCount = 0;
     _errors.clear();
-    _startTime = null;
+    // no-op
     _processingTimes.clear();
   }
 

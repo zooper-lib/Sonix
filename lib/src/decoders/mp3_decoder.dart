@@ -23,7 +23,15 @@ class MP3Decoder implements ChunkedAudioDecoder {
   // MP3-specific state for chunked processing
   final List<int> _frameOffsets = [];
   final List<Duration> _frameTimestamps = [];
-  int _currentFrameIndex = 0;
+  // Note: frame index retained for potential future accurate seeking; currently unused with buffered decoding
+  
+  // Buffered decoding for chunked streaming
+  BytesBuilder? _buffer;
+  int _bufferSize = 0;
+  static const int _decodeThreshold = 256 * 1024; // decode when we have at least 256KB
+  static const int _maxRetainedBuffer = 512 * 1024; // cap retained buffer between decodes
+  int _lastDecodedSampleCount = 0;
+  Duration _lastDecodedDuration = Duration.zero;
 
   @override
   Future<AudioData> decode(String filePath) async {
@@ -155,6 +163,12 @@ class MP3Decoder implements ChunkedAudioDecoder {
         await seekToTime(seekPosition);
       }
 
+      // Initialize buffered decoding state
+      _buffer = BytesBuilder(copy: false);
+      _bufferSize = 0;
+  _lastDecodedSampleCount = 0;
+  _lastDecodedDuration = Duration.zero;
+
       _initialized = true;
     } catch (e) {
       if (e is SonixException) {
@@ -173,39 +187,66 @@ class MP3Decoder implements ChunkedAudioDecoder {
     }
 
     try {
-      // For MP3, we need to find frame boundaries within the chunk
-      final frameData = _findFramesInChunk(fileChunk);
+      // Append incoming bytes to buffer
+      _buffer ??= BytesBuilder(copy: false);
+      _buffer!.add(fileChunk.data);
+      _bufferSize += fileChunk.data.length;
 
-      if (frameData.isEmpty) {
-        // No complete frames in this chunk
+      // Decide when to attempt a decode: when buffer is large enough or this is the last chunk
+      final shouldDecodeNow = _bufferSize >= _decodeThreshold || fileChunk.isLast;
+      if (!shouldDecodeNow) {
         return [];
       }
 
-      // Decode the frames using native bindings
+      // Attempt to decode combined buffered data into PCM
       final audioChunks = <AudioChunk>[];
-      int startSample = (_currentPosition.inMilliseconds * _sampleRate * _channels / 1000).round();
+      final combined = _buffer!.toBytes();
 
-      for (final frame in frameData) {
-        try {
-          final audioData = NativeAudioBindings.decodeAudio(frame, AudioFormat.mp3);
+      try {
+        final audioData = NativeAudioBindings.decodeAudio(combined, AudioFormat.mp3);
 
-          audioChunks.add(
-            AudioChunk(
-              samples: audioData.samples,
-              startSample: startSample,
-              isLast: false, // Will be set by the caller if this is the last chunk
-            ),
-          );
+        if (audioData.samples.isNotEmpty) {
+          // Emit only the new samples decoded since the last decode
+          final totalSamples = audioData.samples.length;
+          final newSamplesCount = totalSamples - _lastDecodedSampleCount;
 
-          startSample += audioData.samples.length;
+          if (newSamplesCount > 0) {
+            final newSamples = audioData.samples.sublist(_lastDecodedSampleCount);
+            final startSample = (_currentPosition.inMicroseconds * _sampleRate * _channels) ~/ Duration.microsecondsPerSecond;
 
-          // Update current position based on decoded samples
-          final frameDuration = Duration(milliseconds: (audioData.samples.length * 1000 / (_sampleRate * _channels)).round());
-          _currentPosition += frameDuration;
-        } catch (e) {
-          // Skip corrupted frames and continue
-          continue;
+            audioChunks.add(
+              AudioChunk(
+                samples: newSamples,
+                startSample: startSample,
+                isLast: fileChunk.isLast,
+              ),
+            );
+
+            // Advance position by the delta duration
+            final deltaDuration = audioData.duration - _lastDecodedDuration;
+            if (!deltaDuration.isNegative && deltaDuration != Duration.zero) {
+              _currentPosition += deltaDuration;
+            } else {
+              // Fallback: estimate from samples if duration did not advance
+              final estMicros = (newSamplesCount * Duration.microsecondsPerSecond) ~/ (_sampleRate * _channels);
+              _currentPosition += Duration(microseconds: estMicros);
+            }
+
+            // Update last decoded markers
+            _lastDecodedSampleCount = totalSamples;
+            _lastDecodedDuration = audioData.duration;
+          }
         }
+      } catch (e) {
+        // If decoding fails (likely due to boundary/incomplete frames), keep buffering until more data arrives
+        // To avoid unbounded growth, cap buffer by keeping only the last portion
+        if (_bufferSize > _maxRetainedBuffer) {
+          final retainedSlice = combined.sublist(combined.length - _maxRetainedBuffer);
+          _buffer = BytesBuilder(copy: false)..add(retainedSlice);
+          _bufferSize = _maxRetainedBuffer;
+        }
+
+        return [];
       }
 
       return audioChunks;
@@ -239,7 +280,7 @@ class MP3Decoder implements ChunkedAudioDecoder {
         }
       }
 
-      _currentFrameIndex = closestFrameIndex;
+  // Frame indexing is not used in buffered decoding mode
       final actualPosition = _frameTimestamps[closestFrameIndex];
       final bytePosition = _frameOffsets[closestFrameIndex];
       _currentPosition = actualPosition;
@@ -301,7 +342,7 @@ class MP3Decoder implements ChunkedAudioDecoder {
     _checkDisposed();
 
     _currentPosition = Duration.zero;
-    _currentFrameIndex = 0;
+  // Reset any frame-based state (unused in buffered mode)
     // Native decoder state would be reset here in a real implementation
   }
 
@@ -354,7 +395,11 @@ class MP3Decoder implements ChunkedAudioDecoder {
     _totalDuration = null;
     _frameOffsets.clear();
     _frameTimestamps.clear();
-    _currentFrameIndex = 0;
+  // Reset any frame-based state (unused in buffered mode)
+  _buffer = null;
+  _bufferSize = 0;
+  _lastDecodedSampleCount = 0;
+  _lastDecodedDuration = Duration.zero;
   }
 
   // Helper methods for MP3-specific processing
@@ -383,20 +428,5 @@ class MP3Decoder implements ChunkedAudioDecoder {
     }
   }
 
-  List<Uint8List> _findFramesInChunk(FileChunk fileChunk) {
-    final frames = <Uint8List>[];
-
-    // Simplified frame extraction - in real implementation would scan for sync words
-    // For now, we'll split the chunk into estimated frame-sized pieces
-    const avgFrameSize = 417;
-
-    int offset = 0;
-    while (offset < fileChunk.data.length - avgFrameSize) {
-      final frameData = Uint8List.sublistView(fileChunk.data, offset, (offset + avgFrameSize).clamp(0, fileChunk.data.length));
-      frames.add(frameData);
-      offset += avgFrameSize;
-    }
-
-    return frames;
-  }
+  // Note: previous naive per-frame extraction method has been removed in favor of buffered decoding
 }
