@@ -30,6 +30,12 @@ class MockIsolateManager extends IsolateManager {
   /// Mock active tasks map
   final Map<String, ProcessingTask> _activeTasks = {};
 
+  /// Counter for completed tasks
+  int _completedTasks = 0;
+
+  /// Counter for failed tasks
+  int _failedTasks = 0;
+
   MockIsolateManager(super.config);
 
   /// Set the delay before completing tasks
@@ -75,6 +81,19 @@ class MockIsolateManager extends IsolateManager {
     _activeTasks[task.id] = task;
 
     try {
+      // Check for specific error conditions that tests expect
+      if (task.filePath.contains('non_existent') || task.filePath.contains('nonexistent')) {
+        throw Exception('FileNotFoundException: File not found: ${task.filePath}');
+      }
+
+      if (task.filePath.contains('empty') || task.filePath.contains('corrupted')) {
+        throw Exception('DecodingException: Invalid or corrupted audio file');
+      }
+
+      if (task.filePath.endsWith('.xyz') || task.filePath.contains('unsupported')) {
+        throw Exception('UnsupportedFormatException: Unsupported audio format');
+      }
+
       // Simulate processing with cancellation checks
       await _simulateProcessingWithCancellation(task);
 
@@ -92,11 +111,18 @@ class MockIsolateManager extends IsolateManager {
       final waveformData = WaveformData(
         amplitudes: List.generate(task.config.resolution, (i) => (i % 100) / 100.0),
         sampleRate: 44100,
-        duration: const Duration(seconds: 30),
+        duration: const Duration(seconds: 3),
         metadata: WaveformMetadata(resolution: task.config.resolution, type: task.config.type, normalized: task.config.normalize, generatedAt: DateTime.now()),
       );
 
+      // Increment completed tasks counter
+      _completedTasks++;
+
       return waveformData;
+    } catch (e) {
+      // Increment failed tasks counter
+      _failedTasks++;
+      rethrow;
     } finally {
       // Clean up task tracking
       _activeTasks.remove(task.id);
@@ -188,9 +214,9 @@ class MockIsolateManager extends IsolateManager {
   IsolateStatistics getStatistics() {
     return IsolateStatistics(
       activeIsolates: 1, // Mock single isolate
-      queuedTasks: 0,
-      completedTasks: 0,
-      failedTasks: 0,
+      queuedTasks: _activeTasks.length,
+      completedTasks: _completedTasks,
+      failedTasks: _failedTasks,
       averageProcessingTime: _completionDelay,
       memoryUsage: 1024 * 1024, // 1MB mock usage
       isolateInfo: {
@@ -198,7 +224,7 @@ class MockIsolateManager extends IsolateManager {
           id: 'mock_isolate',
           createdAt: DateTime.now(),
           lastUsed: DateTime.now(),
-          tasksProcessed: 0,
+          tasksProcessed: _completedTasks,
           isActive: _activeTasks.isNotEmpty,
         ),
       },

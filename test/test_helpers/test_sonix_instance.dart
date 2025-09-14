@@ -4,12 +4,8 @@
 /// requiring real audio files or native decoders.
 library;
 
-import 'dart:async';
-import 'dart:isolate';
-
 import 'package:sonix/src/sonix_api.dart';
 import 'package:sonix/src/isolate/isolate_manager.dart';
-import '../mocks/mock_processing_isolate.dart';
 import 'mock_isolate_manager.dart';
 
 /// Test configuration that uses mock isolates
@@ -25,14 +21,11 @@ class TestSonixConfig extends SonixConfig {
   });
 }
 
-/// Test isolate manager that uses mock processing isolates
+/// Test isolate manager that uses mock processing (no real isolates)
 class TestIsolateManager extends MockIsolateManager {
   TestIsolateManager(super.config);
 
-  @override
-  Future<Isolate> spawnProcessingIsolate(SendPort handshakeSendPort) async {
-    return await Isolate.spawn(mockProcessingIsolateEntryPoint, handshakeSendPort, debugName: 'MockSonixProcessingIsolate');
-  }
+  // No need to override spawnProcessingIsolate since we're using synchronous mocking
 }
 
 /// Test SonixInstance that uses mock isolate manager

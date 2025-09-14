@@ -71,7 +71,9 @@ void main() {
 
         // Check for expected processing phases
         final allMessages = statusMessages.join(' ').toLowerCase();
-        expect(allMessages, contains('processing'));
+        expect(allMessages, contains('creating'));
+        expect(allMessages, contains('decoding'));
+        expect(allMessages, contains('generating'));
         expect(allMessages, contains('complete'));
       });
 
