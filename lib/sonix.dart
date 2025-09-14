@@ -1,44 +1,57 @@
 /// Sonix - Flutter Audio Waveform Package
 ///
 /// A comprehensive solution for generating and displaying audio waveforms
-/// without relying on FFMPEG. Supports multiple audio formats (MP3, OGG, WAV, FLAC, Opus)
-/// using native C libraries through Dart FFI.
+/// with isolate-based processing to prevent UI thread blocking. Supports multiple
+/// audio formats (MP3, OGG, WAV, FLAC, Opus) using native C libraries through Dart FFI.
 ///
-/// ## Quick Start
+/// ## Quick Start (New Instance-Based API)
 ///
 /// ```dart
 /// import 'package:sonix/sonix.dart';
 ///
-/// // Initialize Sonix (call once at app startup)
-/// Sonix.initialize();
+/// // Create a Sonix instance with configuration
+/// final sonix = SonixInstance(SonixConfig.mobile());
 ///
-/// // Generate waveform from audio file
-/// final waveformData = await Sonix.generateWaveform('audio.mp3');
-/// print('Generated ${waveformData.points.length} waveform points');
+/// // Generate waveform from audio file (processed in background isolate)
+/// final waveformData = await sonix.generateWaveform('audio.mp3');
+/// print('Generated ${waveformData.amplitudes.length} waveform points');
 ///
 /// // Stream waveform generation with progress
-/// await for (final event in Sonix.generateWaveformStream('large_audio.flac')) {
-///   if (event.isProgress) {
-///     print('Progress: ${event.progress}%');
-///   } else if (event.isComplete) {
+/// await for (final progress in sonix.generateWaveformStream('large_audio.flac')) {
+///   print('Progress: ${(progress.progress * 100).toStringAsFixed(1)}%');
+///   if (progress.isComplete && progress.partialData != null) {
 ///     print('Waveform generation complete!');
+///     final waveformData = progress.partialData!;
 ///   }
 /// }
+///
+/// // Clean up when done
+/// await sonix.dispose();
+/// ```
+///
+/// ## Backward Compatibility (Deprecated)
+///
+/// ```dart
+/// // Legacy static API (deprecated, but still supported)
+/// await Sonix.initialize();
+/// final waveformData = await Sonix.generateWaveform('audio.mp3');
 /// ```
 ///
 /// ## Key Features
 ///
+/// - **Isolate-Based Processing**: All audio processing happens in background isolates
+/// - **Instance-Based API**: Create multiple instances with different configurations
 /// - **Multi-format Support**: MP3, OGG, WAV, FLAC, Opus
 /// - **High Performance**: Native C libraries via Dart FFI
-/// - **Memory Efficient**: Automatic chunked processing for large files
+/// - **Memory Efficient**: Automatic resource management and cleanup
 /// - **Streaming API**: Real-time progress updates
-/// - **Caching**: Built-in LRU cache for better performance
-/// - **Error Recovery**: Comprehensive error handling
+/// - **Error Recovery**: Comprehensive error handling across isolate boundaries
+/// - **Backward Compatible**: Existing code continues to work
 
 library;
 
 // Main API - the primary entry point
-export 'src/sonix_api.dart';
+export 'src/sonix_api.dart' show Sonix, SonixInstance, SonixConfig, WaveformProgress;
 
 // Core data models
 export 'src/models/waveform_data.dart';
@@ -55,6 +68,11 @@ export 'src/exceptions/sonix_exceptions.dart';
 
 // UI widgets
 export 'src/widgets/widgets.dart';
+
+// Isolate infrastructure (for advanced usage)
+export 'src/isolate/isolate_messages.dart';
+export 'src/isolate/isolate_message_handler.dart';
+export 'src/isolate/processing_isolate.dart' show processingIsolateEntryPoint;
 
 // Utilities (selective exports)
 export 'src/utils/memory_manager.dart' show MemoryManager;

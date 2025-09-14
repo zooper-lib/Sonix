@@ -68,8 +68,8 @@ void main() {
       }, throwsA(isA<UnsupportedFormatException>()));
     });
 
-    test('generateWaveformMemoryEfficient throws UnsupportedFormatException for invalid format', () async {
-      expect(() async => await Sonix.generateWaveformMemoryEfficient('test.xyz'), throwsA(isA<UnsupportedFormatException>()));
+    test('generateWaveform throws UnsupportedFormatException for invalid format', () async {
+      expect(() async => await Sonix.generateWaveform('test.xyz'), throwsA(isA<UnsupportedFormatException>()));
     });
   });
 }

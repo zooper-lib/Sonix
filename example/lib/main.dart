@@ -6,7 +6,6 @@ import 'package:sonix/sonix.dart';
 import 'examples/basic_usage_example.dart';
 import 'examples/playback_position_example.dart';
 import 'examples/style_customization_example.dart';
-import 'examples/memory_efficient_example.dart';
 import 'examples/pre_generated_data_example.dart';
 import 'examples/chunked_large_file_example.dart';
 import 'examples/chunked_progress_example.dart';
@@ -14,10 +13,6 @@ import 'examples/seeking_partial_waveform_example.dart';
 import 'examples/performance_comparison_example.dart';
 
 void main() {
-  // Initialize Sonix without artificial memory limits
-  // Default is now 16GB - let the OS handle memory allocation naturally
-  Sonix.initialize(maxWaveformCacheSize: 30, maxAudioDataCacheSize: 15);
-
   runApp(const MyApp());
 }
 
@@ -148,14 +143,7 @@ class ExampleHomePage extends StatelessWidget {
                           Colors.teal,
                           () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SeekingPartialWaveformExample())),
                         ),
-                        _buildExampleCard(
-                          context,
-                          'Memory Efficient',
-                          'Memory-efficient processing for large files',
-                          Icons.memory,
-                          Colors.orange,
-                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MemoryEfficientExample())),
-                        ),
+
                         _buildExampleCard(
                           context,
                           'Performance Comparison',
@@ -287,6 +275,9 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
   String? _detectedFormat;
   double _playbackPosition = 0.0;
 
+  // Sonix instance for audio processing
+  late final SonixInstance _sonix;
+
   // Pre-create waveform styles to ensure consistent references
   late final WaveformStyle _soundCloudStyle = WaveformStylePresets.soundCloud;
   late final WaveformStyle _spotifyStyle = WaveformStylePresets.spotify;
@@ -297,6 +288,21 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
 
   late WaveformStyle _selectedStyle = _soundCloudStyle;
   DownsamplingAlgorithm _selectedAlgorithm = DownsamplingAlgorithm.rms;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize Sonix instance with mobile configuration for better performance
+    _sonix = SonixInstance(SonixConfig.mobile());
+  }
+
+  @override
+  void dispose() {
+    // Clean up Sonix instance
+    _sonix.dispose();
+    super.dispose();
+  }
+
   Future<void> _pickAudioFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -334,15 +340,14 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
 
     try {
       // Generate waveform with optimal settings for visualization
-      final config =
-          Sonix.getOptimalConfig(
-            useCase: WaveformUseCase.musicVisualization,
-            customResolution: 200, // Good resolution for UI display
-          ).copyWith(
-            algorithm: _selectedAlgorithm, // Use the selected algorithm
-          );
+      final config = WaveformConfig(
+        resolution: 200, // Good resolution for UI display
+        type: WaveformType.bars,
+        normalize: true,
+        algorithm: _selectedAlgorithm, // Use the selected algorithm
+      );
 
-      final waveformData = await Sonix.generateWaveform(_selectedFilePath!, config: config);
+      final waveformData = await _sonix.generateWaveform(_selectedFilePath!, config: config);
 
       setState(() {
         _waveformData = waveformData;

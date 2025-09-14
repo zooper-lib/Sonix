@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:sonix/src/models/audio_data.dart';
-import 'package:sonix/src/models/file_chunk.dart';
-import 'package:sonix/src/models/chunked_processing_models.dart';
-import 'package:sonix/src/exceptions/sonix_exceptions.dart';
-import 'package:sonix/src/native/native_audio_bindings.dart';
-import 'package:sonix/src/utils/streaming_memory_manager.dart';
+import '../models/audio_data.dart';
+import '../models/file_chunk.dart';
+import '../models/chunked_processing_models.dart';
+import '../exceptions/sonix_exceptions.dart';
+import '../native/native_audio_bindings.dart';
+import '../utils/streaming_memory_manager.dart';
 import 'audio_decoder.dart';
 import 'chunked_audio_decoder.dart';
 
