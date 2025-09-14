@@ -72,15 +72,18 @@ This Flutter package will provide audio waveform generation and visualization ca
 
 ### Requirement 6
 
-**User Story:** As a Flutter developer, I want the package to be memory efficient, so that my application performs well even with large audio files.
+**User Story:** As a Flutter developer, I want the package to handle very large audio files (10GB+) without loading them entirely into memory, so that my application remains responsive and doesn't crash due to memory constraints.
 
 #### Acceptance Criteria
 
-1. WHEN processing large audio files THEN the system SHALL minimize memory usage
-2. WHEN generating waveforms THEN the system SHALL use streaming processing where possible
-3. WHEN multiple waveforms are displayed THEN the system SHALL efficiently manage memory allocation
-4. WHEN waveform data is no longer needed THEN the system SHALL properly dispose of resources
-5. WHEN processing audio THEN the system SHALL avoid loading entire files into memory simultaneously
+1. WHEN processing audio files larger than 1GB THEN the system SHALL decode only small chunks at a time
+2. WHEN generating waveforms from large files THEN the system SHALL process audio in configurable chunk sizes (e.g., 1MB, 10MB)
+3. WHEN decoding audio chunks THEN the system SHALL maintain a maximum memory footprint regardless of file size
+4. WHEN processing very large files THEN the system SHALL provide progress feedback to the user
+5. WHEN chunk processing fails THEN the system SHALL continue with the next chunk without failing the entire operation
+6. WHEN waveform data is no longer needed THEN the system SHALL properly dispose of resources
+7. WHEN processing audio THEN the system SHALL NEVER load entire files into memory simultaneously
+8. WHEN chunk size is configurable THEN the system SHALL allow developers to optimize for their memory constraints
 
 ### Requirement 7
 
@@ -119,6 +122,21 @@ This Flutter package will provide audio waveform generation and visualization ca
 5. WHEN providing invalid waveform data THEN the system SHALL handle errors gracefully
 
 ### Requirement 10
+
+**User Story:** As a Flutter developer, I want chunked audio decoding that works seamlessly across all supported formats, so that I can process any large audio file without format-specific limitations.
+
+#### Acceptance Criteria
+
+1. WHEN processing large MP3 files THEN the system SHALL decode in chunks without loading the full file
+2. WHEN processing large FLAC files THEN the system SHALL decode in chunks without loading the full file  
+3. WHEN processing large WAV files THEN the system SHALL decode in chunks without loading the full file
+4. WHEN processing large OGG files THEN the system SHALL decode in chunks without loading the full file
+5. WHEN chunk boundaries don't align with audio frames THEN the system SHALL handle frame boundaries correctly
+6. WHEN seeking to specific positions in large files THEN the system SHALL efficiently jump to the target location
+7. WHEN decoding chunks THEN the system SHALL maintain audio continuity between chunks
+8. WHEN chunk processing encounters errors THEN the system SHALL provide detailed error information including chunk position
+
+### Requirement 11
 
 **User Story:** As a Flutter developer, I want simple package integration, so that I can start using waveform functionality immediately after import.
 

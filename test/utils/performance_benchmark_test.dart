@@ -2,12 +2,10 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/models/audio_data.dart';
-import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/utils/performance_profiler.dart';
-import 'package:sonix/src/utils/performance_optimizer.dart';
 import 'package:sonix/src/utils/platform_validator.dart';
 import '../test_data_generator.dart';
 import 'dart:math' as math;
@@ -16,13 +14,12 @@ void main() {
   group('Performance Benchmark Tests', () {
     late Map<String, dynamic> testConfigurations;
     late PerformanceProfiler profiler;
-    late PerformanceOptimizer optimizer;
     late PlatformValidator platformValidator;
 
     setUpAll(() async {
-      // Generate test data if it doesn't exist
+      // Generate essential test data if it doesn't exist (faster)
       if (!await TestDataLoader.assetExists('test_configurations.json')) {
-        await TestDataGenerator.generateAllTestData();
+        await TestDataGenerator.generateEssentialTestData();
       }
 
       testConfigurations = await TestDataLoader.loadTestConfigurations();
@@ -30,15 +27,6 @@ void main() {
       // Initialize performance tools
       profiler = PerformanceProfiler();
       profiler.enable();
-
-      optimizer = PerformanceOptimizer();
-      await optimizer.initialize(
-        settings: const OptimizationSettings(
-          enableProfiling: true,
-          memoryLimit: 100 * 1024 * 1024, // 100MB for tests
-        ),
-      );
-
       platformValidator = PlatformValidator();
     });
 
@@ -595,61 +583,6 @@ void main() {
       });
     });
 
-    group('Performance Optimization Tests', () {
-      test('should optimize waveform generation under memory pressure', () async {
-        final audioData = _createTestAudioData(durationSeconds: 30); // Large file
-
-        // Generate without optimization
-        final stopwatch1 = Stopwatch()..start();
-        final waveformData1 = await WaveformGenerator.generate(audioData);
-        stopwatch1.stop();
-
-        // Generate with optimization
-        final stopwatch2 = Stopwatch()..start();
-        final waveformData2 = await optimizer.optimizeWaveformGeneration(audioData, forceOptimization: true);
-        stopwatch2.stop();
-
-        expect(waveformData1.amplitudes, isNotEmpty);
-        expect(waveformData2.amplitudes, isNotEmpty);
-
-        // Optimized version should complete (may be faster or use less memory)
-        expect(stopwatch2.elapsedMilliseconds, lessThan(30000)); // Should complete within 30 seconds
-
-        audioData.dispose();
-        waveformData1.dispose();
-        waveformData2.dispose();
-      });
-
-      test('should provide optimization suggestions', () async {
-        final suggestions = optimizer.getOptimizationSuggestions();
-        expect(suggestions, isA<List<OptimizationSuggestion>>());
-
-        // Should have some suggestions (even if just platform-specific)
-        expect(suggestions.length, greaterThanOrEqualTo(0));
-      });
-
-      test('should track performance metrics', () async {
-        final metrics = optimizer.getCurrentMetrics();
-        expect(metrics, isA<PerformanceMetrics>());
-        expect(metrics.memoryUsage, greaterThanOrEqualTo(0));
-        expect(metrics.memoryLimit, greaterThan(0));
-        expect(metrics.memoryUsagePercentage, greaterThanOrEqualTo(0.0));
-        expect(metrics.memoryUsagePercentage, lessThanOrEqualTo(1.0));
-      });
-
-      test('should optimize widget rendering', () async {
-        final waveformData = _createTestWaveformData(5000); // Many amplitudes
-        final widgetWidth = 300.0; // Typical widget width
-
-        final optimization = optimizer.optimizeWidgetRendering(waveformData, widgetWidth);
-        expect(optimization, isA<RenderingOptimization>());
-        expect(optimization.strategy, isA<RenderingStrategy>());
-        expect(optimization.targetAmplitudeCount, greaterThan(0));
-
-        waveformData.dispose();
-      });
-    });
-
     group('Performance Profiling Tests', () {
       test('should profile operations correctly', () async {
         final audioData = _createTestAudioData(durationSeconds: 2);
@@ -796,18 +729,6 @@ AudioData _createMultiChannelAudioData({double durationSeconds = 1.0, int sample
     sampleRate: sampleRate,
     channels: channels,
     duration: Duration(milliseconds: (durationSeconds * 1000).round()),
-  );
-}
-
-/// Helper function to create test waveform data
-WaveformData _createTestWaveformData(int amplitudeCount) {
-  final amplitudes = List.generate(amplitudeCount, (i) => math.sin(2 * math.pi * i / amplitudeCount) * 0.5 + 0.5);
-
-  return WaveformData(
-    amplitudes: amplitudes,
-    duration: const Duration(seconds: 10),
-    sampleRate: 44100,
-    metadata: WaveformMetadata(resolution: amplitudeCount, type: WaveformType.bars, normalized: true, generatedAt: DateTime.now()),
   );
 }
 

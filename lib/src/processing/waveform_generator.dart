@@ -46,6 +46,36 @@ class WaveformConfig {
     this.smoothingWindowSize = 3,
   });
 
+  /// Convert to JSON for serialization
+  Map<String, dynamic> toJson() {
+    return {
+      'resolution': resolution,
+      'type': type.name,
+      'normalize': normalize,
+      'algorithm': algorithm.name,
+      'normalizationMethod': normalizationMethod.name,
+      'scalingCurve': scalingCurve.name,
+      'scalingFactor': scalingFactor,
+      'enableSmoothing': enableSmoothing,
+      'smoothingWindowSize': smoothingWindowSize,
+    };
+  }
+
+  /// Create from JSON
+  factory WaveformConfig.fromJson(Map<String, dynamic> json) {
+    return WaveformConfig(
+      resolution: json['resolution'] as int? ?? 1000,
+      type: WaveformType.values.firstWhere((e) => e.name == json['type'], orElse: () => WaveformType.bars),
+      normalize: json['normalize'] as bool? ?? true,
+      algorithm: DownsamplingAlgorithm.values.firstWhere((e) => e.name == json['algorithm'], orElse: () => DownsamplingAlgorithm.rms),
+      normalizationMethod: NormalizationMethod.values.firstWhere((e) => e.name == json['normalizationMethod'], orElse: () => NormalizationMethod.peak),
+      scalingCurve: ScalingCurve.values.firstWhere((e) => e.name == json['scalingCurve'], orElse: () => ScalingCurve.linear),
+      scalingFactor: (json['scalingFactor'] as num?)?.toDouble() ?? 1.0,
+      enableSmoothing: json['enableSmoothing'] as bool? ?? false,
+      smoothingWindowSize: json['smoothingWindowSize'] as int? ?? 3,
+    );
+  }
+
   WaveformConfig copyWith({
     int? resolution,
     WaveformType? type,
@@ -126,20 +156,14 @@ class WaveformGenerator {
     final buffer = <double>[];
     Duration currentTime = Duration.zero;
     int totalSamples = 0;
-    int? sampleRate;
-    int? channels;
+    int sampleRate = 44100;
+    int channels = 1;
 
     // For normalization across the entire stream
     final allAmplitudes = <double>[];
 
     await for (final chunk in audioStream) {
-      // Initialize parameters from first chunk
-      if (sampleRate == null) {
-        // We need to estimate these from the chunk
-        // This is a limitation of streaming - we don't have full audio metadata
-        sampleRate = 44100; // Default assumption
-        channels = 1; // Default assumption
-      }
+      // Note: In streaming mode, we often don't have full metadata; use conservative defaults
 
       buffer.addAll(chunk.samples);
       totalSamples += chunk.samples.length;
@@ -160,7 +184,7 @@ class WaveformGenerator {
           final chunkResolution = chunk.isLast ? math.max(1, (config.resolution * chunkSamples.length) ~/ totalSamples) : chunkSize;
 
           // Generate amplitudes for this chunk
-          var chunkAmplitudes = WaveformAlgorithms.downsample(chunkSamples, chunkResolution, algorithm: config.algorithm, channels: channels!);
+          var chunkAmplitudes = WaveformAlgorithms.downsample(chunkSamples, chunkResolution, algorithm: config.algorithm, channels: channels);
 
           // Apply smoothing if enabled
           if (config.enableSmoothing) {
@@ -177,8 +201,8 @@ class WaveformGenerator {
             chunkAmplitudes = WaveformAlgorithms.scaleAmplitudes(chunkAmplitudes, scalingCurve: config.scalingCurve, factor: config.scalingFactor);
           }
 
-          // Calculate time for this chunk
-          final chunkDuration = Duration(microseconds: (chunkSamples.length * Duration.microsecondsPerSecond) ~/ sampleRate);
+          // Calculate time for this chunk (account for channels)
+          final chunkDuration = Duration(microseconds: (chunkSamples.length * Duration.microsecondsPerSecond) ~/ (sampleRate * channels));
 
           yield WaveformChunk(amplitudes: chunkAmplitudes, startTime: currentTime, isLast: chunk.isLast);
 

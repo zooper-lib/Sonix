@@ -1,85 +1,84 @@
 /// Sonix - Flutter Audio Waveform Package
 ///
 /// A comprehensive solution for generating and displaying audio waveforms
-/// without relying on FFMPEG. Supports multiple audio formats (MP3, OGG, WAV, FLAC, Opus)
-/// using native C libraries through Dart FFI.
+/// with isolate-based processing to prevent UI thread blocking. Supports multiple
+/// audio formats (MP3, OGG, WAV, FLAC, Opus) using native C libraries through Dart FFI.
 ///
-/// ## Quick Start
+/// ## Quick Start (New Instance-Based API)
 ///
 /// ```dart
 /// import 'package:sonix/sonix.dart';
 ///
-/// // Generate waveform from audio file
-/// final waveformData = await Sonix.generateWaveform('audio.mp3');
+/// // Create a Sonix instance with configuration
+/// final sonix = SonixInstance(SonixConfig.mobile());
 ///
-/// // Display with playback position
-/// WaveformWidget(
-///   waveformData: waveformData,
-///   playbackPosition: 0.3, // 30% played
-///   style: WaveformStylePresets.soundCloud,
-///   onSeek: (position) {
-///     // Handle seek to position
-///   },
-/// )
+/// // Generate waveform from audio file (processed in background isolate)
+/// final waveformData = await sonix.generateWaveform('audio.mp3');
+/// print('Generated ${waveformData.amplitudes.length} waveform points');
+///
+/// // Stream waveform generation with progress
+/// await for (final progress in sonix.generateWaveformStream('large_audio.flac')) {
+///   print('Progress: ${(progress.progress * 100).toStringAsFixed(1)}%');
+///   if (progress.isComplete && progress.partialData != null) {
+///     print('Waveform generation complete!');
+///     final waveformData = progress.partialData!;
+///   }
+/// }
+///
+/// // Clean up when done
+/// await sonix.dispose();
+/// ```
+///
+/// ## Backward Compatibility (Deprecated)
+///
+/// ```dart
+/// // Legacy static API (deprecated, but still supported)
+/// await Sonix.initialize();
+/// final waveformData = await Sonix.generateWaveform('audio.mp3');
 /// ```
 ///
 /// ## Key Features
 ///
+/// - **Isolate-Based Processing**: All audio processing happens in background isolates
+/// - **Instance-Based API**: Create multiple instances with different configurations
 /// - **Multi-format Support**: MP3, OGG, WAV, FLAC, Opus
 /// - **High Performance**: Native C libraries via Dart FFI
-/// - **Memory Efficient**: Streaming processing and caching
-/// - **Interactive UI**: Real-time playback position and seeking
-/// - **Extensive Customization**: Colors, gradients, styles
-/// - **Error Recovery**: Comprehensive error handling
-///
-/// ## Memory Management
-///
-/// Initialize Sonix with memory limits for optimal performance:
-///
-/// ```dart
-/// Sonix.initialize(
-///   memoryLimit: 50 * 1024 * 1024, // 50MB
-///   maxWaveformCacheSize: 50,
-/// );
-/// ```
-///
-/// ## Performance Tips
-///
-/// 1. Use `generateWaveformCached()` for frequently accessed files
-/// 2. Use `generateWaveformStream()` for large files (>50MB)
-/// 3. Use `generateWaveformAdaptive()` for automatic optimization
-/// 4. Call `dispose()` on WaveformData when no longer needed
-/// 5. Monitor memory usage with `getResourceStatistics()`
+/// - **Memory Efficient**: Automatic resource management and cleanup
+/// - **Streaming API**: Real-time progress updates
+/// - **Error Recovery**: Comprehensive error handling across isolate boundaries
+/// - **Backward Compatible**: Existing code continues to work
 
 library;
 
-// Main API - everything users need to generate waveforms
-export 'src/sonix_api.dart';
+// Main API - the primary entry point
+export 'src/sonix_api.dart' show Sonix, SonixInstance, SonixConfig, WaveformProgress;
 
-// Data models that users will work with
+// Core data models
 export 'src/models/waveform_data.dart';
+export 'src/models/audio_data.dart';
 
-// Configuration classes and enums that users need for customization
+// Processing and generation
 export 'src/processing/waveform_generator.dart' show WaveformConfig, WaveformUseCase;
 export 'src/processing/waveform_algorithms.dart' show DownsamplingAlgorithm, NormalizationMethod, ScalingCurve;
 
-// Exceptions that users should be able to catch
+// Exceptions
 export 'src/exceptions/sonix_exceptions.dart';
 
-// Error recovery utilities for advanced users
-export 'src/exceptions/error_recovery.dart' show RecoverableOperation, RecoverableStreamOperation;
+// UI widgets
+export 'src/widgets/waveform_painter.dart';
+export 'src/widgets/waveform_style.dart';
+export 'src/widgets/waveform_style_presets.dart';
+export 'src/widgets/waveform_widget.dart';
 
-// UI widgets for displaying waveforms
-export 'src/widgets/widgets.dart';
+// Isolate infrastructure (for advanced usage)
+export 'src/isolate/isolate_messages.dart';
+export 'src/isolate/processing_isolate.dart' show processingIsolateEntryPoint;
+export 'src/isolate/error_serializer.dart';
+export 'src/isolate/isolate_health_monitor.dart' show IsolateHealthStatus, IsolateHealth;
 
-// Memory management utilities
-export 'src/utils/memory_manager.dart' show MemoryManager, QualityReductionSuggestion;
-export 'src/utils/resource_manager.dart' show ResourceManager, ResourceStatistics, ResourceInfo;
-export 'src/utils/lazy_waveform_data.dart' show LazyWaveformData;
+// Utilities (selective exports)
+export 'src/utils/memory_manager.dart' show MemoryManager;
+export 'src/utils/resource_manager.dart' show ResourceManager, ResourceStatistics;
 export 'src/utils/lru_cache.dart' show CacheStatistics;
-
-// Performance optimization utilities
-export 'src/utils/performance_profiler.dart' show PerformanceProfiler, PerformanceReport, BenchmarkResult;
-export 'src/utils/performance_optimizer.dart'
-    show PerformanceOptimizer, OptimizationSettings, PerformanceMetrics, OptimizationSuggestion, SuggestionPriority, RenderingOptimization, RenderingStrategy;
-export 'src/utils/platform_validator.dart' show PlatformValidator, PlatformValidationResult, PlatformInfo, OptimizationRecommendation, RecommendationPriority;
+export 'src/utils/performance_profiler.dart' show PerformanceProfiler, PerformanceReport;
+export 'src/utils/platform_validator.dart' show PlatformValidator;

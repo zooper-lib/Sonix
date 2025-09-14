@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sonix/sonix.dart';
+import 'package:file_picker/file_picker.dart';
 import 'dart:async';
 
 /// Example showing waveform with playback position visualization and seeking
@@ -16,6 +17,8 @@ class _PlaybackPositionExampleState extends State<PlaybackPositionExample> {
   bool _isPlaying = false;
   Timer? _playbackTimer;
   bool _isLoading = false;
+  String _selectedFilePath = '';
+  String? _error;
 
   @override
   void dispose() {
@@ -40,7 +43,64 @@ class _PlaybackPositionExampleState extends State<PlaybackPositionExample> {
             ),
             const SizedBox(height: 24),
 
-            if (_waveformData == null)
+            // File selection
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Select Audio File', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _selectedFilePath.isEmpty ? 'No file selected' : 'Selected: ${_selectedFilePath.split('/').last}',
+                            style: TextStyle(color: _selectedFilePath.isEmpty ? Colors.grey : Colors.black87),
+                          ),
+                        ),
+                        ElevatedButton.icon(onPressed: _selectFile, icon: const Icon(Icons.folder_open), label: const Text('Select File')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Error display
+            if (_error != null)
+              Card(
+                color: Colors.red.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.error, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text(
+                            'Error',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(_error!, style: const TextStyle(color: Colors.red)),
+                      const SizedBox(height: 8),
+                      ElevatedButton(onPressed: () => setState(() => _error = null), child: const Text('Dismiss')),
+                    ],
+                  ),
+                ),
+              ),
+
+            if (_error != null) const SizedBox(height: 16),
+
+            if (_waveformData == null && _selectedFilePath.isNotEmpty)
               ElevatedButton(
                 onPressed: _isLoading ? null : _loadWaveform,
                 child: _isLoading
@@ -142,24 +202,52 @@ class _PlaybackPositionExampleState extends State<PlaybackPositionExample> {
     );
   }
 
+  Future<void> _selectFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['wav', 'mp3', 'flac', 'ogg', 'opus'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          _selectedFilePath = result.files.single.path!;
+          _error = null;
+          _waveformData = null;
+          _playbackPosition = 0.0;
+          _isPlaying = false;
+        });
+        _playbackTimer?.cancel();
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Error selecting file: $e';
+      });
+    }
+  }
+
   Future<void> _loadWaveform() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
+      // Create a Sonix instance for processing
+      final sonix = SonixInstance();
+
       // Generate waveform optimized for music visualization
       final config = Sonix.getOptimalConfig(useCase: WaveformUseCase.musicVisualization, customResolution: 300);
 
-      final waveformData = await Sonix.generateWaveform(
-        'assets/sample_audio.mp3', // Replace with your audio file
-        config: config,
-      );
+      final waveformData = await sonix.generateWaveform(_selectedFilePath, config: config);
 
       setState(() {
         _waveformData = waveformData;
         _isLoading = false;
       });
+
+      // Clean up the instance
+      await sonix.dispose();
     } catch (e) {
       setState(() {
         _isLoading = false;

@@ -2,6 +2,7 @@
 #include "sonix_native.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 // Include audio decoder libraries
 #define DR_WAV_IMPLEMENTATION
@@ -16,10 +17,34 @@
 #define MINIMP3_NO_SIMD
 #include "minimp3/minimp3.h"
 
+// Note: stb_vorbis integration would require separate compilation to avoid conflicts
+
 // Global error message storage
 static char error_message[256] = {0};
 // MP3 debug stats storage
 static SonixMp3DebugStats last_stats = {0};
+
+// Chunked decoder structure
+struct SonixChunkedDecoder {
+    int format;
+    char* file_path;
+    FILE* file_handle;
+    uint64_t file_size;
+    uint64_t current_position;
+    
+    // Format-specific decoder state
+    union {
+        mp3dec_t mp3_decoder;
+        drflac* flac_decoder;
+        drwav wav_decoder;
+    } decoder_state;
+    
+    // Audio properties (set after first successful decode)
+    uint32_t sample_rate;
+    uint32_t channels;
+    uint64_t total_samples;
+    int properties_initialized;
+};
 
 // Set error message
 static void set_error(const char *msg)
@@ -539,3 +564,684 @@ const char *sonix_get_error_message(void)
 
 // Accessor for MP3 debug stats
 const SonixMp3DebugStats *sonix_get_last_mp3_debug_stats(void) { return &last_stats; }
+
+// Chunked processing implementation
+
+SonixChunkedDecoder* sonix_init_chunked_decoder(int format, const char* file_path)
+{
+    if (!file_path || format < SONIX_FORMAT_MP3 || format > SONIX_FORMAT_OPUS)
+    {
+        set_error("Invalid format or file path for chunked decoder");
+        return NULL;
+    }
+
+    // Allocate decoder structure
+    SonixChunkedDecoder* decoder = (SonixChunkedDecoder*)malloc(sizeof(SonixChunkedDecoder));
+    if (!decoder)
+    {
+        set_error("Failed to allocate memory for chunked decoder");
+        return NULL;
+    }
+
+    // Initialize decoder
+    memset(decoder, 0, sizeof(SonixChunkedDecoder));
+    decoder->format = format;
+    
+    // Copy file path
+    size_t path_len = strlen(file_path);
+    decoder->file_path = (char*)malloc(path_len + 1);
+    if (!decoder->file_path)
+    {
+        free(decoder);
+        set_error("Failed to allocate memory for file path");
+        return NULL;
+    }
+    strcpy(decoder->file_path, file_path);
+
+    // Open file for reading
+    decoder->file_handle = fopen(file_path, "rb");
+    if (!decoder->file_handle)
+    {
+        free(decoder->file_path);
+        free(decoder);
+        set_error("Failed to open audio file for chunked processing");
+        return NULL;
+    }
+
+    // Get file size
+    fseek(decoder->file_handle, 0, SEEK_END);
+    decoder->file_size = ftell(decoder->file_handle);
+    fseek(decoder->file_handle, 0, SEEK_SET);
+    decoder->current_position = 0;
+
+    // Initialize format-specific decoder
+    switch (format)
+    {
+        case SONIX_FORMAT_MP3:
+            mp3dec_init(&decoder->decoder_state.mp3_decoder);
+            break;
+        case SONIX_FORMAT_FLAC:
+            // FLAC decoder will be initialized per chunk
+            decoder->decoder_state.flac_decoder = NULL;
+            break;
+        case SONIX_FORMAT_WAV:
+            // WAV decoder will be initialized per chunk
+            memset(&decoder->decoder_state.wav_decoder, 0, sizeof(drwav));
+            break;
+        case SONIX_FORMAT_OGG:
+            fclose(decoder->file_handle);
+            free(decoder->file_path);
+            free(decoder);
+            set_error("OGG format requires separate compilation to avoid symbol conflicts");
+            return NULL;
+        default:
+            fclose(decoder->file_handle);
+            free(decoder->file_path);
+            free(decoder);
+            set_error("Unsupported format for chunked processing");
+            return NULL;
+    }
+
+    return decoder;
+}
+
+static SonixChunkResult* process_flac_chunk(SonixChunkedDecoder* decoder, SonixFileChunk* file_chunk)
+{
+    if (!decoder || !file_chunk || !file_chunk->data)
+    {
+        set_error("Invalid parameters for FLAC chunk processing");
+        return NULL;
+    }
+
+    // Allocate result structure
+    SonixChunkResult* result = (SonixChunkResult*)malloc(sizeof(SonixChunkResult));
+    if (!result)
+    {
+        set_error("Failed to allocate memory for FLAC chunk result");
+        return NULL;
+    }
+    memset(result, 0, sizeof(SonixChunkResult));
+
+    // For FLAC, we'll decode the entire chunk as one audio chunk
+    // This is a simplified implementation - a more sophisticated version
+    // would parse FLAC frames within the chunk
+    
+    unsigned int channels = 0;
+    unsigned int sampleRate = 0;
+    drflac_uint64 totalPCMFrameCount = 0;
+
+    // Decode FLAC data from memory
+    float* samples = drflac_open_memory_and_read_pcm_frames_f32(
+        file_chunk->data, file_chunk->size, &channels, &sampleRate, &totalPCMFrameCount, NULL);
+
+    if (!samples || totalPCMFrameCount == 0)
+    {
+        free(result);
+        set_error("Failed to decode FLAC chunk");
+        return NULL;
+    }
+
+    // Set decoder properties from first successful decode
+    if (!decoder->properties_initialized)
+    {
+        decoder->sample_rate = sampleRate;
+        decoder->channels = channels;
+        decoder->properties_initialized = 1;
+    }
+
+    // Create single audio chunk
+    SonixAudioChunk* audio_chunks = (SonixAudioChunk*)malloc(sizeof(SonixAudioChunk));
+    if (!audio_chunks)
+    {
+        drflac_free(samples, NULL);
+        free(result);
+        set_error("Failed to allocate memory for FLAC audio chunk");
+        return NULL;
+    }
+
+    // Fill audio chunk structure
+    audio_chunks[0].samples = samples;
+    audio_chunks[0].sample_count = (uint32_t)(totalPCMFrameCount * channels);
+    audio_chunks[0].start_sample = file_chunk->position; // Approximate
+    audio_chunks[0].is_last = file_chunk->is_last;
+
+    // Fill result structure
+    result->chunks = audio_chunks;
+    result->chunk_count = 1;
+    result->error_code = SONIX_OK;
+    result->error_message = NULL;
+
+    return result;
+}
+
+static SonixChunkResult* process_wav_chunk(SonixChunkedDecoder* decoder, SonixFileChunk* file_chunk)
+{
+    if (!decoder || !file_chunk || !file_chunk->data)
+    {
+        set_error("Invalid parameters for WAV chunk processing");
+        return NULL;
+    }
+
+    // Allocate result structure
+    SonixChunkResult* result = (SonixChunkResult*)malloc(sizeof(SonixChunkResult));
+    if (!result)
+    {
+        set_error("Failed to allocate memory for WAV chunk result");
+        return NULL;
+    }
+    memset(result, 0, sizeof(SonixChunkResult));
+
+    // For WAV, we need to handle the chunk based on whether it contains header or data
+    // This is a simplified implementation that assumes the chunk contains raw PCM data
+    
+    // If this is the first chunk and contains WAV header, parse it
+    if (file_chunk->position == 0 && file_chunk->size >= 44)
+    {
+        // Check for WAV header
+        if (file_chunk->data[0] == 'R' && file_chunk->data[1] == 'I' && 
+            file_chunk->data[2] == 'F' && file_chunk->data[3] == 'F')
+        {
+            // Parse WAV header to get format information
+            uint32_t sample_rate = *(uint32_t*)(file_chunk->data + 24);
+            uint16_t channels = *(uint16_t*)(file_chunk->data + 22);
+            uint16_t bits_per_sample = *(uint16_t*)(file_chunk->data + 34);
+            
+            // Set decoder properties
+            if (!decoder->properties_initialized)
+            {
+                decoder->sample_rate = sample_rate;
+                decoder->channels = channels;
+                decoder->properties_initialized = 1;
+            }
+            
+            // Find data chunk start (skip header)
+            size_t data_start = 44; // Basic WAV header size
+            size_t data_size = file_chunk->size - data_start;
+            
+            if (data_size == 0)
+            {
+                // No audio data in this chunk
+                result->chunks = NULL;
+                result->chunk_count = 0;
+                result->error_code = SONIX_OK;
+                result->error_message = NULL;
+                return result;
+            }
+            
+            // Process the audio data portion
+            uint32_t bytes_per_sample = bits_per_sample / 8;
+            uint32_t samples_in_chunk = (uint32_t)(data_size / (bytes_per_sample * channels));
+            
+            if (samples_in_chunk == 0)
+            {
+                result->chunks = NULL;
+                result->chunk_count = 0;
+                result->error_code = SONIX_OK;
+                result->error_message = NULL;
+                return result;
+            }
+            
+            // Allocate memory for converted samples
+            float* samples = (float*)malloc(samples_in_chunk * channels * sizeof(float));
+            if (!samples)
+            {
+                free(result);
+                set_error("Failed to allocate memory for WAV samples");
+                return NULL;
+            }
+            
+            // Convert samples to float (simplified - assumes 16-bit PCM)
+            if (bits_per_sample == 16)
+            {
+                int16_t* pcm_data = (int16_t*)(file_chunk->data + data_start);
+                for (uint32_t i = 0; i < samples_in_chunk * channels; i++)
+                {
+                    samples[i] = (float)pcm_data[i] / 32768.0f;
+                }
+            }
+            else
+            {
+                // Unsupported bit depth for this simplified implementation
+                free(samples);
+                free(result);
+                set_error("Unsupported WAV bit depth for chunked processing");
+                return NULL;
+            }
+            
+            // Create audio chunk
+            SonixAudioChunk* audio_chunks = (SonixAudioChunk*)malloc(sizeof(SonixAudioChunk));
+            if (!audio_chunks)
+            {
+                free(samples);
+                free(result);
+                set_error("Failed to allocate memory for WAV audio chunk");
+                return NULL;
+            }
+            
+            audio_chunks[0].samples = samples;
+            audio_chunks[0].sample_count = samples_in_chunk * channels;
+            audio_chunks[0].start_sample = 0;
+            audio_chunks[0].is_last = file_chunk->is_last;
+            
+            result->chunks = audio_chunks;
+            result->chunk_count = 1;
+            result->error_code = SONIX_OK;
+            result->error_message = NULL;
+            
+            return result;
+        }
+    }
+    
+    // For subsequent chunks or chunks without header, assume raw PCM data
+    if (decoder->properties_initialized)
+    {
+        uint32_t bytes_per_sample = 2; // Assume 16-bit for simplicity
+        uint32_t samples_in_chunk = (uint32_t)(file_chunk->size / (bytes_per_sample * decoder->channels));
+        
+        if (samples_in_chunk == 0)
+        {
+            result->chunks = NULL;
+            result->chunk_count = 0;
+            result->error_code = SONIX_OK;
+            result->error_message = NULL;
+            return result;
+        }
+        
+        // Allocate memory for converted samples
+        float* samples = (float*)malloc(samples_in_chunk * decoder->channels * sizeof(float));
+        if (!samples)
+        {
+            free(result);
+            set_error("Failed to allocate memory for WAV chunk samples");
+            return NULL;
+        }
+        
+        // Convert 16-bit PCM to float
+        int16_t* pcm_data = (int16_t*)file_chunk->data;
+        for (uint32_t i = 0; i < samples_in_chunk * decoder->channels; i++)
+        {
+            samples[i] = (float)pcm_data[i] / 32768.0f;
+        }
+        
+        // Create audio chunk
+        SonixAudioChunk* audio_chunks = (SonixAudioChunk*)malloc(sizeof(SonixAudioChunk));
+        if (!audio_chunks)
+        {
+            free(samples);
+            free(result);
+            set_error("Failed to allocate memory for WAV audio chunk");
+            return NULL;
+        }
+        
+        audio_chunks[0].samples = samples;
+        audio_chunks[0].sample_count = samples_in_chunk * decoder->channels;
+        audio_chunks[0].start_sample = file_chunk->position / (bytes_per_sample * decoder->channels);
+        audio_chunks[0].is_last = file_chunk->is_last;
+        
+        result->chunks = audio_chunks;
+        result->chunk_count = 1;
+        result->error_code = SONIX_OK;
+        result->error_message = NULL;
+        
+        return result;
+    }
+    
+    // Cannot process without format information
+    free(result);
+    set_error("WAV format not initialized for chunk processing");
+    return NULL;
+}
+
+
+static SonixChunkResult* process_mp3_chunk(SonixChunkedDecoder* decoder, SonixFileChunk* file_chunk)
+{
+    if (!decoder || !file_chunk || !file_chunk->data)
+    {
+        set_error("Invalid parameters for MP3 chunk processing");
+        return NULL;
+    }
+
+    // Allocate result structure
+    SonixChunkResult* result = (SonixChunkResult*)malloc(sizeof(SonixChunkResult));
+    if (!result)
+    {
+        set_error("Failed to allocate memory for chunk result");
+        return NULL;
+    }
+    memset(result, 0, sizeof(SonixChunkResult));
+
+    // Process MP3 frames in the chunk
+    size_t offset = 0;
+    size_t chunk_capacity = 10; // Initial capacity for audio chunks
+    SonixAudioChunk* audio_chunks = (SonixAudioChunk*)malloc(chunk_capacity * sizeof(SonixAudioChunk));
+    if (!audio_chunks)
+    {
+        free(result);
+        set_error("Failed to allocate memory for audio chunks");
+        return NULL;
+    }
+
+    uint32_t chunk_count = 0;
+    uint64_t current_sample_position = 0;
+
+    while (offset < file_chunk->size)
+    {
+        mp3dec_frame_info_t info;
+        float pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
+
+        // Decode MP3 frame
+        int samples_per_channel = mp3dec_decode_frame(
+            &decoder->decoder_state.mp3_decoder,
+            file_chunk->data + offset,
+            file_chunk->size - offset,
+            pcm,
+            &info
+        );
+
+        if (samples_per_channel == 0)
+        {
+            if (info.frame_bytes == 0)
+            {
+                offset++;
+                continue;
+            }
+            offset += info.frame_bytes;
+            continue;
+        }
+
+        // Set decoder properties from first successful frame
+        if (!decoder->properties_initialized)
+        {
+            decoder->sample_rate = info.hz;
+            decoder->channels = info.channels;
+            decoder->properties_initialized = 1;
+        }
+
+        // Expand audio chunks array if needed
+        if (chunk_count >= chunk_capacity)
+        {
+            chunk_capacity *= 2;
+            SonixAudioChunk* new_chunks = (SonixAudioChunk*)realloc(audio_chunks, chunk_capacity * sizeof(SonixAudioChunk));
+            if (!new_chunks)
+            {
+                // Cleanup and return error
+                for (uint32_t i = 0; i < chunk_count; i++)
+                {
+                    free(audio_chunks[i].samples);
+                }
+                free(audio_chunks);
+                free(result);
+                set_error("Failed to reallocate memory for audio chunks");
+                return NULL;
+            }
+            audio_chunks = new_chunks;
+        }
+
+        // Allocate memory for this audio chunk's samples
+        int total_samples = samples_per_channel * info.channels;
+        float* chunk_samples = (float*)malloc(total_samples * sizeof(float));
+        if (!chunk_samples)
+        {
+            // Cleanup and return error
+            for (uint32_t i = 0; i < chunk_count; i++)
+            {
+                free(audio_chunks[i].samples);
+            }
+            free(audio_chunks);
+            free(result);
+            set_error("Failed to allocate memory for chunk samples");
+            return NULL;
+        }
+
+        // Copy samples to chunk
+        memcpy(chunk_samples, pcm, total_samples * sizeof(float));
+
+        // Fill audio chunk structure
+        audio_chunks[chunk_count].samples = chunk_samples;
+        audio_chunks[chunk_count].sample_count = total_samples;
+        audio_chunks[chunk_count].start_sample = current_sample_position;
+        audio_chunks[chunk_count].is_last = 0; // Will be set later if needed
+
+        current_sample_position += samples_per_channel; // Per-channel samples
+        chunk_count++;
+        offset += info.frame_bytes;
+    }
+
+    // Mark last chunk if this is the last file chunk
+    if (file_chunk->is_last && chunk_count > 0)
+    {
+        audio_chunks[chunk_count - 1].is_last = 1;
+    }
+
+    // Fill result structure
+    result->chunks = audio_chunks;
+    result->chunk_count = chunk_count;
+    result->error_code = SONIX_OK;
+    result->error_message = NULL;
+
+    return result;
+}
+
+SonixChunkResult* sonix_process_file_chunk(SonixChunkedDecoder* decoder, SonixFileChunk* file_chunk)
+{
+    if (!decoder || !file_chunk)
+    {
+        set_error("Invalid decoder or file chunk");
+        return NULL;
+    }
+
+    switch (decoder->format)
+    {
+        case SONIX_FORMAT_MP3:
+            return process_mp3_chunk(decoder, file_chunk);
+        case SONIX_FORMAT_FLAC:
+            return process_flac_chunk(decoder, file_chunk);
+        case SONIX_FORMAT_WAV:
+            return process_wav_chunk(decoder, file_chunk);
+        case SONIX_FORMAT_OGG:
+            set_error("OGG format requires separate compilation to avoid symbol conflicts");
+            return NULL;
+        default:
+            set_error("Unsupported format for chunked processing");
+            return NULL;
+    }
+}
+
+int sonix_seek_to_time(SonixChunkedDecoder* decoder, uint32_t time_ms)
+{
+    if (!decoder || !decoder->file_handle)
+    {
+        set_error("Invalid decoder for seeking");
+        return SONIX_ERROR_INVALID_DATA;
+    }
+
+    switch (decoder->format)
+    {
+        case SONIX_FORMAT_MP3:
+            // For MP3, we can only approximate seeking by file position
+            // This is a basic implementation - more sophisticated seeking would require
+            // building a seek table or using VBR headers
+            if (decoder->properties_initialized && decoder->sample_rate > 0)
+            {
+                // Estimate file position based on time and file size
+                double time_ratio = (double)time_ms / 1000.0;
+                uint64_t estimated_position = (uint64_t)(time_ratio * decoder->file_size);
+                
+                // Seek to estimated position
+                if (fseek(decoder->file_handle, estimated_position, SEEK_SET) != 0)
+                {
+                    set_error("Failed to seek in MP3 file");
+                    return SONIX_ERROR_DECODE_FAILED;
+                }
+                
+                decoder->current_position = estimated_position;
+                return SONIX_OK;
+            }
+            else
+            {
+                set_error("Cannot seek in MP3 file - decoder not initialized");
+                return SONIX_ERROR_INVALID_DATA;
+            }
+            
+        case SONIX_FORMAT_WAV:
+            // WAV files have predictable structure for seeking
+            if (decoder->properties_initialized && decoder->sample_rate > 0)
+            {
+                // Calculate byte position for WAV seeking
+                // Assume 16-bit stereo for simplicity
+                uint32_t bytes_per_sample = 2 * decoder->channels;
+                uint64_t target_sample = ((uint64_t)time_ms * decoder->sample_rate) / 1000;
+                uint64_t target_byte = 44 + (target_sample * bytes_per_sample); // 44 = WAV header size
+                
+                if (fseek(decoder->file_handle, target_byte, SEEK_SET) != 0)
+                {
+                    set_error("Failed to seek in WAV file");
+                    return SONIX_ERROR_DECODE_FAILED;
+                }
+                
+                decoder->current_position = target_byte;
+                return SONIX_OK;
+            }
+            else
+            {
+                set_error("Cannot seek in WAV file - decoder not initialized");
+                return SONIX_ERROR_INVALID_DATA;
+            }
+            
+        case SONIX_FORMAT_FLAC:
+            // FLAC seeking is complex and would require seek table parsing
+            // For now, implement basic file position estimation
+            if (decoder->properties_initialized && decoder->sample_rate > 0)
+            {
+                double time_ratio = (double)time_ms / 1000.0;
+                uint64_t estimated_position = (uint64_t)(time_ratio * decoder->file_size);
+                
+                if (fseek(decoder->file_handle, estimated_position, SEEK_SET) != 0)
+                {
+                    set_error("Failed to seek in FLAC file");
+                    return SONIX_ERROR_DECODE_FAILED;
+                }
+                
+                decoder->current_position = estimated_position;
+                return SONIX_OK;
+            }
+            else
+            {
+                set_error("Cannot seek in FLAC file - decoder not initialized");
+                return SONIX_ERROR_INVALID_DATA;
+            }
+            
+        case SONIX_FORMAT_OGG:
+            set_error("OGG seeking not implemented - requires separate compilation");
+            return SONIX_ERROR_DECODE_FAILED;
+            
+        default:
+            set_error("Unsupported format for seeking");
+            return SONIX_ERROR_INVALID_FORMAT;
+    }
+}
+
+uint32_t sonix_get_optimal_chunk_size(int format, uint64_t file_size)
+{
+    // Default chunk sizes based on format and file size
+    uint32_t base_chunk_size;
+    
+    switch (format)
+    {
+        case SONIX_FORMAT_MP3:
+            // MP3 frames are variable size, use larger chunks for efficiency
+            base_chunk_size = 1024 * 1024; // 1MB
+            break;
+        case SONIX_FORMAT_FLAC:
+            // FLAC blocks are larger, can use bigger chunks
+            base_chunk_size = 2 * 1024 * 1024; // 2MB
+            break;
+        case SONIX_FORMAT_WAV:
+            // WAV is uncompressed, smaller chunks are fine
+            base_chunk_size = 512 * 1024; // 512KB
+            break;
+        case SONIX_FORMAT_OGG:
+            // OGG pages are variable, use medium chunks
+            base_chunk_size = 1024 * 1024; // 1MB
+            break;
+        default:
+            base_chunk_size = 1024 * 1024; // 1MB default
+            break;
+    }
+    
+    // Adjust based on file size
+    if (file_size < 10 * 1024 * 1024) // < 10MB
+    {
+        return base_chunk_size / 4; // Smaller chunks for small files
+    }
+    else if (file_size < 100 * 1024 * 1024) // < 100MB
+    {
+        return base_chunk_size / 2; // Medium chunks
+    }
+    else
+    {
+        return base_chunk_size; // Full size for large files
+    }
+}
+
+void sonix_cleanup_chunked_decoder(SonixChunkedDecoder* decoder)
+{
+    if (decoder)
+    {
+        // Cleanup format-specific decoder state
+        switch (decoder->format)
+        {
+            case SONIX_FORMAT_FLAC:
+                if (decoder->decoder_state.flac_decoder)
+                {
+                    drflac_close(decoder->decoder_state.flac_decoder);
+                }
+                break;
+            case SONIX_FORMAT_WAV:
+                // WAV decoder cleanup if needed
+                drwav_uninit(&decoder->decoder_state.wav_decoder);
+                break;
+            case SONIX_FORMAT_OGG:
+                // OGG cleanup not implemented
+                break;
+            case SONIX_FORMAT_MP3:
+            default:
+                // No special cleanup needed for MP3 or unsupported formats
+                break;
+        }
+        
+        if (decoder->file_handle)
+        {
+            fclose(decoder->file_handle);
+        }
+        if (decoder->file_path)
+        {
+            free(decoder->file_path);
+        }
+        free(decoder);
+    }
+}
+
+void sonix_free_chunk_result(SonixChunkResult* result)
+{
+    if (result)
+    {
+        if (result->chunks)
+        {
+            // Free individual chunk samples
+            for (uint32_t i = 0; i < result->chunk_count; i++)
+            {
+                if (result->chunks[i].samples)
+                {
+                    free(result->chunks[i].samples);
+                }
+            }
+            free(result->chunks);
+        }
+        if (result->error_message)
+        {
+            free(result->error_message);
+        }
+        free(result);
+    }
+}

@@ -50,8 +50,60 @@ final class SonixMp3DebugStats extends ffi.Struct {
   external int file_size;
 }
 
+/// Chunked processing structures
+final class SonixFileChunk extends ffi.Struct {
+  external ffi.Pointer<ffi.Uint8> data;
+  @ffi.Size()
+  external int size;
+  @ffi.Uint64()
+  external int position;
+  @ffi.Int32()
+  external int is_last;
+}
+
+final class SonixAudioChunk extends ffi.Struct {
+  external ffi.Pointer<ffi.Float> samples;
+  @ffi.Uint32()
+  external int sample_count;
+  @ffi.Uint64()
+  external int start_sample;
+  @ffi.Int32()
+  external int is_last;
+}
+
+final class SonixChunkResult extends ffi.Struct {
+  external ffi.Pointer<SonixAudioChunk> chunks;
+  @ffi.Uint32()
+  external int chunk_count;
+  @ffi.Int32()
+  external int error_code;
+  external ffi.Pointer<ffi.Char> error_message;
+}
+
+/// Opaque chunked decoder handle
+final class SonixChunkedDecoder extends ffi.Opaque {}
+
 typedef SonixGetLastMp3DebugStatsNative = ffi.Pointer<SonixMp3DebugStats> Function();
 typedef SonixGetLastMp3DebugStatsDart = ffi.Pointer<SonixMp3DebugStats> Function();
+
+// Chunked processing function signatures
+typedef SonixInitChunkedDecoderNative = ffi.Pointer<SonixChunkedDecoder> Function(ffi.Int32 format, ffi.Pointer<ffi.Char> filePath);
+typedef SonixInitChunkedDecoderDart = ffi.Pointer<SonixChunkedDecoder> Function(int format, ffi.Pointer<ffi.Char> filePath);
+
+typedef SonixProcessFileChunkNative = ffi.Pointer<SonixChunkResult> Function(ffi.Pointer<SonixChunkedDecoder> decoder, ffi.Pointer<SonixFileChunk> fileChunk);
+typedef SonixProcessFileChunkDart = ffi.Pointer<SonixChunkResult> Function(ffi.Pointer<SonixChunkedDecoder> decoder, ffi.Pointer<SonixFileChunk> fileChunk);
+
+typedef SonixSeekToTimeNative = ffi.Int32 Function(ffi.Pointer<SonixChunkedDecoder> decoder, ffi.Uint32 timeMs);
+typedef SonixSeekToTimeDart = int Function(ffi.Pointer<SonixChunkedDecoder> decoder, int timeMs);
+
+typedef SonixGetOptimalChunkSizeNative = ffi.Uint32 Function(ffi.Int32 format, ffi.Uint64 fileSize);
+typedef SonixGetOptimalChunkSizeDart = int Function(int format, int fileSize);
+
+typedef SonixCleanupChunkedDecoderNative = ffi.Void Function(ffi.Pointer<SonixChunkedDecoder> decoder);
+typedef SonixCleanupChunkedDecoderDart = void Function(ffi.Pointer<SonixChunkedDecoder> decoder);
+
+typedef SonixFreeChunkResultNative = ffi.Void Function(ffi.Pointer<SonixChunkResult> result);
+typedef SonixFreeChunkResultDart = void Function(ffi.Pointer<SonixChunkResult> result);
 
 /// Function signatures for native library
 typedef SonixDetectFormatNative = ffi.Int32 Function(ffi.Pointer<ffi.Uint8> data, ffi.Size size);
@@ -114,4 +166,32 @@ class SonixNativeBindings {
   static final SonixGetLastMp3DebugStatsDart getLastMp3DebugStats = lib
       .lookup<ffi.NativeFunction<SonixGetLastMp3DebugStatsNative>>('sonix_get_last_mp3_debug_stats')
       .asFunction();
+
+  // Chunked processing functions
+
+  /// Initialize chunked decoder for a specific format
+  static final SonixInitChunkedDecoderDart initChunkedDecoder = lib
+      .lookup<ffi.NativeFunction<SonixInitChunkedDecoderNative>>('sonix_init_chunked_decoder')
+      .asFunction();
+
+  /// Process a file chunk and return decoded audio chunks
+  static final SonixProcessFileChunkDart processFileChunk = lib
+      .lookup<ffi.NativeFunction<SonixProcessFileChunkNative>>('sonix_process_file_chunk')
+      .asFunction();
+
+  /// Seek to a specific time position in the audio file
+  static final SonixSeekToTimeDart seekToTime = lib.lookup<ffi.NativeFunction<SonixSeekToTimeNative>>('sonix_seek_to_time').asFunction();
+
+  /// Get optimal chunk size for a given format and file size
+  static final SonixGetOptimalChunkSizeDart getOptimalChunkSize = lib
+      .lookup<ffi.NativeFunction<SonixGetOptimalChunkSizeNative>>('sonix_get_optimal_chunk_size')
+      .asFunction();
+
+  /// Cleanup chunked decoder and free resources
+  static final SonixCleanupChunkedDecoderDart cleanupChunkedDecoder = lib
+      .lookup<ffi.NativeFunction<SonixCleanupChunkedDecoderNative>>('sonix_cleanup_chunked_decoder')
+      .asFunction();
+
+  /// Free chunk result allocated by processFileChunk
+  static final SonixFreeChunkResultDart freeChunkResult = lib.lookup<ffi.NativeFunction<SonixFreeChunkResultNative>>('sonix_free_chunk_result').asFunction();
 }

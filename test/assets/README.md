@@ -1,38 +1,75 @@
-# Test Audio Assets
+# Test Assets Directory
 
-This directory contains test audio files and data for comprehensive testing of the Sonix audio waveform package.
+This directory contains test files for the Sonix audio processing library.
 
-## Test Audio Files
+## Directory Structure
 
-### Valid Audio Files
+```
+test/assets/
+├── README.md                    # This file
+├── generated/                   # Generated test files (excluded from git)
+│   ├── *.wav                   # Generated WAV test files
+│   ├── *.mp3                   # Generated MP3 test files  
+│   ├── *.flac                  # Generated FLAC test files
+│   ├── *.ogg                   # Generated OGG test files
+│   ├── corrupted_*             # Corrupted files for error testing
+│   ├── invalid_*               # Invalid files for error testing
+│   └── large_files/            # Large test files (>50MB)
+├── reference_waveforms.json    # Reference waveform data
+├── test_configurations.json    # Test configuration data
+└── [existing test files]       # Pre-existing small test files
+```
 
-The following real audio files are used for comprehensive testing across all supported formats:
+## Generated Files
 
-- `Double-F the King - Your Blessing.mp3` - MP3 format test file
-- `Double-F the King - Your Blessing.wav` - WAV format test file
-- `Double-F the King - Your Blessing.flac` - FLAC lossless format test file
-- `Double-F the King - Your Blessing.ogg` - OGG Vorbis format test file
-- `Double-F the King - Your Blessing.opus` - Opus format test file
+The `generated/` directory contains test files that are automatically created by the test suite:
 
-**Audio Credit:**  
-"Your Blessing" by Double F The King  
-Source: https://freemusicarchive.org/music/double-f-the-king/heartstrings/your-blessing/  
-Licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)  
-No changes were made to the original audio content.
+- **Size Categories**: tiny (100KB), small (1MB), medium (10MB), large (100MB), xlarge (500MB)
+- **Audio Formats**: WAV, MP3, FLAC, OGG
+- **Audio Characteristics**: Various sample rates (8kHz-96kHz), channel counts (1-6), bit depths (16-24)
+- **Corrupted Files**: Files with various types of corruption for error handling tests
+- **Large Files**: Files >50MB are stored in the `large_files/` subdirectory
 
-### Corrupted Files (for error testing)
+## Git Exclusion
 
-- `corrupted_header.mp3` - MP3 file with corrupted header
-- `corrupted_data.wav` - WAV file with corrupted audio data
-- `truncated.flac` - Truncated FLAC file
-- `invalid_format.xyz` - File with unsupported extension
-- `empty_file.mp3` - Empty file with MP3 extension
+Generated test files are excluded from version control via `.gitignore` because:
 
-### Reference Waveform Data
+1. **Size**: Generated files can total several GB
+2. **Reproducibility**: Files are generated deterministically by the test suite
+3. **CI/CD**: Generated on-demand during testing
 
-- `reference_waveforms.json` - Pre-calculated waveform data for validation
-- `test_configurations.json` - Various test configurations and expected results
+## Generating Test Files
 
-## File Generation
+Test files are automatically generated when running comprehensive tests:
 
-Test audio files are generated programmatically using synthetic audio data to ensure consistent and predictable test results.
+```bash
+# Generate and run comprehensive tests
+flutter test test/practical_comprehensive_test_suite.dart
+
+# Or generate files manually
+dart test/run_comprehensive_tests.dart --generate-only
+```
+
+## File Naming Convention
+
+Generated files follow this naming pattern:
+```
+{format}_{size}_{sampleRate}_{channels}ch.{extension}
+```
+
+Examples:
+- `wav_small_44100_2ch.wav` - Small WAV file, 44.1kHz, stereo
+- `mp3_medium_48000_1ch.mp3` - Medium MP3 file, 48kHz, mono
+- `flac_large_96000_2ch.flac` - Large FLAC file, 96kHz, stereo
+
+## Cleanup
+
+To clean up generated files:
+
+```bash
+# Remove all generated files
+rm -rf test/assets/generated/
+
+# Or use the test runner
+dart test/run_comprehensive_tests.dart --cleanup
+```

@@ -45,6 +45,31 @@ typedef struct {
     uint32_t duration_ms;    // Duration in milliseconds
 } SonixAudioData;
 
+// Chunked processing structures
+typedef struct {
+    uint8_t* data;           // Chunk data
+    size_t size;             // Size of chunk in bytes
+    uint64_t position;       // Position in file
+    int is_last;             // 1 if this is the last chunk, 0 otherwise
+} SonixFileChunk;
+
+typedef struct {
+    float* samples;          // Decoded audio samples
+    uint32_t sample_count;   // Number of samples in this chunk
+    uint64_t start_sample;   // Starting sample position in the full audio
+    int is_last;             // 1 if this is the last audio chunk, 0 otherwise
+} SonixAudioChunk;
+
+typedef struct {
+    SonixAudioChunk* chunks; // Array of audio chunks
+    uint32_t chunk_count;    // Number of chunks in array
+    int error_code;          // Error code (SONIX_OK if successful)
+    char* error_message;     // Error message (NULL if successful)
+} SonixChunkResult;
+
+// Chunked decoder handle
+typedef struct SonixChunkedDecoder SonixChunkedDecoder;
+
 // Debug statistics for MP3 decoding (development only; not stable API)
 typedef struct {
     uint32_t frame_count;      // Number of decoded frames
@@ -86,6 +111,52 @@ SONIX_EXPORT void sonix_free_audio_data(SonixAudioData* audio_data);
  * @return Pointer to error message string
  */
 SONIX_EXPORT const char* sonix_get_error_message(void);
+
+// Chunked processing functions
+
+/**
+ * Initialize chunked decoder for a specific format
+ * @param format Audio format (SONIX_FORMAT_*)
+ * @param file_path Path to the audio file (for seeking support)
+ * @return Pointer to chunked decoder or NULL on error
+ */
+SONIX_EXPORT SonixChunkedDecoder* sonix_init_chunked_decoder(int format, const char* file_path);
+
+/**
+ * Process a file chunk and return decoded audio chunks
+ * @param decoder Pointer to chunked decoder
+ * @param file_chunk Pointer to file chunk to process
+ * @return Pointer to chunk result or NULL on error
+ */
+SONIX_EXPORT SonixChunkResult* sonix_process_file_chunk(SonixChunkedDecoder* decoder, SonixFileChunk* file_chunk);
+
+/**
+ * Seek to a specific time position in the audio file
+ * @param decoder Pointer to chunked decoder
+ * @param time_ms Time position in milliseconds
+ * @return SONIX_OK on success, error code on failure
+ */
+SONIX_EXPORT int sonix_seek_to_time(SonixChunkedDecoder* decoder, uint32_t time_ms);
+
+/**
+ * Get optimal chunk size for a given format and file size
+ * @param format Audio format (SONIX_FORMAT_*)
+ * @param file_size Size of the audio file in bytes
+ * @return Recommended chunk size in bytes
+ */
+SONIX_EXPORT uint32_t sonix_get_optimal_chunk_size(int format, uint64_t file_size);
+
+/**
+ * Cleanup chunked decoder and free resources
+ * @param decoder Pointer to chunked decoder
+ */
+SONIX_EXPORT void sonix_cleanup_chunked_decoder(SonixChunkedDecoder* decoder);
+
+/**
+ * Free chunk result allocated by sonix_process_file_chunk
+ * @param result Pointer to chunk result to free
+ */
+SONIX_EXPORT void sonix_free_chunk_result(SonixChunkResult* result);
 
 
 #ifdef __cplusplus
