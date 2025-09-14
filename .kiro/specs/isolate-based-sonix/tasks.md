@@ -66,7 +66,6 @@
 
 - [x] 9. Implement cancellation support for long-running operations
 
-
   - Add cancellation token support to ProcessingTask
   - Implement cancellation handling in background isolates
   - Add cancel methods to SonixInstance for stopping operations
@@ -81,7 +80,7 @@
   - Write integration tests to verify backward compatibility
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 11. Add simple API methods focused on waveform visualization
+- [x] 11. Add simple API methods focused on waveform visualization
 
   - Implement simplified generateWaveform method that returns only visualization data
   - Add utility methods for format checking and supported formats

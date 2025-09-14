@@ -542,43 +542,6 @@ class Sonix {
     await _defaultInstance!.initialize();
   }
 
-  /// Generate waveform data from an audio file
-  ///
-  /// This is a backward compatibility method that uses the default SonixInstance.
-  /// For new code, prefer creating a SonixInstance directly.
-  ///
-  /// Example:
-  /// ```dart
-  /// final waveformData = await Sonix.generateWaveform('audio.mp3');
-  /// ```
-  @Deprecated('Use SonixInstance.generateWaveform instead')
-  static Future<WaveformData> generateWaveform(
-    String filePath, {
-    int resolution = 1000,
-    WaveformType type = WaveformType.bars,
-    bool normalize = true,
-    WaveformConfig? config,
-  }) async {
-    final instance = await _getDefaultInstance();
-    return instance.generateWaveform(filePath, resolution: resolution, type: type, normalize: normalize, config: config);
-  }
-
-  /// Generate waveform data with streaming progress updates
-  ///
-  /// This is a backward compatibility method that uses the default SonixInstance.
-  /// For new code, prefer creating a SonixInstance directly.
-  @Deprecated('Use SonixInstance.generateWaveformStream instead')
-  static Stream<WaveformProgress> generateWaveformStream(
-    String filePath, {
-    int resolution = 1000,
-    WaveformType type = WaveformType.bars,
-    bool normalize = true,
-    WaveformConfig? config,
-  }) async* {
-    final instance = await _getDefaultInstance();
-    yield* instance.generateWaveformStream(filePath, resolution: resolution, type: type, normalize: normalize, config: config);
-  }
-
   /// Check if a specific audio format is supported
   ///
   /// This is a utility method that doesn't require a SonixInstance.
@@ -665,13 +628,5 @@ class Sonix {
       await _defaultInstance!.dispose();
       _defaultInstance = null;
     }
-  }
-
-  /// Get the default Sonix instance, creating it if necessary
-  static Future<SonixInstance> _getDefaultInstance() async {
-    if (_defaultInstance == null) {
-      await initialize();
-    }
-    return _defaultInstance!;
   }
 }
