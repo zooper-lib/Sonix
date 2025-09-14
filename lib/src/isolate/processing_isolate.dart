@@ -77,19 +77,16 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
   try {
     // Send initial progress update if streaming is enabled
     if (request.streamResults) {
-      final progressUpdate = ProgressUpdate(
-        id: 'progress_${DateTime.now().millisecondsSinceEpoch}',
-        timestamp: DateTime.now(),
-        requestId: request.id,
-        progress: 0.0,
-        statusMessage: 'Starting audio file processing',
-      );
-      mainSendPort.send(progressUpdate.toJson());
+      _sendProgressUpdate(mainSendPort, request.id, 0.0, 'Initializing audio processing');
     }
 
     // Step 1: Create appropriate decoder for the file format
     AudioDecoder? decoder;
     try {
+      if (request.streamResults) {
+        _sendProgressUpdate(mainSendPort, request.id, 0.1, 'Creating audio decoder');
+      }
+
       decoder = AudioDecoderFactory.createDecoder(request.filePath);
     } catch (error) {
       // Handle decoder creation errors immediately
@@ -98,46 +95,31 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
     }
 
     try {
-      // Send progress update for decoding phase
+      // Step 2: Decode the audio file with progress updates
       if (request.streamResults) {
-        final progressUpdate = ProgressUpdate(
-          id: 'progress_${DateTime.now().millisecondsSinceEpoch}',
-          timestamp: DateTime.now(),
-          requestId: request.id,
-          progress: 0.2,
-          statusMessage: 'Decoding audio file',
-        );
-        mainSendPort.send(progressUpdate.toJson());
+        _sendProgressUpdate(mainSendPort, request.id, 0.2, 'Reading audio file');
       }
 
-      // Step 2: Decode the audio file
       final audioData = await decoder!.decode(request.filePath);
 
-      // Send progress update for waveform generation phase
       if (request.streamResults) {
-        final progressUpdate = ProgressUpdate(
-          id: 'progress_${DateTime.now().millisecondsSinceEpoch}',
-          timestamp: DateTime.now(),
-          requestId: request.id,
-          progress: 0.6,
-          statusMessage: 'Generating waveform data',
-        );
-        mainSendPort.send(progressUpdate.toJson());
+        _sendProgressUpdate(mainSendPort, request.id, 0.5, 'Audio decoding complete');
       }
 
-      // Step 3: Generate waveform from audio data
+      // Step 3: Generate waveform from audio data with progress updates
+      if (request.streamResults) {
+        _sendProgressUpdate(mainSendPort, request.id, 0.6, 'Analyzing audio data');
+      }
+
       final waveformData = await WaveformGenerator.generate(audioData, config: request.config);
 
-      // Send final progress update
       if (request.streamResults) {
-        final progressUpdate = ProgressUpdate(
-          id: 'progress_${DateTime.now().millisecondsSinceEpoch}',
-          timestamp: DateTime.now(),
-          requestId: request.id,
-          progress: 1.0,
-          statusMessage: 'Waveform generation complete',
-        );
-        mainSendPort.send(progressUpdate.toJson());
+        _sendProgressUpdate(mainSendPort, request.id, 0.9, 'Finalizing waveform data');
+      }
+
+      // Send final progress update before completion
+      if (request.streamResults) {
+        _sendProgressUpdate(mainSendPort, request.id, 1.0, 'Waveform generation complete');
       }
 
       // Send completion response
@@ -154,10 +136,22 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       // Always dispose of the decoder to free resources
       decoder?.dispose();
     }
-  } catch (error, stackTrace) {
+  } catch (error) {
     // Send error response
     _sendErrorResponse(mainSendPort, request.id, error);
   }
+}
+
+/// Send a progress update to the main isolate
+void _sendProgressUpdate(SendPort mainSendPort, String requestId, double progress, String statusMessage) {
+  final progressUpdate = ProgressUpdate(
+    id: 'progress_${DateTime.now().millisecondsSinceEpoch}',
+    timestamp: DateTime.now(),
+    requestId: requestId,
+    progress: progress,
+    statusMessage: statusMessage,
+  );
+  mainSendPort.send(progressUpdate.toJson());
 }
 
 /// Send an error response back to the main isolate

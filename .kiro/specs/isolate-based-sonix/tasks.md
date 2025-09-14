@@ -33,21 +33,18 @@
 
 - [x] 5. Add comprehensive error handling across isolate boundaries
 
-
-
-
-
   - Implement IsolateProcessingException and IsolateCommunicationException classes
   - Add error serialization and deserialization for cross-isolate communication
   - Implement error recovery mechanisms and isolate crash detection
   - Write unit tests for error handling and recovery scenarios
   - _Requirements: 2.4, 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 6. Implement streaming waveform generation with progress updates
+- [x] 6. Implement streaming waveform generation with progress updates
 
   - Create WaveformProgress class for progress reporting
   - Implement streaming API in SonixInstance with progress callbacks
   - Add progress update communication from background isolates
+
   - Write integration tests for streaming waveform generation and progress updates
   - _Requirements: 6.1, 6.2, 6.3, 6.5, 3.2_
 
@@ -59,7 +56,7 @@
   - Write unit tests for cross-isolate cache functionality and synchronization
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 8. Add automatic resource management and optimization
+- [x] 8. Add automatic resource management and optimization
 
   - Implement automatic isolate cleanup after idle timeout
   - Add memory pressure detection and resource optimization

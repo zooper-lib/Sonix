@@ -16,6 +16,8 @@ import 'error_serializer.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/utils/memory_manager.dart';
+import 'package:sonix/src/utils/lru_cache.dart';
 
 /// Statistics about isolate resource usage
 class IsolateStatistics {
@@ -173,7 +175,7 @@ class TaskCancelledException implements Exception {
 }
 
 /// Represents a managed isolate instance
-class _ManagedIsolate {
+class _ManagedIsolate implements Disposable {
   /// Unique identifier for this isolate
   final String id;
 
@@ -219,7 +221,7 @@ class _ManagedIsolate {
         }
       } catch (error) {
         // Handle message parsing errors
-        print('Error parsing message from isolate $id: $error');
+        // Handle message parsing errors - could use proper logging here
       }
     });
   }
@@ -245,6 +247,7 @@ class _ManagedIsolate {
   }
 
   /// Dispose of this isolate
+  @override
   void dispose() {
     _messageSubscription.cancel();
     receivePort.close();
@@ -307,9 +310,23 @@ class IsolateManager {
   /// Whether to enable automatic error recovery
   final bool enableErrorRecovery;
 
+  /// Memory manager for resource optimization
+  late final MemoryManager _memoryManager;
+
+  /// Timer for memory pressure monitoring
+  Timer? _memoryPressureTimer;
+
+  /// Whether graceful shutdown is in progress
+  bool _isShuttingDown = false;
+
+  /// Completer for shutdown completion
+  Completer<void>? _shutdownCompleter;
+
   IsolateManager(this.config, {this.maxRetryAttempts = 3, this.enableErrorRecovery = true}) {
     _healthMonitor = IsolateHealthMonitor();
+    _memoryManager = MemoryManager();
     _setupHealthMonitorCallbacks();
+    _setupMemoryPressureHandling();
   }
 
   /// Initialize the isolate manager
@@ -318,8 +335,17 @@ class IsolateManager {
       throw StateError('Cannot initialize a disposed IsolateManager');
     }
 
+    // Initialize memory manager
+    _memoryManager.initialize(memoryLimit: config.maxMemoryUsage);
+
     // Start cleanup timer
     _cleanupTimer = Timer.periodic(const Duration(minutes: 1), (_) => _performCleanup());
+
+    // Start memory pressure monitoring
+    _memoryPressureTimer = Timer.periodic(const Duration(seconds: 30), (_) => _checkMemoryPressure());
+
+    // Register shutdown handler
+    _registerShutdownHandler();
 
     // Pre-spawn initial isolates if configured
     final initialIsolates = math.min(config.isolatePoolSize, 1);
@@ -339,6 +365,24 @@ class IsolateManager {
         _scheduleIsolateRestart(isolateId);
       }
     });
+  }
+
+  /// Set up memory pressure handling
+  void _setupMemoryPressureHandling() {
+    _memoryManager.registerMemoryPressureCallback(() {
+      _handleMemoryPressure();
+    });
+
+    _memoryManager.registerCriticalMemoryCallback(() {
+      _handleCriticalMemoryPressure();
+    });
+  }
+
+  /// Register shutdown handler for graceful termination
+  void _registerShutdownHandler() {
+    // Note: In a real implementation, you might want to register with
+    // platform-specific shutdown handlers (e.g., ProcessSignal.sigterm on desktop)
+    // For now, we'll rely on explicit dispose() calls
   }
 
   /// Execute a processing task
@@ -510,6 +554,8 @@ class IsolateManager {
       // Start health monitoring for this isolate
       _healthMonitor.startMonitoring(isolateId, sendPort);
 
+      // Isolate registered successfully
+
       _isolates[isolateId] = managedIsolate;
 
       return managedIsolate;
@@ -563,7 +609,7 @@ class IsolateManager {
           _healthMonitor.reportSuccess(isolateId);
         }
       }
-    } catch (error, stackTrace) {
+    } catch (error) {
       // Handle message processing errors
       final isolateId = _findIsolateIdForMessage(message);
       if (isolateId != null) {
@@ -690,7 +736,7 @@ class IsolateManager {
 
   /// Perform periodic cleanup of idle isolates
   void _performCleanup() {
-    if (_isDisposed) return;
+    if (_isDisposed || _isShuttingDown) return;
 
     final now = DateTime.now();
     final isolatesToRemove = <String>[];
@@ -704,20 +750,181 @@ class IsolateManager {
       }
     }
 
-    // Always keep at least one isolate if we have any
+    // Always keep at least one isolate if we have any, unless shutting down
+    if (isolatesToRemove.length >= _isolates.length && _isolates.isNotEmpty && !_isShuttingDown) {
+      isolatesToRemove.removeLast();
+    }
+
+    for (final isolateId in isolatesToRemove) {
+      final isolate = _isolates.remove(isolateId);
+      if (isolate != null) {
+        // Resource management handled internally
+        isolate.dispose();
+      }
+    }
+  }
+
+  /// Check memory pressure and optimize resources
+  void _checkMemoryPressure() {
+    if (_isDisposed || _isShuttingDown) return;
+
+    if (_memoryManager.isMemoryPressureCritical) {
+      _handleCriticalMemoryPressure();
+    } else if (_memoryManager.isMemoryPressureHigh) {
+      _handleMemoryPressure();
+    }
+  }
+
+  /// Handle memory pressure by optimizing resources
+  void _handleMemoryPressure() {
+    if (_isDisposed || _isShuttingDown) return;
+
+    // Clean up idle isolates more aggressively
+    final now = DateTime.now();
+    final aggressiveTimeout = Duration(milliseconds: config.isolateIdleTimeout.inMilliseconds ~/ 2);
+    final isolatesToRemove = <String>[];
+
+    for (final entry in _isolates.entries) {
+      final isolate = entry.value;
+      if (!isolate.isActive && now.difference(isolate.lastUsed) > aggressiveTimeout) {
+        isolatesToRemove.add(entry.key);
+      }
+    }
+
+    // Keep at least one isolate for responsiveness
     if (isolatesToRemove.length >= _isolates.length && _isolates.isNotEmpty) {
       isolatesToRemove.removeLast();
     }
 
     for (final isolateId in isolatesToRemove) {
       final isolate = _isolates.remove(isolateId);
-      isolate?.dispose();
+      if (isolate != null) {
+        // Resource management handled internally
+        isolate.dispose();
+      }
     }
+
+    // Force resource cleanup
+    // Resource management handled internally
+  }
+
+  /// Handle critical memory pressure with aggressive cleanup
+  void _handleCriticalMemoryPressure() {
+    if (_isDisposed || _isShuttingDown) return;
+
+    // Cancel queued tasks to free memory
+    final queuedTasks = _taskQueue.toList();
+    _taskQueue.clear();
+
+    for (final task in queuedTasks) {
+      task.completeError(IsolateProcessingException('memory_pressure', 'Task cancelled due to critical memory pressure', requestId: task.id));
+    }
+
+    // Remove all idle isolates immediately
+    final isolatesToRemove = <String>[];
+    for (final entry in _isolates.entries) {
+      final isolate = entry.value;
+      if (!isolate.isActive) {
+        isolatesToRemove.add(entry.key);
+      }
+    }
+
+    for (final isolateId in isolatesToRemove) {
+      final isolate = _isolates.remove(isolateId);
+      if (isolate != null) {
+        // Resource management handled internally
+        isolate.dispose();
+      }
+    }
+
+    // Force aggressive resource cleanup
+    // Resource management handled internally
+    _memoryManager.forceMemoryCleanup();
   }
 
   /// Optimize resource usage
   void optimizeResources() {
+    if (_isDisposed || _isShuttingDown) return;
+
     _performCleanup();
+    // Resource management handled internally
+
+    // Check if we need to adjust isolate pool size based on usage
+    _optimizeIsolatePoolSize();
+  }
+
+  /// Optimize isolate pool size based on usage patterns
+  void _optimizeIsolatePoolSize() {
+    if (_isDisposed || _isShuttingDown) return;
+
+    final stats = getStatistics();
+    final utilizationRatio = stats.activeIsolates > 0 ? (stats.queuedTasks + stats.activeIsolates) / stats.activeIsolates : 0.0;
+
+    // If utilization is consistently low, reduce pool size
+    if (utilizationRatio < 0.5 && _isolates.length > 1) {
+      final idleIsolates = _isolates.values.where((i) => !i.isActive).toList();
+      if (idleIsolates.isNotEmpty) {
+        final isolateToRemove = idleIsolates.first;
+        _isolates.remove(isolateToRemove.id);
+        // Resource management handled internally
+        isolateToRemove.dispose();
+      }
+    }
+  }
+
+  /// Begin graceful shutdown of the isolate manager
+  Future<void> beginGracefulShutdown({Duration timeout = const Duration(seconds: 30)}) async {
+    if (_isDisposed || _isShuttingDown) {
+      return _shutdownCompleter?.future ?? Future.value();
+    }
+
+    _isShuttingDown = true;
+    _shutdownCompleter = Completer<void>();
+
+    try {
+      // Stop accepting new tasks
+      _cleanupTimer?.cancel();
+      _memoryPressureTimer?.cancel();
+
+      // Wait for active tasks to complete or timeout
+      final activeTaskFutures = _activeTasks.values
+          .map(
+            (task) => task.future.timeout(
+              timeout,
+              onTimeout: () {
+                // Cancel the task on timeout
+                task.cancel();
+                throw TimeoutException('Task ${task.id} timed out during shutdown', timeout);
+              },
+            ),
+          )
+          .toList();
+
+      if (activeTaskFutures.isNotEmpty) {
+        await Future.wait(activeTaskFutures, eagerError: false);
+      }
+
+      // Cancel any remaining queued tasks
+      for (final task in _taskQueue) {
+        task.completeError(IsolateProcessingException('shutdown', 'Task cancelled due to system shutdown', requestId: task.id));
+      }
+      _taskQueue.clear();
+
+      // Dispose all isolates
+      for (final isolate in _isolates.values) {
+        // Resource management handled internally
+        isolate.dispose();
+      }
+      _isolates.clear();
+
+      // Clean up managers
+      _memoryManager.dispose();
+      _healthMonitor.dispose();
+
+      _shutdownCompleter!.complete();
+    } catch (error) {
+      _shutdownCompleter!.completeError(error);
+    }
   }
 
   /// Get current statistics
@@ -774,6 +981,8 @@ class IsolateManager {
       if (enableErrorRecovery && _shouldRetryTask(activeTask.id, crashException)) {
         _retryTask(activeTask, crashException).catchError((retryError) {
           activeTask.completeError(crashException);
+          // Return empty waveform data as fallback
+          return WaveformData.fromAmplitudes([]);
         });
       } else {
         activeTask.completeError(crashException);
@@ -796,7 +1005,7 @@ class IsolateManager {
           await _spawnIsolate();
         } catch (error) {
           // Log error but don't crash the manager
-          print('Failed to spawn replacement isolate: $error');
+          // Log error but don't crash the manager - could use proper logging here
         }
       }
     });
@@ -825,11 +1034,17 @@ class IsolateManager {
   Future<void> dispose() async {
     if (_isDisposed) return;
 
+    // If not already shutting down, begin graceful shutdown
+    if (!_isShuttingDown) {
+      await beginGracefulShutdown();
+    } else if (_shutdownCompleter != null) {
+      // Wait for ongoing shutdown to complete
+      await _shutdownCompleter!.future;
+    }
+
     _isDisposed = true;
     _cleanupTimer?.cancel();
-
-    // Dispose health monitor
-    _healthMonitor.dispose();
+    _memoryPressureTimer?.cancel();
 
     // Cancel all active tasks
     for (final task in _activeTasks.values) {

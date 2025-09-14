@@ -262,20 +262,53 @@ class SonixInstance {
     // Create streaming processing task
     final task = ProcessingTask(id: _generateTaskId(), filePath: filePath, config: waveformConfig, streamResults: true);
 
-    // Listen to progress updates
-    final progressStream = task.progressStream;
-    if (progressStream != null) {
-      await for (final update in progressStream) {
-        yield WaveformProgress(progress: update.progress, statusMessage: update.statusMessage, partialData: update.partialData, isComplete: false);
-      }
-    }
+    // Set up a stream controller to manage the complete streaming flow
+    final streamController = StreamController<WaveformProgress>();
 
-    // Execute task and yield final result
+    // Handle the task execution and progress updates
+    _handleStreamingTask(task, streamController);
+
+    // Return the stream
+    yield* streamController.stream;
+  }
+
+  /// Handle streaming task execution with proper error handling and progress updates
+  Future<void> _handleStreamingTask(ProcessingTask task, StreamController<WaveformProgress> streamController) async {
     try {
+      // Listen to progress updates from the task
+      final progressSubscription = task.progressStream?.listen(
+        (update) {
+          if (!streamController.isClosed) {
+            streamController.add(
+              WaveformProgress(progress: update.progress, statusMessage: update.statusMessage, partialData: update.partialData, isComplete: false),
+            );
+          }
+        },
+        onError: (error) {
+          if (!streamController.isClosed) {
+            streamController.add(WaveformProgress(progress: task.progressStream?.isBroadcast == true ? 1.0 : 0.0, error: error.toString(), isComplete: true));
+            streamController.close();
+          }
+        },
+      );
+
+      // Execute the task
       final result = await _isolateManager.executeTask(task);
-      yield WaveformProgress(progress: 1.0, partialData: result, isComplete: true);
+
+      // Send final result
+      if (!streamController.isClosed) {
+        streamController.add(WaveformProgress(progress: 1.0, partialData: result, isComplete: true, statusMessage: 'Waveform generation complete'));
+        streamController.close();
+      }
+
+      // Clean up subscription
+      await progressSubscription?.cancel();
     } catch (error) {
-      yield WaveformProgress(progress: 1.0, error: error.toString(), isComplete: true);
+      // Handle execution errors
+      if (!streamController.isClosed) {
+        streamController.add(WaveformProgress(progress: 1.0, error: error.toString(), isComplete: true));
+        streamController.close();
+      }
     }
   }
 

@@ -143,6 +143,20 @@ class ResourceManager {
     );
   }
 
+  /// Optimize resource usage
+  void optimizeResources() {
+    _ensureInitialized();
+    _checkDisposed();
+
+    // Trigger memory pressure handling if needed
+    if (_memoryManager.isMemoryPressureHigh) {
+      _handleMemoryPressure();
+    }
+
+    // Clean up old resources
+    _disposeOldResources();
+  }
+
   /// Force cleanup of all resources
   Future<void> forceCleanup() async {
     _ensureInitialized();
