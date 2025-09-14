@@ -308,6 +308,44 @@ void main() {
         await manager.dispose();
       });
     });
+
+    group('Resource Management', () {
+      test('should provide comprehensive resource statistics', () async {
+        await manager.initialize();
+
+        final stats = manager.getStatistics();
+
+        expect(stats.activeIsolates, isA<int>());
+        expect(stats.queuedTasks, isA<int>());
+        expect(stats.completedTasks, isA<int>());
+        expect(stats.failedTasks, isA<int>());
+        expect(stats.averageProcessingTime, isA<Duration>());
+        expect(stats.memoryUsage, isA<double>());
+        expect(stats.isolateInfo, isA<Map<String, IsolateInfo>>());
+      });
+
+      test('should handle resource optimization', () async {
+        await manager.initialize();
+
+        // Should not throw errors
+        expect(() => manager.optimizeResources(), returnsNormally);
+
+        // Should still be functional
+        final stats = manager.getStatistics();
+        expect(stats.activeIsolates, greaterThanOrEqualTo(0));
+      });
+
+      test('should handle graceful shutdown', () async {
+        await manager.initialize();
+
+        // Should complete shutdown without errors
+        await expectLater(manager.beginGracefulShutdown(), completes);
+
+        // Should be in shutdown state
+        final stats = manager.getStatistics();
+        expect(stats.activeIsolates, equals(0));
+      });
+    });
   });
 
   group('ProcessingTask', () {
@@ -329,6 +367,19 @@ void main() {
 
       expect(task.streamResults, isFalse);
       expect(task.progressStream, isNull);
+    });
+
+    test('should handle task cancellation correctly', () async {
+      final task = ProcessingTask(id: 'cancel_task', filePath: 'test.mp3', config: const WaveformConfig(resolution: 100));
+
+      expect(task.cancelToken.isCancelled, isFalse);
+
+      task.cancel();
+
+      expect(task.cancelToken.isCancelled, isTrue);
+
+      // The future should complete with an error
+      expect(() => task.future, throwsA(isA<TaskCancelledException>()));
     });
   });
 

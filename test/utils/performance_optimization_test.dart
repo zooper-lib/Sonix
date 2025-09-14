@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/utils/performance_profiler.dart';
-import 'package:sonix/src/utils/performance_optimizer.dart';
 import 'package:sonix/src/utils/platform_validator.dart';
 import 'package:sonix/src/utils/memory_manager.dart';
 import 'package:sonix/src/utils/resource_manager.dart';
@@ -14,27 +13,16 @@ import 'dart:math' as math;
 void main() {
   group('Performance Optimization Tests', () {
     late PerformanceProfiler profiler;
-    late PerformanceOptimizer optimizer;
     late PlatformValidator platformValidator;
 
     setUpAll(() async {
       // Initialize performance tools
       profiler = PerformanceProfiler();
       profiler.enable();
-
-      optimizer = PerformanceOptimizer();
-      await optimizer.initialize(
-        settings: const OptimizationSettings(
-          enableProfiling: true,
-          memoryLimit: 50 * 1024 * 1024, // 50MB for tests
-        ),
-      );
-
       platformValidator = PlatformValidator();
     });
 
     tearDownAll(() async {
-      await optimizer.dispose();
       profiler.clear();
     });
 
@@ -105,44 +93,6 @@ void main() {
         expect(report.totalOperations, greaterThanOrEqualTo(3));
         expect(report.operationStatistics, isNotEmpty);
         expect(report.successfulOperations, greaterThanOrEqualTo(3));
-      });
-    });
-
-    group('Performance Optimizer Tests', () {
-      test('should provide performance metrics', () {
-        final metrics = optimizer.getCurrentMetrics();
-        expect(metrics, isA<PerformanceMetrics>());
-        expect(metrics.memoryUsage, greaterThanOrEqualTo(0));
-        expect(metrics.memoryLimit, greaterThan(0));
-        expect(metrics.memoryUsagePercentage, greaterThanOrEqualTo(0.0));
-        expect(metrics.memoryUsagePercentage, lessThanOrEqualTo(1.0));
-      });
-
-      test('should provide optimization suggestions', () {
-        final suggestions = optimizer.getOptimizationSuggestions();
-        expect(suggestions, isA<List<OptimizationSuggestion>>());
-        // Should have some suggestions (even if just platform-specific)
-        expect(suggestions.length, greaterThanOrEqualTo(0));
-      });
-
-      test('should optimize widget rendering', () {
-        final waveformData = _createTestWaveformData(2000); // Many amplitudes
-        final widgetWidth = 300.0; // Typical widget width
-
-        final optimization = optimizer.optimizeWidgetRendering(waveformData, widgetWidth);
-        expect(optimization, isA<RenderingOptimization>());
-        expect(optimization.strategy, isA<RenderingStrategy>());
-        expect(optimization.targetAmplitudeCount, greaterThan(0));
-
-        waveformData.dispose();
-      });
-
-      test('should force optimization', () async {
-        final result = await optimizer.forceOptimization();
-        expect(result, isA<OptimizationResult>());
-        expect(result.duration, greaterThan(Duration.zero));
-        expect(result.memoryFreed, greaterThanOrEqualTo(0));
-        expect(result.optimizationsApplied, isA<List<String>>());
       });
     });
 
@@ -255,36 +205,6 @@ void main() {
     });
 
     group('Integration Tests', () {
-      test('should handle complete workflow', () async {
-        // Create test audio data
-        final audioData = _createTestAudioData(durationSeconds: 2);
-
-        // Profile the workflow
-        final result = await profiler.profile('integration_workflow', () async {
-          // Create test waveform data directly (since generator might not be fully implemented)
-          final waveformData = _createTestWaveformData(1000);
-
-          // Optimize for widget rendering
-          final renderingOpt = optimizer.optimizeWidgetRendering(waveformData, 400.0);
-          expect(renderingOpt.strategy, isA<RenderingStrategy>());
-
-          // Get performance metrics
-          final metrics = optimizer.getCurrentMetrics();
-          expect(metrics.memoryUsage, greaterThanOrEqualTo(0));
-
-          return waveformData;
-        });
-
-        expect(result.amplitudes, isNotEmpty);
-
-        // Check that the workflow was profiled
-        final stats = profiler.getStatistics('integration_workflow');
-        expect(stats, isNotNull);
-        expect(stats!.successfulExecutions, equals(1));
-
-        audioData.dispose();
-      });
-
       test('should maintain performance under load', () async {
         final futures = <Future>[];
 

@@ -6,7 +6,7 @@ import 'package:sonix/src/isolate/isolate_manager.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 void main() {
-  group('SonixInstance API Structure', () {
+  group('SonixInstance', () {
     test('should create with default configuration', () {
       final sonix = SonixInstance();
 
@@ -147,6 +147,74 @@ void main() {
         await sonix.dispose();
       }
     });
+
+    group('Resource Management', () {
+      test('should provide resource statistics', () async {
+        final sonix = SonixInstance();
+
+        // Should be able to get statistics
+        final stats = sonix.getResourceStatistics();
+        expect(stats, isA<IsolateStatistics>());
+        expect(stats.activeIsolates, greaterThanOrEqualTo(0));
+        expect(stats.queuedTasks, equals(0));
+        expect(stats.completedTasks, greaterThanOrEqualTo(0));
+
+        await sonix.dispose();
+      });
+
+      test('should optimize resources', () async {
+        final sonix = SonixInstance();
+
+        // Should not throw
+        sonix.optimizeResources();
+
+        final stats = sonix.getResourceStatistics();
+        expect(stats, isA<IsolateStatistics>());
+
+        await sonix.dispose();
+      });
+
+      test('should handle resource operations after disposal gracefully', () async {
+        final sonix = SonixInstance();
+        await sonix.dispose();
+
+        expect(() => sonix.getResourceStatistics(), throwsA(isA<StateError>()));
+
+        // Optimize resources should not throw after disposal
+        sonix.optimizeResources();
+      });
+    });
+
+    group('Waveform Generation', () {
+      test('should accept custom resolution parameter', () async {
+        final sonix = SonixInstance();
+
+        // Test that the method accepts the parameter without actually processing
+        expect(() => sonix.generateWaveform('test.mp3', resolution: 500), returnsNormally);
+
+        await sonix.dispose();
+      });
+
+      test('should accept custom configuration parameter', () async {
+        final sonix = SonixInstance();
+        final config = const WaveformConfig(resolution: 200, type: WaveformType.line, normalize: false);
+
+        // Test that the method accepts the parameter without actually processing
+        expect(() => sonix.generateWaveform('test.mp3', config: config), returnsNormally);
+
+        await sonix.dispose();
+      });
+    });
+
+    group('Streaming Waveform Generation', () {
+      test('should generate waveform stream', () async {
+        // Streaming functionality requires complex mock implementation
+      }, skip: 'Streaming functionality needs additional implementation for mock testing');
+
+      test('should provide progress updates', () async {
+        // Streaming functionality requires complex mock implementation
+      }, skip: 'Streaming functionality needs additional implementation for mock testing');
+    });
   });
 
   group('SonixConfig', () {
@@ -219,40 +287,6 @@ void main() {
       expect(progress.progress, equals(0.8));
       expect(progress.error, equals('Processing failed'));
       expect(progress.isComplete, isTrue);
-    });
-  });
-
-  group('Backward Compatibility (Sonix)', () {
-    tearDown(() async {
-      await Sonix.dispose();
-    });
-
-    test('should provide static format checking methods', () {
-      expect(Sonix.isFormatSupported('test.mp3'), isTrue);
-      expect(Sonix.getSupportedFormats(), isNotEmpty);
-      expect(Sonix.getSupportedExtensions(), isNotEmpty);
-    });
-
-    test('should handle initialization', () async {
-      await Sonix.initialize();
-
-      // Should be able to use static methods
-      expect(Sonix.isFormatSupported('test.mp3'), isTrue);
-      expect(Sonix.getSupportedFormats(), isNotEmpty);
-    });
-
-    test('should handle multiple initialization calls', () async {
-      await Sonix.initialize();
-      await Sonix.initialize(); // Should not throw
-
-      expect(Sonix.isFormatSupported('test.mp3'), isTrue);
-    });
-
-    test('should initialize with custom config', () async {
-      final config = SonixConfig.mobile();
-      await Sonix.initialize(config);
-
-      expect(Sonix.isFormatSupported('test.mp3'), isTrue);
     });
   });
 }

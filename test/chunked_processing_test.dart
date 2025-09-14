@@ -1,5 +1,4 @@
 import 'dart:ffi' as ffi;
-import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
@@ -7,9 +6,6 @@ import 'package:sonix/src/native/sonix_bindings.dart';
 void main() {
   group('Chunked Processing Native Interface', () {
     test('should initialize chunked decoder', () {
-      // Create a temporary MP3 file path for testing
-      final tempFile = File('test_audio.mp3');
-
       // Test with a non-existent file first to check error handling
       final filePathPtr = 'non_existent.mp3'.toNativeUtf8();
 

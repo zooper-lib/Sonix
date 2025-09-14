@@ -161,7 +161,7 @@ Future<void> _processMockWaveformRequest(ProcessingRequest request, SendPort mai
     );
 
     mainSendPort.send(response.toJson());
-  } catch (error, stackTrace) {
+  } catch (error) {
     // Send error response
     _sendMockErrorResponse(mainSendPort, request.id, 'MockError: ${error.toString()}');
   }

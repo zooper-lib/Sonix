@@ -23,8 +23,7 @@ class ResourceManager {
   // Memory manager integration
   final MemoryManager _memoryManager = MemoryManager();
 
-  // Resource tracking
-  final Map<String, ResourceInfo> _resourceInfo = <String, ResourceInfo>{};
+  // Resource tracking removed - ResourceInfo was unused
 
   bool _isInitialized = false;
   bool _isDisposed = false;
@@ -67,9 +66,7 @@ class ResourceManager {
 
     _managedResources.add(resource);
 
-    if (identifier != null) {
-      _resourceInfo[identifier] = ResourceInfo(resource: resource, createdAt: DateTime.now(), type: T.toString());
-    }
+    // Resource info tracking removed - was unused
 
     return resource;
   }
@@ -81,9 +78,7 @@ class ResourceManager {
 
     _activeDecoders.add(decoder);
 
-    if (identifier != null) {
-      _resourceInfo[identifier] = ResourceInfo(resource: decoder, createdAt: DateTime.now(), type: T.toString());
-    }
+    // Resource info tracking removed - was unused
 
     return decoder;
   }
@@ -95,9 +90,7 @@ class ResourceManager {
 
     _activeSubscriptions.add(subscription);
 
-    if (identifier != null) {
-      _resourceInfo[identifier] = ResourceInfo(resource: subscription, createdAt: DateTime.now(), type: 'StreamSubscription<$T>');
-    }
+    // Resource info tracking removed - was unused
 
     return subscription;
   }
@@ -115,20 +108,10 @@ class ResourceManager {
       resource.cancel();
     }
 
-    if (identifier != null) {
-      _resourceInfo.remove(identifier);
-    }
+    // Resource info tracking removed - was unused
   }
 
-  /// Get resource information by identifier
-  ResourceInfo? getResourceInfo(String identifier) {
-    return _resourceInfo[identifier];
-  }
-
-  /// Get all resource information
-  Map<String, ResourceInfo> getAllResourceInfo() {
-    return Map.unmodifiable(_resourceInfo);
-  }
+  // Resource info methods removed - ResourceInfo was unused
 
   /// Get resource statistics
   ResourceStatistics getResourceStatistics() {
@@ -195,8 +178,7 @@ class ResourceManager {
     }
     _activeSubscriptions.clear();
 
-    // Clear resource info
-    _resourceInfo.clear();
+    // Resource info tracking removed - was unused
 
     // Force memory cleanup
     await _memoryManager.forceMemoryCleanup();
@@ -242,23 +224,8 @@ class ResourceManager {
 
   /// Dispose of old managed resources
   void _disposeOldResources() {
-    final now = DateTime.now();
-    final oldThreshold = now.subtract(const Duration(minutes: 5));
-
-    final resourcesToDispose = <String>[];
-
-    for (final entry in _resourceInfo.entries) {
-      if (entry.value.createdAt.isBefore(oldThreshold)) {
-        resourcesToDispose.add(entry.key);
-      }
-    }
-
-    for (final identifier in resourcesToDispose) {
-      final info = _resourceInfo[identifier];
-      if (info != null) {
-        unregisterResource(info.resource, identifier: identifier);
-      }
-    }
+    // Resource info tracking removed - was unused
+    // This method now does nothing since ResourceInfo was removed
   }
 
   /// Ensure resource manager is initialized
@@ -283,40 +250,6 @@ class ResourceManager {
 
     await forceCleanup();
     _memoryManager.dispose();
-  }
-}
-
-/// Information about a managed resource
-class ResourceInfo {
-  /// The resource instance
-  final dynamic resource;
-
-  /// When the resource was created
-  final DateTime createdAt;
-
-  /// Type of the resource
-  final String type;
-
-  /// When the resource was last accessed
-  DateTime lastAccessed;
-
-  ResourceInfo({required this.resource, required this.createdAt, required this.type}) : lastAccessed = createdAt;
-
-  /// Age of the resource
-  Duration get age => DateTime.now().difference(createdAt);
-
-  /// Time since last access
-  Duration get timeSinceLastAccess => DateTime.now().difference(lastAccessed);
-
-  /// Mark resource as accessed
-  void markAccessed() {
-    lastAccessed = DateTime.now();
-  }
-
-  @override
-  String toString() {
-    return 'ResourceInfo(type: $type, age: $age, '
-        'timeSinceLastAccess: $timeSinceLastAccess)';
   }
 }
 

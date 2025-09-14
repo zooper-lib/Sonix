@@ -147,7 +147,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
         return;
       }
 
-      final audioData = await decoder!.decode(request.filePath);
+      final audioData = await decoder.decode(request.filePath);
 
       // Check for cancellation after decoding
       if (operation.isCancelled) {
@@ -199,7 +199,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       mainSendPort.send(response.toJson());
     } finally {
       // Always dispose of the decoder to free resources
-      decoder?.dispose();
+      decoder.dispose();
     }
   } catch (error) {
     // Send error response only if not cancelled

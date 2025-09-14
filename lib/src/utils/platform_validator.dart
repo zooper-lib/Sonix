@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../native/native_audio_bindings.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
 
 /// Validates cross-platform compatibility and native library availability
 class PlatformValidator {

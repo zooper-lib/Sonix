@@ -360,7 +360,7 @@ class WAVDecoder implements ChunkedAudioDecoder {
 
         _channels = _readLittleEndian16(fileData, offset + 10);
         _sampleRate = _readLittleEndian32(fileData, offset + 12);
-        final byteRate = _readLittleEndian32(fileData, offset + 16);
+        // byteRate = _readLittleEndian32(fileData, offset + 16); // Unused
         _blockAlign = _readLittleEndian16(fileData, offset + 20);
         final bitsPerSample = _readLittleEndian16(fileData, offset + 22);
 

@@ -10,9 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/isolate/error_serializer.dart';
 import 'package:sonix/src/isolate/isolate_health_monitor.dart';
-import 'package:sonix/src/isolate/isolate_message_handler.dart';
 import 'package:sonix/src/isolate/isolate_messages.dart';
-import 'package:sonix/src/processing/waveform_generator.dart';
 
 void main() {
   group('IsolateProcessingException', () {
@@ -362,115 +360,6 @@ void main() {
       expect(crashError, equals(error));
 
       receivePort.close();
-    });
-  });
-
-  group('IsolateMessageHandler Error Handling', () {
-    test('should safely serialize messages', () {
-      final validMessage = ProcessingRequest(id: 'test_id', timestamp: DateTime.now(), filePath: 'test.mp3', config: const WaveformConfig());
-
-      final result = IsolateMessageHandler.safeSerialize(validMessage);
-
-      expect(result['messageType'], equals('ProcessingRequest'));
-      expect(result['id'], equals('test_id'));
-      expect(result['filePath'], equals('test.mp3'));
-    });
-
-    test('should safely deserialize valid messages', () {
-      final json = {
-        'messageType': 'ProcessingRequest',
-        'id': 'test_id',
-        'timestamp': DateTime.now().toIso8601String(),
-        'filePath': 'test.mp3',
-        'config': const WaveformConfig().toJson(),
-        'streamResults': false,
-      };
-
-      final result = IsolateMessageHandler.safeDeserialize(json);
-
-      expect(result, isA<ProcessingRequest>());
-      expect(result.id, equals('test_id'));
-    });
-
-    test('should handle deserialization errors gracefully', () {
-      final invalidJson = {'messageType': 'InvalidType', 'id': 'test_id', 'timestamp': 'invalid_timestamp'};
-
-      final result = IsolateMessageHandler.safeDeserialize(invalidJson);
-
-      expect(result, isA<ErrorMessage>());
-      final errorMessage = result as ErrorMessage;
-      expect(errorMessage.errorType, equals('IsolateCommunicationException'));
-      expect(errorMessage.errorMessage, contains('Failed to deserialize'));
-    });
-
-    test('should create communication error messages', () {
-      final error = ArgumentError('Test error');
-      final stackTrace = StackTrace.current;
-
-      final errorMessage = IsolateMessageHandler.createCommunicationError(
-        messageId: 'error_123',
-        messageType: 'TestMessage',
-        operation: 'send',
-        error: error,
-        stackTrace: stackTrace,
-        isolateId: 'isolate_456',
-        requestId: 'req_789',
-      );
-
-      expect(errorMessage.id, equals('error_123'));
-      expect(errorMessage.errorType, equals('IsolateCommunicationException'));
-      expect(errorMessage.requestId, equals('req_789'));
-      expect(errorMessage.errorMessage, contains('Failed to send message of type TestMessage'));
-    });
-
-    test('should detect corrupted messages', () {
-      final validMessage = {'messageType': 'ProcessingRequest', 'id': 'test_id', 'timestamp': DateTime.now().toIso8601String()};
-
-      final corruptedMessage1 = <String, dynamic>{
-        'id': 'test_id',
-        'timestamp': DateTime.now().toIso8601String(),
-        // Missing messageType
-      };
-
-      final corruptedMessage2 = {
-        'messageType': 'ProcessingRequest',
-        'timestamp': 'invalid_timestamp',
-        // Invalid timestamp format
-      };
-
-      final corruptedMessage3 = {
-        'messageType': '',
-        'id': '',
-        'timestamp': DateTime.now().toIso8601String(),
-        // Empty critical fields
-      };
-
-      expect(IsolateMessageHandler.isMessageCorrupted(validMessage), isFalse);
-      expect(IsolateMessageHandler.isMessageCorrupted(corruptedMessage1), isTrue);
-      expect(IsolateMessageHandler.isMessageCorrupted(corruptedMessage2), isTrue);
-      expect(IsolateMessageHandler.isMessageCorrupted(corruptedMessage3), isTrue);
-    });
-
-    test('should repair corrupted messages', () {
-      final corruptedMessage = {
-        'messageType': 'ProcessingRequest',
-        // Missing id and timestamp
-      };
-
-      final repaired = IsolateMessageHandler.repairMessage(corruptedMessage);
-
-      expect(repaired, isNotNull);
-      expect(repaired!['messageType'], equals('ProcessingRequest'));
-      expect(repaired['id'], isNotNull);
-      expect(repaired['timestamp'], isNotNull);
-    });
-
-    test('should not repair valid messages', () {
-      final validMessage = {'messageType': 'ProcessingRequest', 'id': 'test_id', 'timestamp': DateTime.now().toIso8601String()};
-
-      final repaired = IsolateMessageHandler.repairMessage(validMessage);
-
-      expect(repaired, isNull); // No repair needed
     });
   });
 

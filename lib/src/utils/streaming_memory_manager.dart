@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import '../exceptions/sonix_exceptions.dart';
-import '../native/native_audio_bindings.dart';
-import '../decoders/audio_decoder.dart';
+import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
+import 'package:sonix/src/decoders/audio_decoder.dart';
 
 /// Manages memory pressure during streaming audio operations
 class StreamingMemoryManager {

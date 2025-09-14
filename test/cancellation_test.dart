@@ -1,13 +1,11 @@
 /// Simple cancellation tests to verify core functionality
 library;
 
-import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sonix/src/isolate/isolate_manager.dart';
 import 'package:sonix/src/isolate/isolate_messages.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
-import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 void main() {
   group('Simple Cancellation Tests', () {
