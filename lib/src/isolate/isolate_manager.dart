@@ -927,6 +927,70 @@ class IsolateManager {
     }
   }
 
+  /// Cancel a specific task by ID
+  ///
+  /// Sends a cancellation request to the isolate processing the task
+  /// and marks the task as cancelled locally.
+  ///
+  /// Returns true if the task was found and cancellation was requested,
+  /// false if the task was not found.
+  bool cancelTask(String taskId) {
+    if (_isDisposed || _isShuttingDown) {
+      return false;
+    }
+
+    final task = _activeTasks[taskId];
+    if (task == null) {
+      return false;
+    }
+
+    // Cancel the task locally
+    task.cancel();
+
+    // Find the isolate processing this task
+    final isolateId = _requestToIsolateMap[taskId];
+    if (isolateId != null) {
+      final isolate = _isolates[isolateId];
+      if (isolate != null) {
+        // Send cancellation request to the isolate
+        final cancellationRequest = CancellationRequest(id: 'cancel_${DateTime.now().millisecondsSinceEpoch}', timestamp: DateTime.now(), requestId: taskId);
+
+        isolate.sendMessage(cancellationRequest);
+
+        // Mark isolate as idle since the task is being cancelled
+        isolate.markIdle();
+      }
+    }
+
+    // Clean up task tracking
+    _activeTasks.remove(taskId);
+    _requestToIsolateMap.remove(taskId);
+
+    return true;
+  }
+
+  /// Cancel all active tasks
+  ///
+  /// Sends cancellation requests to all isolates and cancels all active tasks.
+  ///
+  /// Returns the number of tasks that were cancelled.
+  int cancelAllTasks() {
+    if (_isDisposed || _isShuttingDown) {
+      return 0;
+    }
+
+    final taskIds = _activeTasks.keys.toList();
+    int cancelledCount = 0;
+
+    for (final taskId in taskIds) {
+      if (cancelTask(taskId)) {
+        cancelledCount++;
+      }
+    }
+
+    return cancelledCount;
+  }
+
   /// Get current statistics
   IsolateStatistics getStatistics() {
     final isolateInfo = <String, IsolateInfo>{};

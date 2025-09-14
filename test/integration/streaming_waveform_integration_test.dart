@@ -18,7 +18,9 @@ void main() {
     });
 
     tearDown(() async {
-      await sonix.dispose();
+      if (!sonix.isDisposed) {
+        await sonix.dispose();
+      }
     });
 
     group('Progress Updates', () {
@@ -105,6 +107,9 @@ void main() {
         // Cancel after a short delay
         await Future.delayed(const Duration(milliseconds: 100));
         await subscription.cancel();
+
+        // Wait a bit more to ensure the operation completes or is cancelled
+        await Future.delayed(const Duration(milliseconds: 50));
 
         // Should not crash and should have received some updates
         expect(progressUpdates, isNotEmpty);

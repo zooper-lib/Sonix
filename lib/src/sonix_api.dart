@@ -118,6 +118,9 @@ class SonixInstance {
   /// Whether this instance has been initialized
   bool _isInitialized = false;
 
+  /// Map of active tasks for cancellation support
+  final Map<String, ProcessingTask> _activeTasks = {};
+
   /// Create a new Sonix instance with the specified configuration
   ///
   /// [config] - Configuration options for this instance. If not provided,
@@ -210,8 +213,17 @@ class SonixInstance {
     // Create processing task
     final task = ProcessingTask(id: _generateTaskId(), filePath: filePath, config: waveformConfig);
 
-    // Execute task in background isolate
-    return await _isolateManager.executeTask(task);
+    // Track the task for cancellation support
+    _activeTasks[task.id] = task;
+
+    try {
+      // Execute task in background isolate
+      final result = await _isolateManager.executeTask(task);
+      return result;
+    } finally {
+      // Remove task from active tasks when complete
+      _activeTasks.remove(task.id);
+    }
   }
 
   /// Generate waveform data with streaming progress updates
@@ -262,6 +274,9 @@ class SonixInstance {
     // Create streaming processing task
     final task = ProcessingTask(id: _generateTaskId(), filePath: filePath, config: waveformConfig, streamResults: true);
 
+    // Track the task for cancellation support
+    _activeTasks[task.id] = task;
+
     // Set up a stream controller to manage the complete streaming flow
     final streamController = StreamController<WaveformProgress>();
 
@@ -309,6 +324,9 @@ class SonixInstance {
         streamController.add(WaveformProgress(progress: 1.0, error: error.toString(), isComplete: true));
         streamController.close();
       }
+    } finally {
+      // Remove task from active tasks when complete
+      _activeTasks.remove(task.id);
     }
   }
 
@@ -347,6 +365,82 @@ class SonixInstance {
     }
   }
 
+  /// Cancel a specific operation by task ID
+  ///
+  /// This method cancels a specific waveform generation operation that is
+  /// currently in progress. The operation will be stopped and resources cleaned up.
+  ///
+  /// [taskId] - The ID of the task to cancel
+  ///
+  /// Returns true if the task was found and cancelled, false if the task
+  /// was not found (already completed or never existed).
+  ///
+  /// Example:
+  /// ```dart
+  /// final sonix = SonixInstance();
+  /// final taskId = 'my_task_id';
+  /// final cancelled = sonix.cancelOperation(taskId);
+  /// if (cancelled) {
+  ///   print('Operation cancelled successfully');
+  /// }
+  /// ```
+  bool cancelOperation(String taskId) {
+    _ensureNotDisposed();
+
+    final task = _activeTasks[taskId];
+    if (task != null) {
+      task.cancel();
+      _activeTasks.remove(taskId);
+      return true;
+    }
+    return false;
+  }
+
+  /// Cancel all active operations
+  ///
+  /// This method cancels all currently running waveform generation operations
+  /// for this instance. All operations will be stopped and resources cleaned up.
+  ///
+  /// Returns the number of operations that were cancelled.
+  ///
+  /// Example:
+  /// ```dart
+  /// final sonix = SonixInstance();
+  /// final cancelledCount = sonix.cancelAllOperations();
+  /// print('Cancelled $cancelledCount operations');
+  /// ```
+  int cancelAllOperations() {
+    _ensureNotDisposed();
+
+    final taskIds = _activeTasks.keys.toList();
+    for (final taskId in taskIds) {
+      final task = _activeTasks[taskId];
+      if (task != null) {
+        task.cancel();
+      }
+    }
+
+    final cancelledCount = _activeTasks.length;
+    _activeTasks.clear();
+    return cancelledCount;
+  }
+
+  /// Get a list of active operation IDs
+  ///
+  /// Returns a list of task IDs for operations that are currently in progress.
+  /// This can be useful for tracking and managing active operations.
+  ///
+  /// Example:
+  /// ```dart
+  /// final sonix = SonixInstance();
+  /// final activeOperations = sonix.getActiveOperations();
+  /// print('Active operations: ${activeOperations.length}');
+  /// ```
+  List<String> getActiveOperations() {
+    _ensureNotDisposed();
+    return _activeTasks.keys.toList();
+  }
+
   /// Dispose of this Sonix instance and clean up all associated resources
   ///
   /// This method cleans up all resources associated with this specific instance,
@@ -363,6 +457,16 @@ class SonixInstance {
     if (_isDisposed) {
       return; // Already disposed
     }
+
+    // Cancel all active operations before setting disposed flag
+    final taskIds = _activeTasks.keys.toList();
+    for (final taskId in taskIds) {
+      final task = _activeTasks[taskId];
+      if (task != null) {
+        task.cancel();
+      }
+    }
+    _activeTasks.clear();
 
     _isDisposed = true;
 

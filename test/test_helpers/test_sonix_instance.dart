@@ -10,6 +10,7 @@ import 'dart:isolate';
 import 'package:sonix/src/sonix_api.dart';
 import 'package:sonix/src/isolate/isolate_manager.dart';
 import '../mocks/mock_processing_isolate.dart';
+import 'mock_isolate_manager.dart';
 
 /// Test configuration that uses mock isolates
 class TestSonixConfig extends SonixConfig {
@@ -25,7 +26,7 @@ class TestSonixConfig extends SonixConfig {
 }
 
 /// Test isolate manager that uses mock processing isolates
-class TestIsolateManager extends IsolateManager {
+class TestIsolateManager extends MockIsolateManager {
   TestIsolateManager(super.config);
 
   @override
@@ -36,10 +37,16 @@ class TestIsolateManager extends IsolateManager {
 
 /// Test SonixInstance that uses mock isolate manager
 class TestSonixInstance extends SonixInstance {
+  late final TestIsolateManager _testIsolateManager;
+
   TestSonixInstance([SonixConfig? config]) : super(config ?? const TestSonixConfig());
 
   @override
   IsolateManager createIsolateManager() {
-    return TestIsolateManager(config);
+    _testIsolateManager = TestIsolateManager(config);
+    return _testIsolateManager;
   }
+
+  /// Get the mock isolate manager for testing
+  TestIsolateManager get mockIsolateManager => _testIsolateManager;
 }

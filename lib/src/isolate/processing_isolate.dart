@@ -28,6 +28,9 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
   // Store the main isolate's send port for responses
   SendPort? mainSendPort;
 
+  // Track active operations for cancellation support
+  final Map<String, _ActiveOperation> activeOperations = {};
+
   // Listen for messages from the main isolate
   receivePort.listen((dynamic message) async {
     try {
@@ -37,7 +40,7 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
       } else if (message is Map<String, dynamic>) {
         final isolateMessage = IsolateMessage.fromJson(message);
         if (mainSendPort != null) {
-          await _handleIsolateMessage(isolateMessage, mainSendPort!);
+          await _handleIsolateMessage(isolateMessage, mainSendPort!, activeOperations);
         }
       }
     } catch (error, stackTrace) {
@@ -61,23 +64,55 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
   });
 }
 
+/// Represents an active operation in the background isolate
+class _ActiveOperation {
+  final String requestId;
+  final Completer<void> completer;
+  bool isCancelled = false;
+
+  _ActiveOperation(this.requestId) : completer = Completer<void>();
+
+  void cancel() {
+    isCancelled = true;
+    if (!completer.isCompleted) {
+      completer.complete();
+    }
+  }
+
+  void complete() {
+    if (!completer.isCompleted) {
+      completer.complete();
+    }
+  }
+
+  Future<void> get future => completer.future;
+}
+
 /// Handle messages received in the background isolate
-Future<void> _handleIsolateMessage(IsolateMessage message, SendPort mainSendPort) async {
+Future<void> _handleIsolateMessage(IsolateMessage message, SendPort mainSendPort, Map<String, _ActiveOperation> activeOperations) async {
   if (message is ProcessingRequest) {
-    await _processWaveformRequest(message, mainSendPort);
+    await _processWaveformRequest(message, mainSendPort, activeOperations);
   } else if (message is CancellationRequest) {
-    // Handle cancellation - in a real implementation you'd track active operations
-    // and cancel them here
-    await _handleCancellationRequest(message, mainSendPort);
+    await _handleCancellationRequest(message, mainSendPort, activeOperations);
   }
 }
 
 /// Process a waveform generation request in the background isolate
-Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSendPort) async {
+Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSendPort, Map<String, _ActiveOperation> activeOperations) async {
+  // Create and track the active operation
+  final operation = _ActiveOperation(request.id);
+  activeOperations[request.id] = operation;
+
   try {
     // Send initial progress update if streaming is enabled
     if (request.streamResults) {
       _sendProgressUpdate(mainSendPort, request.id, 0.0, 'Initializing audio processing');
+    }
+
+    // Check for cancellation before starting
+    if (operation.isCancelled) {
+      _sendCancellationResponse(mainSendPort, request.id);
+      return;
     }
 
     // Step 1: Create appropriate decoder for the file format
@@ -85,6 +120,12 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
     try {
       if (request.streamResults) {
         _sendProgressUpdate(mainSendPort, request.id, 0.1, 'Creating audio decoder');
+      }
+
+      // Check for cancellation before decoder creation
+      if (operation.isCancelled) {
+        _sendCancellationResponse(mainSendPort, request.id);
+        return;
       }
 
       decoder = AudioDecoderFactory.createDecoder(request.filePath);
@@ -100,7 +141,19 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
         _sendProgressUpdate(mainSendPort, request.id, 0.2, 'Reading audio file');
       }
 
+      // Check for cancellation before decoding
+      if (operation.isCancelled) {
+        _sendCancellationResponse(mainSendPort, request.id);
+        return;
+      }
+
       final audioData = await decoder!.decode(request.filePath);
+
+      // Check for cancellation after decoding
+      if (operation.isCancelled) {
+        _sendCancellationResponse(mainSendPort, request.id);
+        return;
+      }
 
       if (request.streamResults) {
         _sendProgressUpdate(mainSendPort, request.id, 0.5, 'Audio decoding complete');
@@ -111,7 +164,19 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
         _sendProgressUpdate(mainSendPort, request.id, 0.6, 'Analyzing audio data');
       }
 
+      // Check for cancellation before waveform generation
+      if (operation.isCancelled) {
+        _sendCancellationResponse(mainSendPort, request.id);
+        return;
+      }
+
       final waveformData = await WaveformGenerator.generate(audioData, config: request.config);
+
+      // Check for cancellation after waveform generation
+      if (operation.isCancelled) {
+        _sendCancellationResponse(mainSendPort, request.id);
+        return;
+      }
 
       if (request.streamResults) {
         _sendProgressUpdate(mainSendPort, request.id, 0.9, 'Finalizing waveform data');
@@ -137,8 +202,14 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       decoder?.dispose();
     }
   } catch (error) {
-    // Send error response
-    _sendErrorResponse(mainSendPort, request.id, error);
+    // Send error response only if not cancelled
+    if (!operation.isCancelled) {
+      _sendErrorResponse(mainSendPort, request.id, error);
+    }
+  } finally {
+    // Clean up the active operation
+    activeOperations.remove(request.id);
+    operation.complete();
   }
 }
 
@@ -179,18 +250,35 @@ void _sendErrorResponse(SendPort mainSendPort, String requestId, Object error) {
 }
 
 /// Handle cancellation requests
-Future<void> _handleCancellationRequest(CancellationRequest request, SendPort mainSendPort) async {
-  // In a more sophisticated implementation, we would:
-  // 1. Track active operations by request ID
-  // 2. Cancel the specific operation
-  // 3. Clean up any resources
-  // 4. Send a cancellation confirmation
+Future<void> _handleCancellationRequest(CancellationRequest request, SendPort mainSendPort, Map<String, _ActiveOperation> activeOperations) async {
+  final operation = activeOperations[request.requestId];
 
-  // For now, we'll just acknowledge the cancellation
+  if (operation != null) {
+    // Cancel the active operation
+    operation.cancel();
+
+    // Send cancellation confirmation
+    _sendCancellationResponse(mainSendPort, request.requestId);
+  } else {
+    // Operation not found (might have already completed)
+    final response = ProcessingResponse(
+      id: 'cancellation_response_${DateTime.now().millisecondsSinceEpoch}',
+      timestamp: DateTime.now(),
+      requestId: request.requestId,
+      error: 'Operation not found or already completed',
+      isComplete: true,
+    );
+
+    mainSendPort.send(response.toJson());
+  }
+}
+
+/// Send a cancellation response back to the main isolate
+void _sendCancellationResponse(SendPort mainSendPort, String requestId) {
   final response = ProcessingResponse(
     id: 'cancellation_response_${DateTime.now().millisecondsSinceEpoch}',
     timestamp: DateTime.now(),
-    requestId: request.requestId,
+    requestId: requestId,
     error: 'Operation cancelled',
     isComplete: true,
   );
