@@ -9,6 +9,7 @@ import 'dart:isolate';
 
 import 'isolate_messages.dart';
 import '../decoders/audio_decoder_factory.dart';
+import '../decoders/audio_decoder.dart';
 import '../processing/waveform_generator.dart';
 import '../exceptions/sonix_exceptions.dart';
 
@@ -42,14 +43,19 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
     } catch (error, stackTrace) {
       // Send error back to main isolate if we have the send port
       if (mainSendPort != null) {
-        final errorMessage = ErrorMessage(
-          id: 'error_${DateTime.now().millisecondsSinceEpoch}',
-          timestamp: DateTime.now(),
-          errorMessage: error.toString(),
-          errorType: 'IsolateProcessingError',
-          stackTrace: stackTrace.toString(),
-        );
-        mainSendPort!.send(errorMessage.toJson());
+        try {
+          final errorMessage = ErrorMessage(
+            id: 'error_${DateTime.now().millisecondsSinceEpoch}',
+            timestamp: DateTime.now(),
+            errorMessage: error.toString(),
+            errorType: 'IsolateProcessingError',
+            stackTrace: stackTrace.toString(),
+          );
+          mainSendPort!.send(errorMessage.toJson());
+        } catch (sendError) {
+          // If we can't even send the error, there's not much we can do
+          // The isolate will likely be considered crashed by the health monitor
+        }
       }
     }
   });
@@ -82,7 +88,14 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
     }
 
     // Step 1: Create appropriate decoder for the file format
-    final decoder = AudioDecoderFactory.createDecoder(request.filePath);
+    AudioDecoder? decoder;
+    try {
+      decoder = AudioDecoderFactory.createDecoder(request.filePath);
+    } catch (error) {
+      // Handle decoder creation errors immediately
+      _sendErrorResponse(mainSendPort, request.id, error);
+      return;
+    }
 
     try {
       // Send progress update for decoding phase
@@ -98,7 +111,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       }
 
       // Step 2: Decode the audio file
-      final audioData = await decoder.decode(request.filePath);
+      final audioData = await decoder!.decode(request.filePath);
 
       // Send progress update for waveform generation phase
       if (request.streamResults) {
@@ -139,31 +152,36 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       mainSendPort.send(response.toJson());
     } finally {
       // Always dispose of the decoder to free resources
-      decoder.dispose();
+      decoder?.dispose();
     }
   } catch (error, stackTrace) {
     // Send error response
-    String errorMessage;
-    String errorType;
-
-    if (error is SonixException) {
-      errorMessage = error.message;
-      errorType = error.runtimeType.toString();
-    } else {
-      errorMessage = error.toString();
-      errorType = 'UnknownError';
-    }
-
-    final errorResponse = ProcessingResponse(
-      id: 'error_response_${DateTime.now().millisecondsSinceEpoch}',
-      timestamp: DateTime.now(),
-      requestId: request.id,
-      error: '$errorType: $errorMessage',
-      isComplete: true,
-    );
-
-    mainSendPort.send(errorResponse.toJson());
+    _sendErrorResponse(mainSendPort, request.id, error);
   }
+}
+
+/// Send an error response back to the main isolate
+void _sendErrorResponse(SendPort mainSendPort, String requestId, Object error) {
+  String errorMessage;
+  String errorType;
+
+  if (error is SonixException) {
+    errorMessage = error.message;
+    errorType = error.runtimeType.toString();
+  } else {
+    errorMessage = error.toString();
+    errorType = 'UnknownError';
+  }
+
+  final errorResponse = ProcessingResponse(
+    id: 'error_response_${DateTime.now().millisecondsSinceEpoch}',
+    timestamp: DateTime.now(),
+    requestId: requestId,
+    error: '$errorType: $errorMessage',
+    isComplete: true,
+  );
+
+  mainSendPort.send(errorResponse.toJson());
 }
 
 /// Handle cancellation requests

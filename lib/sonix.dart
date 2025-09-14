@@ -73,6 +73,8 @@ export 'src/widgets/widgets.dart';
 export 'src/isolate/isolate_messages.dart';
 export 'src/isolate/isolate_message_handler.dart';
 export 'src/isolate/processing_isolate.dart' show processingIsolateEntryPoint;
+export 'src/isolate/error_serializer.dart';
+export 'src/isolate/isolate_health_monitor.dart' show IsolateHealthStatus, IsolateHealth;
 
 // Utilities (selective exports)
 export 'src/utils/memory_manager.dart' show MemoryManager;

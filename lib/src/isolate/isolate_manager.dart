@@ -11,8 +11,11 @@ import 'dart:math' as math;
 
 import 'isolate_messages.dart';
 import 'processing_isolate.dart';
-import '../models/waveform_data.dart';
-import '../processing/waveform_generator.dart';
+import 'isolate_health_monitor.dart';
+import 'error_serializer.dart';
+import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/processing/waveform_generator.dart';
+import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 /// Statistics about isolate resource usage
 class IsolateStatistics {
@@ -275,6 +278,9 @@ class IsolateManager {
   /// Map of active tasks by ID
   final Map<String, ProcessingTask> _activeTasks = {};
 
+  /// Map of request IDs to isolate IDs for tracking
+  final Map<String, String> _requestToIsolateMap = {};
+
   /// Statistics tracking
   int _completedTasks = 0;
   int _failedTasks = 0;
@@ -289,7 +295,22 @@ class IsolateManager {
   /// Random number generator for isolate IDs
   final math.Random _random = math.Random();
 
-  IsolateManager(this.config);
+  /// Health monitor for isolate crash detection
+  late final IsolateHealthMonitor _healthMonitor;
+
+  /// Map of retry attempts for failed tasks
+  final Map<String, int> _taskRetryAttempts = {};
+
+  /// Maximum number of retry attempts for failed tasks
+  final int maxRetryAttempts;
+
+  /// Whether to enable automatic error recovery
+  final bool enableErrorRecovery;
+
+  IsolateManager(this.config, {this.maxRetryAttempts = 3, this.enableErrorRecovery = true}) {
+    _healthMonitor = IsolateHealthMonitor();
+    _setupHealthMonitorCallbacks();
+  }
 
   /// Initialize the isolate manager
   Future<void> initialize() async {
@@ -307,6 +328,19 @@ class IsolateManager {
     }
   }
 
+  /// Set up health monitor callbacks for error recovery
+  void _setupHealthMonitorCallbacks() {
+    _healthMonitor.onIsolateCrashed((isolateId, error) {
+      _handleIsolateCrash(isolateId, error);
+    });
+
+    _healthMonitor.onHealthChanged((isolateId, health) {
+      if (health.needsRestart) {
+        _scheduleIsolateRestart(isolateId);
+      }
+    });
+  }
+
   /// Execute a processing task
   Future<WaveformData> executeTask(ProcessingTask task) async {
     if (_isDisposed) {
@@ -321,12 +355,97 @@ class IsolateManager {
       final isolate = await _getAvailableIsolate();
       await _assignTaskToIsolate(task, isolate);
 
-      // Wait for task completion
-      return await task.future;
+      // Wait for task completion with timeout
+      return await task.future.timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          // Clean up the task and isolate mapping
+          _activeTasks.remove(task.id);
+          _requestToIsolateMap.remove(task.id);
+          _failedTasks++;
+
+          // Report timeout to health monitor
+          final isolateId = _requestToIsolateMap[task.id];
+          if (isolateId != null) {
+            _healthMonitor.reportFailure(isolateId, TimeoutException('Task ${task.id} timed out after 30 seconds', const Duration(seconds: 30)));
+          }
+
+          throw TimeoutException('Task ${task.id} timed out after 30 seconds', const Duration(seconds: 30));
+        },
+      );
     } catch (error, stackTrace) {
       _failedTasks++;
       _activeTasks.remove(task.id);
+      _requestToIsolateMap.remove(task.id);
+
+      // Attempt error recovery if enabled
+      if (enableErrorRecovery && _shouldRetryTask(task.id, error)) {
+        return await _retryTask(task, error);
+      }
+
       task.completeError(error, stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Check if a task should be retried based on the error type
+  bool _shouldRetryTask(String taskId, Object error) {
+    final retryCount = _taskRetryAttempts[taskId] ?? 0;
+
+    if (retryCount >= maxRetryAttempts) {
+      return false;
+    }
+
+    // For IsolateProcessingException, check the original error type
+    if (error is IsolateProcessingException) {
+      // Check if the original error type indicates a non-recoverable error
+      final originalErrorType = error.originalErrorType ?? '';
+      if (originalErrorType.contains('FileNotFoundException') ||
+          originalErrorType.contains('CorruptedFileException') ||
+          originalErrorType.contains('UnsupportedFormatException')) {
+        return false;
+      }
+
+      // Also check the error message for these patterns
+      final errorMessage = error.originalError.toLowerCase();
+      if (errorMessage.contains('file not found') ||
+          errorMessage.contains('filenotfoundexception') ||
+          errorMessage.contains('unsupported') ||
+          errorMessage.contains('corrupted')) {
+        return false;
+      }
+    }
+
+    return ErrorSerializer.isRecoverableError(error);
+  }
+
+  /// Retry a failed task with exponential backoff
+  Future<WaveformData> _retryTask(ProcessingTask originalTask, Object error) async {
+    final retryCount = (_taskRetryAttempts[originalTask.id] ?? 0) + 1;
+    _taskRetryAttempts[originalTask.id] = retryCount;
+
+    // Calculate retry delay
+    final delay = ErrorSerializer.getRetryDelay(error, retryCount);
+    await Future.delayed(delay);
+
+    // Create a new task for the retry
+    final retryTask = ProcessingTask(
+      id: '${originalTask.id}_retry_$retryCount',
+      filePath: originalTask.filePath,
+      config: originalTask.config,
+      streamResults: originalTask.streamResults,
+    );
+
+    try {
+      return await executeTask(retryTask);
+    } catch (retryError) {
+      // If retry also fails, check if we should retry again
+      if (_shouldRetryTask(originalTask.id, retryError)) {
+        return await _retryTask(originalTask, retryError);
+      }
+
+      // Max retries exceeded, propagate the error
+      _taskRetryAttempts.remove(originalTask.id);
       rethrow;
     }
   }
@@ -363,7 +482,7 @@ class IsolateManager {
     final isolateId = _generateIsolateId();
 
     try {
-      final isolate = await Isolate.spawn(processingIsolateEntryPoint, handshakeReceivePort.sendPort, debugName: 'SonixProcessingIsolate_$isolateId');
+      final isolate = await spawnProcessingIsolate(handshakeReceivePort.sendPort);
 
       // Wait for the isolate to send its SendPort
       final sendPort = await handshakeReceivePort.first as SendPort;
@@ -388,6 +507,9 @@ class IsolateManager {
       // Send our receive port's send port to the isolate so it knows where to send responses
       sendPort.send(communicationReceivePort.sendPort);
 
+      // Start health monitoring for this isolate
+      _healthMonitor.startMonitoring(isolateId, sendPort);
+
       _isolates[isolateId] = managedIsolate;
 
       return managedIsolate;
@@ -402,6 +524,11 @@ class IsolateManager {
     return 'isolate_${DateTime.now().millisecondsSinceEpoch}_${_random.nextInt(10000)}';
   }
 
+  /// Spawn a processing isolate - can be overridden for testing
+  Future<Isolate> spawnProcessingIsolate(SendPort handshakeSendPort) async {
+    return await Isolate.spawn(processingIsolateEntryPoint, handshakeSendPort, debugName: 'SonixProcessingIsolate_${_generateIsolateId()}');
+  }
+
   /// Assign a task to a specific isolate
   Future<void> _assignTaskToIsolate(ProcessingTask task, _ManagedIsolate isolate) async {
     isolate.markActive(task.id);
@@ -414,18 +541,62 @@ class IsolateManager {
       streamResults: task.streamResults,
     );
 
+    // Track the mapping between request ID and isolate ID
+    _requestToIsolateMap[task.id] = isolate.id;
+
     isolate.sendMessage(request);
   }
 
   /// Handle messages received from isolates
   void _handleIsolateMessage(IsolateMessage message) {
-    if (message is ProcessingResponse) {
-      _handleProcessingResponse(message);
-    } else if (message is ProgressUpdate) {
-      _handleProgressUpdate(message);
-    } else if (message is ErrorMessage) {
-      _handleErrorMessage(message);
+    try {
+      if (message is ProcessingResponse) {
+        _handleProcessingResponse(message);
+      } else if (message is ProgressUpdate) {
+        _handleProgressUpdate(message);
+      } else if (message is ErrorMessage) {
+        _handleErrorMessage(message);
+      } else if (message.messageType == 'HealthCheckResponse') {
+        // Handle health check response - for now just report success
+        final isolateId = _findIsolateIdForMessage(message);
+        if (isolateId != null) {
+          _healthMonitor.reportSuccess(isolateId);
+        }
+      }
+    } catch (error, stackTrace) {
+      // Handle message processing errors
+      final isolateId = _findIsolateIdForMessage(message);
+      if (isolateId != null) {
+        _healthMonitor.reportFailure(
+          isolateId,
+          IsolateCommunicationException.receiveFailure(
+            message.messageType,
+            isolateId: isolateId,
+            cause: error,
+            details: 'Failed to process ${message.messageType} message',
+          ),
+        );
+      }
     }
+  }
+
+  /// Find the isolate ID that sent a message
+  String? _findIsolateIdForMessage(IsolateMessage message) {
+    // For messages with request IDs, use the request-to-isolate mapping
+    if (message is ProcessingResponse) {
+      return _requestToIsolateMap[message.requestId];
+    }
+
+    if (message is ProgressUpdate) {
+      return _requestToIsolateMap[message.requestId];
+    }
+
+    if (message is ErrorMessage && message.requestId != null) {
+      return _requestToIsolateMap[message.requestId!];
+    }
+
+    // For other messages, we can't easily determine the isolate
+    return null;
   }
 
   /// Handle processing response from isolate
@@ -434,12 +605,22 @@ class IsolateManager {
     if (task == null) return;
 
     // Find the isolate that sent this response
-    final isolate = _isolates.values.firstWhere((iso) => iso.currentTaskId == response.requestId, orElse: () => _isolates.values.first);
+    final isolateId = _requestToIsolateMap[response.requestId];
+    if (isolateId == null) {
+      // If we can't find the isolate, the task might have been cancelled or timed out
+      return;
+    }
+    final isolate = _isolates[isolateId];
+    if (isolate == null) {
+      // Isolate might have been disposed
+      return;
+    }
 
     if (response.isComplete) {
       // Task completed
       isolate.markIdle();
       _activeTasks.remove(task.id);
+      _requestToIsolateMap.remove(response.requestId);
       _completedTasks++;
 
       // Record processing time
@@ -450,11 +631,18 @@ class IsolateManager {
       }
 
       if (response.error != null) {
-        task.completeError(Exception(response.error));
+        // Report failure to health monitor
+        final error = IsolateProcessingException(isolateId, response.error!, requestId: response.requestId);
+        _healthMonitor.reportFailure(isolateId, error);
+        task.completeError(error);
       } else if (response.waveformData != null) {
+        // Report success to health monitor
+        _healthMonitor.reportSuccess(isolateId);
         task.complete(response.waveformData!);
       } else {
-        task.completeError(Exception('No waveform data received'));
+        final error = IsolateProcessingException(isolateId, 'No waveform data received', requestId: response.requestId);
+        _healthMonitor.reportFailure(isolateId, error);
+        task.completeError(error);
       }
     }
   }
@@ -473,13 +661,29 @@ class IsolateManager {
       final task = _activeTasks[error.requestId!];
       if (task != null) {
         // Find the isolate that sent this error
-        final isolate = _isolates.values.firstWhere((iso) => iso.currentTaskId == error.requestId, orElse: () => _isolates.values.first);
+        final isolateId = _requestToIsolateMap[error.requestId!];
+        if (isolateId == null) return;
+        final isolate = _isolates[isolateId];
+        if (isolate == null) return;
 
         isolate.markIdle();
         _activeTasks.remove(task.id);
+        _requestToIsolateMap.remove(error.requestId!);
         _failedTasks++;
 
-        task.completeError(Exception('${error.errorType}: ${error.errorMessage}'));
+        // Create a proper exception from the error message
+        final exception = IsolateProcessingException(
+          isolateId,
+          error.errorMessage,
+          originalErrorType: error.errorType,
+          isolateStackTrace: error.stackTrace,
+          requestId: error.requestId,
+        );
+
+        // Report failure to health monitor
+        _healthMonitor.reportFailure(isolateId, exception);
+
+        task.completeError(exception);
       }
     }
   }
@@ -545,9 +749,76 @@ class IsolateManager {
     return _isolates.length * 10.0; // MB per isolate estimate
   }
 
-  /// Generate a unique message ID
-  String _generateMessageId() {
-    return 'msg_${DateTime.now().millisecondsSinceEpoch}_${_random.nextInt(10000)}';
+  /// Handle isolate crash
+  void _handleIsolateCrash(String isolateId, Object error) {
+    final isolate = _isolates[isolateId];
+    if (isolate == null) return;
+
+    // Find any active task on this isolate
+    final activeTask = _activeTasks.values.where((task) => isolate.currentTaskId == task.id).firstOrNull;
+
+    if (activeTask != null) {
+      // Mark task as failed due to isolate crash
+      _activeTasks.remove(activeTask.id);
+      _failedTasks++;
+
+      final crashException = IsolateProcessingException(
+        isolateId,
+        'Isolate crashed during processing',
+        originalErrorType: error.runtimeType.toString(),
+        requestId: activeTask.id,
+        details: 'The isolate processing this task crashed unexpectedly',
+      );
+
+      // Attempt to retry the task if recovery is enabled
+      if (enableErrorRecovery && _shouldRetryTask(activeTask.id, crashException)) {
+        _retryTask(activeTask, crashException).catchError((retryError) {
+          activeTask.completeError(crashException);
+        });
+      } else {
+        activeTask.completeError(crashException);
+      }
+    }
+
+    // Remove the crashed isolate
+    _removeIsolate(isolateId);
+  }
+
+  /// Schedule an isolate restart
+  void _scheduleIsolateRestart(String isolateId) {
+    // Remove the unhealthy isolate and spawn a new one
+    Timer(const Duration(seconds: 1), () async {
+      _removeIsolate(isolateId);
+
+      // Spawn a replacement isolate if we're below the pool size
+      if (_isolates.length < config.isolatePoolSize) {
+        try {
+          await _spawnIsolate();
+        } catch (error) {
+          // Log error but don't crash the manager
+          print('Failed to spawn replacement isolate: $error');
+        }
+      }
+    });
+  }
+
+  /// Remove an isolate from management
+  void _removeIsolate(String isolateId) {
+    final isolate = _isolates.remove(isolateId);
+    if (isolate != null) {
+      _healthMonitor.removeIsolate(isolateId);
+      isolate.dispose();
+    }
+  }
+
+  /// Get health information for all isolates
+  Map<String, IsolateHealth> getIsolateHealth() {
+    return _healthMonitor.getAllHealth();
+  }
+
+  /// Get health statistics
+  Map<String, dynamic> getHealthStatistics() {
+    return _healthMonitor.getStatistics();
   }
 
   /// Dispose of the isolate manager and all isolates
@@ -557,12 +828,17 @@ class IsolateManager {
     _isDisposed = true;
     _cleanupTimer?.cancel();
 
+    // Dispose health monitor
+    _healthMonitor.dispose();
+
     // Cancel all active tasks
     for (final task in _activeTasks.values) {
       task.cancel();
     }
     _activeTasks.clear();
     _taskQueue.clear();
+    _taskRetryAttempts.clear();
+    _requestToIsolateMap.clear();
 
     // Dispose of all isolates
     for (final isolate in _isolates.values) {

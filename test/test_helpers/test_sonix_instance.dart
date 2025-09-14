@@ -1,0 +1,45 @@
+/// Test helper for creating SonixInstance with mock isolate manager
+///
+/// This provides a way to test SonixInstance functionality without
+/// requiring real audio files or native decoders.
+library;
+
+import 'dart:async';
+import 'dart:isolate';
+
+import 'package:sonix/src/sonix_api.dart';
+import 'package:sonix/src/isolate/isolate_manager.dart';
+import '../mocks/mock_processing_isolate.dart';
+
+/// Test configuration that uses mock isolates
+class TestSonixConfig extends SonixConfig {
+  const TestSonixConfig({
+    super.maxConcurrentOperations = 2,
+    super.isolatePoolSize = 1,
+    super.isolateIdleTimeout = const Duration(seconds: 5),
+    super.maxMemoryUsage = 50 * 1024 * 1024,
+    super.enableCaching = false,
+    super.maxCacheSize = 10,
+    super.enableProgressReporting = true,
+  });
+}
+
+/// Test isolate manager that uses mock processing isolates
+class TestIsolateManager extends IsolateManager {
+  TestIsolateManager(super.config);
+
+  @override
+  Future<Isolate> spawnProcessingIsolate(SendPort handshakeSendPort) async {
+    return await Isolate.spawn(mockProcessingIsolateEntryPoint, handshakeSendPort, debugName: 'MockSonixProcessingIsolate');
+  }
+}
+
+/// Test SonixInstance that uses mock isolate manager
+class TestSonixInstance extends SonixInstance {
+  TestSonixInstance([SonixConfig? config]) : super(config ?? const TestSonixConfig());
+
+  @override
+  IsolateManager createIsolateManager() {
+    return TestIsolateManager(config);
+  }
+}

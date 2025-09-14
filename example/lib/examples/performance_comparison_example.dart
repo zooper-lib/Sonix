@@ -33,7 +33,7 @@ class _PerformanceComparisonExampleState extends State<PerformanceComparisonExam
   int _benchmarkIterations = 3;
   bool _includeMemoryProfiling = true;
   bool _includeAccuracyTest = true;
-  List<int> _testFileSizes = [1, 5, 10, 50, 100]; // MB
+  final List<int> _testFileSizes = [1, 5, 10, 50, 100]; // MB
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +348,7 @@ class _PerformanceComparisonExampleState extends State<PerformanceComparisonExam
             const SizedBox(height: 12),
             Text('Testing: ${_currentBenchmark!.configurationName}'),
             Text('File Size: ${_currentBenchmark!.fileSizeMB}MB'),
-            Text('Iteration: ${_currentBenchmark!.currentIteration}/${_benchmarkIterations}'),
+            Text('Iteration: ${_currentBenchmark!.currentIteration}/$_benchmarkIterations'),
             Text('Status: ${_currentBenchmark!.status}'),
           ],
         ),

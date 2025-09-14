@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:isolate';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/isolate/isolate_manager.dart';
 import 'package:sonix/src/isolate/isolate_messages.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
+import 'mocks/mock_processing_isolate.dart';
 
 // Test configuration class
 class TestSonixConfig implements IsolateConfig {
@@ -24,6 +26,16 @@ class TestSonixConfig implements IsolateConfig {
   });
 }
 
+// Test isolate manager that uses mock processing isolate
+class TestIsolateManager extends IsolateManager {
+  TestIsolateManager(super.config);
+
+  @override
+  Future<Isolate> spawnProcessingIsolate(SendPort handshakeSendPort) async {
+    return await Isolate.spawn(mockProcessingIsolateEntryPoint, handshakeSendPort, debugName: 'MockSonixProcessingIsolate');
+  }
+}
+
 void main() {
   group('IsolateManager', () {
     late IsolateManager manager;
@@ -36,7 +48,7 @@ void main() {
         isolateIdleTimeout: Duration(seconds: 5),
         maxMemoryUsage: 50 * 1024 * 1024,
       );
-      manager = IsolateManager(config);
+      manager = TestIsolateManager(config);
     });
 
     tearDown(() async {

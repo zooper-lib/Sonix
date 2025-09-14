@@ -122,6 +122,8 @@ class TestDataGenerator {
       '$generatedPath/test_sample.flac',
       '$generatedPath/test_sample.ogg',
       '$generatedPath/corrupted_header.mp3',
+      '$generatedPath/empty_file.wav',
+      '$generatedPath/invalid_format.xyz',
       '$assetsPath/reference_waveforms.json',
       '$assetsPath/test_configurations.json',
     ];
@@ -789,7 +791,7 @@ class TestDataGenerator {
   static Future<void> _generateReferenceWaveformData() async {
     final referenceData = {
       'test_mono_44100.wav': {
-        'duration_ms': 1000,
+        'duration_ms': 500, // Updated to match essential test data duration
         'sample_rate': 44100,
         'channels': 1,
         'expected_amplitudes_1000': _generateExpectedAmplitudes(1000),
@@ -799,7 +801,7 @@ class TestDataGenerator {
         'rms_amplitude': 0.35, // Approximate RMS from synthetic data
       },
       'test_stereo_44100.wav': {
-        'duration_ms': 1000,
+        'duration_ms': 500, // Updated to match essential test data duration
         'sample_rate': 44100,
         'channels': 2,
         'expected_amplitudes_1000': _generateExpectedAmplitudes(1000),

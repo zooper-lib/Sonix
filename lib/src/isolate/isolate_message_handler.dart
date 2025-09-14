@@ -8,6 +8,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'isolate_messages.dart';
+import 'error_serializer.dart';
+import '../exceptions/sonix_exceptions.dart';
 
 /// Exception thrown when message serialization/deserialization fails
 class MessageSerializationException implements Exception {
@@ -154,5 +156,127 @@ class IsolateMessageHandler {
     } catch (e) {
       throw MessageSerializationException('Failed to deserialize message batch', e);
     }
+  }
+
+  /// Safely serialize a message with error handling
+  ///
+  /// Attempts to serialize a message and returns either the serialized data
+  /// or an error message if serialization fails.
+  static Map<String, dynamic> safeSerialize(IsolateMessage message) {
+    try {
+      return message.toJson();
+    } catch (error, stackTrace) {
+      // If serialization fails, create an error message instead
+      return ErrorSerializer.createErrorMessage(
+        messageId: message.id,
+        error: IsolateCommunicationException.sendFailure(message.messageType, cause: error, details: 'Failed to serialize ${message.messageType} message'),
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Safely deserialize a message with error handling
+  ///
+  /// Attempts to deserialize a message and returns either the message
+  /// or an ErrorMessage if deserialization fails.
+  static IsolateMessage safeDeserialize(Map<String, dynamic> json) {
+    try {
+      return IsolateMessage.fromJson(json);
+    } catch (error, stackTrace) {
+      // If deserialization fails, create an error message
+      final messageType = json['messageType'] as String? ?? 'unknown';
+      final messageId = json['id'] as String? ?? 'unknown';
+
+      return ErrorMessage(
+        id: '${messageId}_error',
+        timestamp: DateTime.now(),
+        errorMessage: 'Failed to deserialize $messageType message',
+        errorType: 'IsolateCommunicationException',
+        stackTrace: stackTrace.toString(),
+      );
+    }
+  }
+
+  /// Create an error message for communication failures
+  static ErrorMessage createCommunicationError({
+    required String messageId,
+    required String messageType,
+    required String operation,
+    required Object error,
+    StackTrace? stackTrace,
+    String? isolateId,
+    String? requestId,
+  }) {
+    final communicationError = IsolateCommunicationException(
+      messageType,
+      operation,
+      isolateId: isolateId,
+      cause: error,
+      details: 'Communication failed during $operation operation',
+    );
+
+    final errorData = ErrorSerializer.serializeError(communicationError, stackTrace);
+
+    return ErrorMessage(
+      id: messageId,
+      timestamp: DateTime.now(),
+      errorMessage: communicationError.message,
+      errorType: 'IsolateCommunicationException',
+      requestId: requestId,
+      stackTrace: stackTrace?.toString(),
+    );
+  }
+
+  /// Validate message integrity and detect corruption
+  static bool isMessageCorrupted(Map<String, dynamic> json) {
+    // Check for required fields
+    if (!json.containsKey('messageType') || !json.containsKey('id') || !json.containsKey('timestamp')) {
+      return true;
+    }
+
+    // Validate timestamp format
+    try {
+      DateTime.parse(json['timestamp'] as String);
+    } catch (e) {
+      return true;
+    }
+
+    // Check for null or empty critical fields
+    final messageType = json['messageType'];
+    final id = json['id'];
+
+    if (messageType == null || messageType.toString().isEmpty || id == null || id.toString().isEmpty) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Attempt to repair a corrupted message
+  static Map<String, dynamic>? repairMessage(Map<String, dynamic> json) {
+    final repaired = Map<String, dynamic>.from(json);
+    bool wasRepaired = false;
+
+    // Repair missing or invalid timestamp
+    if (!repaired.containsKey('timestamp') || repaired['timestamp'] == null || repaired['timestamp'].toString().isEmpty) {
+      repaired['timestamp'] = DateTime.now().toIso8601String();
+      wasRepaired = true;
+    }
+
+    // Repair missing or invalid ID
+    if (!repaired.containsKey('id') || repaired['id'] == null || repaired['id'].toString().isEmpty) {
+      repaired['id'] = 'repaired_${DateTime.now().millisecondsSinceEpoch}';
+      wasRepaired = true;
+    }
+
+    // Repair missing or invalid messageType
+    if (!repaired.containsKey('messageType') || repaired['messageType'] == null || repaired['messageType'].toString().isEmpty) {
+      repaired['messageType'] = 'ErrorMessage';
+      repaired['errorMessage'] = 'Message type was corrupted and repaired';
+      repaired['errorType'] = 'MessageCorruption';
+      wasRepaired = true;
+    }
+
+    return wasRepaired ? repaired : null;
   }
 }

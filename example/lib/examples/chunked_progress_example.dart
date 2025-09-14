@@ -31,7 +31,7 @@ class _ChunkedProgressExampleState extends State<ChunkedProgressExample> with Ti
   double _throughputMBps = 0.0;
   int _currentMemoryUsage = 0;
   int _peakMemoryUsage = 0;
-  List<String> _errorLog = [];
+  final List<String> _errorLog = [];
 
   // Animation controllers
   late AnimationController _progressAnimationController;
@@ -551,9 +551,9 @@ class _ChunkedProgressExampleState extends State<ChunkedProgressExample> with Ti
       _error = null;
       _progress = 0.0;
       _processedChunks = 0;
-      _totalChunks = 0;
+      _totalChunks = 10; // Simulated chunk count
       _elapsedTime = Duration.zero;
-      _statusMessage = 'Initializing chunked processing...';
+      _statusMessage = 'Initializing streaming processing...';
       _currentMemoryUsage = 0;
       _peakMemoryUsage = 0;
       _errorLog.clear();
@@ -564,28 +564,33 @@ class _ChunkedProgressExampleState extends State<ChunkedProgressExample> with Ti
     _progressAnimationController.forward();
 
     try {
-      // Get file size for configuration
-      final fileSize = await File(_selectedFilePath).length();
-
-      // Create chunked processing configuration
-      final config = ChunkedProcessingConfig.forFileSize(
-        fileSize,
-      ).copyWith(enableProgressReporting: true, progressUpdateInterval: const Duration(milliseconds: 50));
+      // Get file size for information (not used in current streaming implementation)
+      // final fileSize = await File(_selectedFilePath).length();
 
       setState(() {
-        _statusMessage = 'Starting chunked processing...';
-        _totalChunks = _estimateChunkCount(fileSize);
+        _statusMessage = 'Starting streaming processing...';
       });
 
-      // Generate waveform with progress reporting
-      final waveformData = await Sonix.generateWaveformChunked(_selectedFilePath, chunkedConfig: config, onProgress: _handleProgress);
+      // Create a Sonix instance for processing
+      final sonix = SonixInstance();
 
-      setState(() {
-        _waveformData = waveformData;
-        _isProcessing = false;
-        _progress = 1.0;
-        _statusMessage = 'Processing completed successfully!';
-      });
+      // Generate waveform with progress reporting using streaming
+      await for (final progress in sonix.generateWaveformStream(_selectedFilePath, resolution: 1000)) {
+        _handleProgress(progress);
+
+        if (progress.isComplete) {
+          setState(() {
+            _waveformData = progress.partialData;
+            _isProcessing = false;
+            _progress = 1.0;
+            _statusMessage = 'Processing completed successfully!';
+          });
+          break;
+        }
+      }
+
+      // Clean up the instance
+      await sonix.dispose();
     } catch (e) {
       setState(() {
         _error = 'Processing failed: $e';
@@ -598,24 +603,29 @@ class _ChunkedProgressExampleState extends State<ChunkedProgressExample> with Ti
     }
   }
 
-  void _handleProgress(ProgressInfo progress) {
+  void _handleProgress(WaveformProgress progress) {
     setState(() {
-      _progress = progress.progressPercentage;
-      _processedChunks = progress.processedChunks;
-      _totalChunks = progress.totalChunks;
-      _estimatedTimeRemaining = progress.estimatedTimeRemaining;
+      _progress = progress.progress;
+      _processedChunks = (_progress * _totalChunks).round();
 
-      // Update status message
-      if (progress.hasErrors) {
-        _statusMessage = 'Processing with errors - chunk ${progress.processedChunks}';
-        if (progress.lastError != null) {
-          _errorLog.add('Chunk ${progress.processedChunks}: ${progress.lastError}');
-        }
-      } else {
-        _statusMessage = 'Processing chunk ${progress.processedChunks} of ${progress.totalChunks}';
+      // Simulate estimated time remaining
+      if (_elapsedTime.inMilliseconds > 0 && _progress > 0) {
+        final totalEstimatedTime = _elapsedTime.inMilliseconds / _progress;
+        final remainingTime = totalEstimatedTime - _elapsedTime.inMilliseconds;
+        _estimatedTimeRemaining = Duration(milliseconds: remainingTime.round());
       }
 
-      // Simulate memory usage (in a real app, this would come from the progress info)
+      // Update status message
+      if (progress.error != null) {
+        _statusMessage = 'Processing with errors';
+        _errorLog.add('Error: ${progress.error}');
+      } else if (progress.statusMessage != null) {
+        _statusMessage = progress.statusMessage!;
+      } else {
+        _statusMessage = 'Processing chunk $_processedChunks of $_totalChunks';
+      }
+
+      // Simulate memory usage
       _currentMemoryUsage = (50 * 1024 * 1024 * (0.5 + _progress * 0.5)).round();
       _peakMemoryUsage = (_peakMemoryUsage < _currentMemoryUsage) ? _currentMemoryUsage : _peakMemoryUsage;
 

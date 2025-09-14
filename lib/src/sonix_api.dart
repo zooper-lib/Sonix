@@ -137,7 +137,12 @@ class SonixInstance {
   /// ));
   /// ```
   SonixInstance([SonixConfig? config]) : config = config ?? SonixConfig.defaultConfig() {
-    _isolateManager = IsolateManager(this.config);
+    _isolateManager = createIsolateManager();
+  }
+
+  /// Create the isolate manager - can be overridden for testing
+  IsolateManager createIsolateManager() {
+    return IsolateManager(config);
   }
 
   /// Initialize this Sonix instance

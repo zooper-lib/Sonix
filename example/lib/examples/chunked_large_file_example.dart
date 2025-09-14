@@ -456,9 +456,9 @@ class _ChunkedLargeFileExampleState extends State<ChunkedLargeFileExample> {
       _isProcessing = true;
       _error = null;
       _progress = 0.0;
-      _statusMessage = 'Initializing chunked processing...';
+      _statusMessage = 'Initializing streaming processing...';
       _processedChunks = 0;
-      _totalChunks = 0;
+      _totalChunks = 10; // Simulated chunk count
       _processingTime = Duration.zero;
       _currentMemoryUsage = 0;
       _peakMemoryUsage = 0;
@@ -467,61 +467,63 @@ class _ChunkedLargeFileExampleState extends State<ChunkedLargeFileExample> {
     final stopwatch = Stopwatch()..start();
 
     try {
-      // Get file size for optimal configuration
+      // Get file size for information
       final fileSize = await File(_selectedFilePath).length();
-
-      // Create optimal chunked processing configuration
-      final config = ChunkedProcessingConfig.forFileSize(
-        fileSize,
-      ).copyWith(enableProgressReporting: true, progressUpdateInterval: const Duration(milliseconds: 100));
+      final fileSizeMB = fileSize / (1024 * 1024);
 
       setState(() {
-        _statusMessage = 'Starting chunked processing with ${(config.fileChunkSize / (1024 * 1024)).toStringAsFixed(1)}MB chunks...';
+        _statusMessage = 'Starting streaming processing for ${fileSizeMB.toStringAsFixed(1)}MB file...';
       });
 
-      // Generate waveform with chunked processing
-      final waveformData = await Sonix.generateWaveformChunked(
-        _selectedFilePath,
-        chunkedConfig: config,
-        onProgress: (progress) {
-          setState(() {
-            _progress = progress.progressPercentage;
-            _processedChunks = progress.processedChunks;
-            _totalChunks = progress.totalChunks;
-            _estimatedTimeRemaining = progress.estimatedTimeRemaining;
-            _processingTime = stopwatch.elapsed;
+      // Create a Sonix instance for processing
+      final sonix = SonixInstance();
 
-            // Calculate throughput
-            final fileSizeMB = fileSize / (1024 * 1024);
-            final elapsedSeconds = _processingTime.inMilliseconds / 1000.0;
+      // Use streaming waveform generation with progress updates
+      await for (final progress in sonix.generateWaveformStream(_selectedFilePath, resolution: 1000)) {
+        setState(() {
+          _progress = progress.progress;
+          _processedChunks = (_progress * _totalChunks).round();
+          _processingTime = stopwatch.elapsed;
+
+          // Calculate throughput
+          final elapsedSeconds = _processingTime.inMilliseconds / 1000.0;
+          if (elapsedSeconds > 0) {
             _throughputMBps = (fileSizeMB * _progress) / elapsedSeconds;
+          }
 
-            // Update memory usage (simulated)
-            _currentMemoryUsage = (config.maxMemoryUsage * 0.8).round();
-            _peakMemoryUsage = (_peakMemoryUsage < _currentMemoryUsage) ? _currentMemoryUsage : _peakMemoryUsage;
+          // Simulate memory usage
+          _currentMemoryUsage = (50 * 1024 * 1024 * (0.5 + _progress * 0.5)).round();
+          _peakMemoryUsage = (_peakMemoryUsage < _currentMemoryUsage) ? _currentMemoryUsage : _peakMemoryUsage;
 
-            if (progress.hasErrors) {
-              _statusMessage = 'Processing with errors - chunk ${progress.processedChunks}';
-            } else {
-              _statusMessage = 'Processing chunk ${progress.processedChunks} of ${progress.totalChunks}';
-            }
-          });
-        },
-      );
+          if (progress.error != null) {
+            _statusMessage = 'Processing with errors';
+          } else if (progress.isComplete) {
+            _statusMessage = 'Streaming processing completed successfully!';
+            _waveformData = progress.partialData;
+          } else {
+            _statusMessage = 'Processing chunk $_processedChunks of $_totalChunks';
+          }
+        });
+
+        if (progress.isComplete) {
+          break;
+        }
+      }
 
       stopwatch.stop();
 
       setState(() {
-        _waveformData = waveformData;
         _isProcessing = false;
         _progress = 1.0;
-        _statusMessage = 'Chunked processing completed successfully!';
         _processingTime = stopwatch.elapsed;
       });
+
+      // Clean up the instance
+      await sonix.dispose();
     } catch (e) {
       stopwatch.stop();
       setState(() {
-        _error = 'Chunked processing failed: $e';
+        _error = 'Streaming processing failed: $e';
         _isProcessing = false;
         _statusMessage = 'Processing failed';
       });
@@ -540,8 +542,11 @@ class _ChunkedLargeFileExampleState extends State<ChunkedLargeFileExample> {
     final stopwatch = Stopwatch()..start();
 
     try {
+      // Create a Sonix instance for processing
+      final sonix = SonixInstance();
+
       // Use traditional processing for comparison
-      final waveformData = await Sonix.generateWaveform(_selectedFilePath);
+      final waveformData = await sonix.generateWaveform(_selectedFilePath);
 
       stopwatch.stop();
 
@@ -551,13 +556,16 @@ class _ChunkedLargeFileExampleState extends State<ChunkedLargeFileExample> {
         _statusMessage = 'Traditional processing completed!';
         _processingTime = stopwatch.elapsed;
       });
+
+      // Clean up the instance
+      await sonix.dispose();
     } catch (e) {
       stopwatch.stop();
       setState(() {
         _error =
             'Traditional processing failed: $e\n\n'
             'This is expected for very large files that exceed available memory. '
-            'Try chunked processing instead.';
+            'Try streaming processing instead.';
         _isProcessing = false;
         _statusMessage = 'Processing failed';
       });

@@ -426,12 +426,18 @@ class _StyleCustomizationExampleState extends State<StyleCustomizationExample> {
     });
 
     try {
-      final waveformData = await Sonix.generateWaveform(_selectedFilePath, resolution: 150, normalize: true);
+      // Create a Sonix instance for processing
+      final sonix = SonixInstance();
+
+      final waveformData = await sonix.generateWaveform(_selectedFilePath, resolution: 150, normalize: true);
 
       setState(() {
         _waveformData = waveformData;
         _isLoading = false;
       });
+
+      // Clean up the instance
+      await sonix.dispose();
     } catch (e) {
       setState(() {
         _isLoading = false;

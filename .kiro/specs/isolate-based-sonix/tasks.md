@@ -25,14 +25,17 @@
 
 - [x] 4. Implement basic waveform generation in background isolates
 
-
   - Create ProcessingIsolate entry point function for background processing
   - Implement basic waveform generation task execution in isolates
   - Add result communication back to main isolate
   - Write integration tests for end-to-end waveform generation in isolates
   - _Requirements: 2.1, 2.2, 2.3, 3.1_
 
-- [ ] 5. Add comprehensive error handling across isolate boundaries
+- [x] 5. Add comprehensive error handling across isolate boundaries
+
+
+
+
 
   - Implement IsolateProcessingException and IsolateCommunicationException classes
   - Add error serialization and deserialization for cross-isolate communication

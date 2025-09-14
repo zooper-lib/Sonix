@@ -705,7 +705,10 @@ class _SeekingPartialWaveformExampleState extends State<SeekingPartialWaveformEx
     final stopwatch = Stopwatch()..start();
 
     try {
-      final waveformData = await Sonix.generateWaveform(_selectedFilePath);
+      // Create a Sonix instance for processing
+      final sonix = SonixInstance();
+
+      final waveformData = await sonix.generateWaveform(_selectedFilePath);
 
       stopwatch.stop();
 
@@ -720,6 +723,9 @@ class _SeekingPartialWaveformExampleState extends State<SeekingPartialWaveformEx
           _speedupRatio = _fullProcessingTime.inMilliseconds / _partialProcessingTime.inMilliseconds;
         }
       });
+
+      // Clean up the instance
+      await sonix.dispose();
     } catch (e) {
       stopwatch.stop();
       setState(() {
@@ -740,27 +746,44 @@ class _SeekingPartialWaveformExampleState extends State<SeekingPartialWaveformEx
     final stopwatch = Stopwatch()..start();
 
     try {
-      // Use chunked processing with seeking to generate waveform for specific section
-      // Note: This is a demonstration - in practice you would implement seeking in the chunked processor
-      final config = ChunkedProcessingConfig.forFileSize(100 * 1024 * 1024); // Assume 100MB file
-      final waveformData = await Sonix.generateWaveformChunked(
-        _selectedFilePath,
-        chunkedConfig: config,
-        // In a real implementation, you would add seeking parameters here
+      // Create a Sonix instance for processing
+      final sonix = SonixInstance();
+
+      // Generate full waveform and simulate section extraction
+      // Note: This is a demonstration - real seeking would be implemented in the native layer
+      final fullWaveformData = await sonix.generateWaveform(_selectedFilePath, resolution: 1000);
+
+      // Simulate extracting a section of the waveform
+      final totalDuration = fullWaveformData.duration;
+      final startRatio = _seekStart.inMilliseconds / totalDuration.inMilliseconds;
+      final endRatio = _seekEnd.inMilliseconds / totalDuration.inMilliseconds;
+
+      final startIndex = (startRatio * fullWaveformData.amplitudes.length).round();
+      final endIndex = (endRatio * fullWaveformData.amplitudes.length).round();
+
+      final sectionAmplitudes = fullWaveformData.amplitudes.sublist(
+        startIndex.clamp(0, fullWaveformData.amplitudes.length),
+        endIndex.clamp(0, fullWaveformData.amplitudes.length),
       );
+
+      // Create partial waveform data
+      final partialWaveformData = WaveformData.fromAmplitudes(sectionAmplitudes);
 
       stopwatch.stop();
 
       setState(() {
-        _partialWaveformData = waveformData;
+        _partialWaveformData = partialWaveformData;
         _partialProcessingTime = stopwatch.elapsed;
         _isLoadingPartial = false;
 
-        // Update speedup ratio if full waveform exists
+        // Update speedup ratio
         if (_fullProcessingTime > Duration.zero) {
           _speedupRatio = _fullProcessingTime.inMilliseconds / _partialProcessingTime.inMilliseconds;
         }
       });
+
+      // Clean up the instance
+      await sonix.dispose();
     } catch (e) {
       stopwatch.stop();
       setState(() {
@@ -778,7 +801,7 @@ class _SeekingPartialWaveformExampleState extends State<SeekingPartialWaveformEx
     if (duration.inMinutes > 0) {
       return '${minutes}m ${seconds}s';
     } else if (duration.inSeconds > 0) {
-      return '${seconds}.${(milliseconds / 100).floor()}s';
+      return '$seconds.${(milliseconds / 100).floor()}s';
     } else {
       return '${milliseconds}ms';
     }

@@ -9,14 +9,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sonix/src/sonix_api.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'test_helpers/test_sonix_instance.dart';
 
 void main() {
   group('Basic Isolate Waveform Generation Tests', () {
     late SonixInstance sonix;
 
     setUp(() async {
-      // Create a new Sonix instance for each test
-      sonix = SonixInstance(SonixConfig(isolatePoolSize: 1, maxConcurrentOperations: 2, enableProgressReporting: true));
+      // Create a new test Sonix instance for each test
+      sonix = TestSonixInstance(const TestSonixConfig(isolatePoolSize: 1, maxConcurrentOperations: 2, enableProgressReporting: true));
       await sonix.initialize();
     });
 
@@ -87,7 +88,7 @@ void main() {
 
     test('should clean up resources properly after disposal', () async {
       // Arrange
-      final tempSonix = SonixInstance();
+      final tempSonix = TestSonixInstance();
       await tempSonix.initialize();
 
       // Act - Dispose

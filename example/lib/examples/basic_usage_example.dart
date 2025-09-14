@@ -168,8 +168,11 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
     });
 
     try {
+      // Create a Sonix instance for processing
+      final sonix = SonixInstance();
+
       // Basic waveform generation with default settings
-      final waveformData = await Sonix.generateWaveform(
+      final waveformData = await sonix.generateWaveform(
         _selectedFilePath,
         resolution: 200, // Number of data points
         normalize: true, // Normalize amplitude values
@@ -179,6 +182,9 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
         _waveformData = waveformData;
         _isLoading = false;
       });
+
+      // Clean up the instance
+      await sonix.dispose();
     } catch (e) {
       setState(() {
         _error = e.toString();

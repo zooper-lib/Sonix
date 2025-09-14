@@ -42,6 +42,10 @@ abstract class IsolateMessage {
         return ErrorMessage.fromJson(json);
       case 'CancellationRequest':
         return CancellationRequest.fromJson(json);
+      case 'HealthCheckRequest':
+        return _HealthCheckRequest.fromJson(json);
+      case 'HealthCheckResponse':
+        return _HealthCheckResponse.fromJson(json);
       default:
         throw ArgumentError('Unknown message type: $messageType');
     }
@@ -236,5 +240,61 @@ class CancellationRequest extends IsolateMessage {
 
   factory CancellationRequest.fromJson(Map<String, dynamic> json) {
     return CancellationRequest(id: json['id'] as String, timestamp: DateTime.parse(json['timestamp'] as String), requestId: json['requestId'] as String);
+  }
+}
+
+/// Health check request message (internal implementation)
+class _HealthCheckRequest extends IsolateMessage {
+  @override
+  String get messageType => 'HealthCheckRequest';
+
+  const _HealthCheckRequest({required super.id, required super.timestamp});
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {'messageType': messageType, 'id': id, 'timestamp': timestamp.toIso8601String()};
+  }
+
+  factory _HealthCheckRequest.fromJson(Map<String, dynamic> json) {
+    return _HealthCheckRequest(id: json['id'] as String, timestamp: DateTime.parse(json['timestamp'] as String));
+  }
+}
+
+/// Health check response message (internal implementation)
+class _HealthCheckResponse extends IsolateMessage {
+  /// Memory usage in bytes (if available)
+  final int? memoryUsage;
+
+  /// Number of active tasks
+  final int activeTasks;
+
+  /// Isolate status information
+  final Map<String, dynamic> statusInfo;
+
+  @override
+  String get messageType => 'HealthCheckResponse';
+
+  const _HealthCheckResponse({required super.id, required super.timestamp, this.memoryUsage, required this.activeTasks, required this.statusInfo});
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'messageType': messageType,
+      'id': id,
+      'timestamp': timestamp.toIso8601String(),
+      'memoryUsage': memoryUsage,
+      'activeTasks': activeTasks,
+      'statusInfo': statusInfo,
+    };
+  }
+
+  factory _HealthCheckResponse.fromJson(Map<String, dynamic> json) {
+    return _HealthCheckResponse(
+      id: json['id'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      memoryUsage: json['memoryUsage'] as int?,
+      activeTasks: json['activeTasks'] as int? ?? 0,
+      statusInfo: json['statusInfo'] as Map<String, dynamic>? ?? {},
+    );
   }
 }
