@@ -141,9 +141,6 @@ void main() {
       try {
         await customSonix.initialize();
 
-        // Act
-        final stats = customSonix.getResourceStatistics();
-
         // Assert
         expect(customSonix.config.isolatePoolSize, equals(3));
         expect(customSonix.config.maxConcurrentOperations, equals(5));

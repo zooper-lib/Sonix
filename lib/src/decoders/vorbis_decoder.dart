@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import '../models/audio_data.dart';
-import '../models/file_chunk.dart';
-import '../models/chunked_processing_models.dart';
-import '../exceptions/sonix_exceptions.dart';
-import '../native/native_audio_bindings.dart';
+import 'package:sonix/src/models/audio_data.dart';
+import 'package:sonix/src/models/file_chunk.dart';
+import 'package:sonix/src/models/chunked_processing_models.dart';
+import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
 import 'audio_decoder.dart';
 import 'chunked_audio_decoder.dart';
 
@@ -23,7 +23,6 @@ class VorbisDecoder implements ChunkedAudioDecoder {
   final List<int> _pageOffsets = []; // Byte positions of OGG pages
   final List<Duration> _pageTimestamps = []; // Timestamps for OGG pages
   final List<int> _granulePositions = []; // Granule positions for seeking
-  int _currentPageIndex = 0;
   static const int _chunkSize = 64 * 1024; // 64KB chunks for streaming
 
   @override
@@ -273,7 +272,6 @@ class VorbisDecoder implements ChunkedAudioDecoder {
     _checkDisposed();
 
     _currentPosition = Duration.zero;
-    _currentPageIndex = 0;
     // Native decoder state would be reset here in a real implementation
   }
 
@@ -328,7 +326,6 @@ class VorbisDecoder implements ChunkedAudioDecoder {
     _pageOffsets.clear();
     _pageTimestamps.clear();
     _granulePositions.clear();
-    _currentPageIndex = 0;
   }
 
   // Helper methods for OGG Vorbis-specific processing
@@ -417,7 +414,6 @@ class VorbisDecoder implements ChunkedAudioDecoder {
       }
     }
 
-    _currentPageIndex = closestIndex;
     final actualPosition = _pageTimestamps[closestIndex];
     final bytePosition = _pageOffsets[closestIndex];
     _currentPosition = actualPosition;
@@ -445,7 +441,6 @@ class VorbisDecoder implements ChunkedAudioDecoder {
     final ratio = targetMs / totalMs;
     final pageIndex = (ratio * _pageOffsets.length).round().clamp(0, _pageOffsets.length - 1);
 
-    _currentPageIndex = pageIndex;
     final actualPosition = _pageTimestamps.isNotEmpty ? _pageTimestamps[pageIndex] : position;
     final bytePosition = _pageOffsets[pageIndex];
     _currentPosition = actualPosition;

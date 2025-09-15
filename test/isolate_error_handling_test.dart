@@ -369,9 +369,6 @@ void main() {
       const originalError = DecodingException('File corrupted', 'Invalid header');
       final stackTrace = StackTrace.current;
 
-      // Serialize the error for cross-isolate communication
-      final serializedError = ErrorSerializer.serializeError(originalError, stackTrace);
-
       // Create an error message
       final errorMessage = ErrorSerializer.createErrorMessage(messageId: 'error_123', error: originalError, stackTrace: stackTrace, requestId: 'req_456');
 

@@ -86,7 +86,7 @@ void main() {
               if (result.address != 0) {
                 final resultData = result.ref;
                 if (resultData.error_code == SONIX_OK && resultData.chunk_count > 0) {
-                  final audioChunk = resultData.chunks.elementAt(0).ref;
+                  final audioChunk = (resultData.chunks + 0).ref;
                   totalAudioSamples += audioChunk.sample_count;
                   successfulChunks++;
 

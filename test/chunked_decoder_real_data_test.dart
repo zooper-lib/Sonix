@@ -229,7 +229,6 @@ void main() {
       expect(nullResult, equals(SONIX_FORMAT_UNKNOWN));
 
       // Test with empty buffer
-      final emptyData = Uint8List(0);
       final emptyPtr = malloc<ffi.Uint8>(1); // Allocate at least 1 byte
       try {
         final emptyResult = SonixNativeBindings.detectFormat(emptyPtr, 0);

@@ -81,7 +81,7 @@ void main() {
                 // Verify audio chunks
                 var totalSamples = 0;
                 for (int i = 0; i < resultData.chunk_count; i++) {
-                  final audioChunk = resultData.chunks.elementAt(i).ref;
+                  final audioChunk = (resultData.chunks + i).ref;
                   expect(audioChunk.sample_count, greaterThan(0));
                   totalSamples += audioChunk.sample_count;
 
@@ -285,7 +285,7 @@ void main() {
                 print('Small WAV processing result: error_code=${resultData.error_code}, chunk_count=${resultData.chunk_count}');
 
                 if (resultData.error_code == SONIX_OK && resultData.chunk_count > 0) {
-                  final firstChunk = resultData.chunks.elementAt(0).ref;
+                  final firstChunk = (resultData.chunks + 0).ref;
                   expect(firstChunk.sample_count, greaterThan(0));
                   expect(firstChunk.is_last, equals(1));
                   print('Small WAV audio: ${firstChunk.sample_count} samples');
