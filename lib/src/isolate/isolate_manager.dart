@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
 
@@ -399,9 +400,10 @@ class IsolateManager {
       final isolate = await _getAvailableIsolate();
       await _assignTaskToIsolate(task, isolate);
 
-      // Wait for task completion with timeout
+      // Wait for task completion with dynamic timeout based on file size
+      final timeoutDuration = _calculateTimeoutForTask(task);
       return await task.future.timeout(
-        const Duration(seconds: 30),
+        timeoutDuration,
         onTimeout: () {
           // Clean up the task and isolate mapping
           _activeTasks.remove(task.id);
@@ -411,10 +413,10 @@ class IsolateManager {
           // Report timeout to health monitor
           final isolateId = _requestToIsolateMap[task.id];
           if (isolateId != null) {
-            _healthMonitor.reportFailure(isolateId, TimeoutException('Task ${task.id} timed out after 30 seconds', const Duration(seconds: 30)));
+            _healthMonitor.reportFailure(isolateId, TimeoutException('Task ${task.id} timed out after ${timeoutDuration.inSeconds} seconds', timeoutDuration));
           }
 
-          throw TimeoutException('Task ${task.id} timed out after 30 seconds', const Duration(seconds: 30));
+          throw TimeoutException('Task ${task.id} timed out after ${timeoutDuration.inSeconds} seconds', timeoutDuration);
         },
       );
     } catch (error, stackTrace) {
@@ -1124,5 +1126,37 @@ class IsolateManager {
       isolate.dispose();
     }
     _isolates.clear();
+  }
+
+  /// Calculate timeout duration based on file size
+  ///
+  /// For large files that require chunked processing, we need longer timeouts
+  /// to account for the time needed to process all chunks.
+  Duration _calculateTimeoutForTask(ProcessingTask task) {
+    try {
+      final file = File(task.filePath);
+      final fileSize = file.lengthSync();
+
+      // Base timeout of 60 seconds for files under 50MB
+      const baseTimeout = Duration(seconds: 60);
+      const chunkThreshold = 50 * 1024 * 1024; // 50MB
+
+      if (fileSize <= chunkThreshold) {
+        return baseTimeout;
+      }
+
+      // For large files, calculate timeout based on size
+      // Assume roughly 2 seconds per 10MB for chunked processing (more conservative)
+      final extraTimeNeeded = Duration(seconds: ((fileSize - chunkThreshold) / (5 * 1024 * 1024)).ceil());
+
+      // Cap the timeout at 15 minutes to avoid infinite waits
+      const maxTimeout = Duration(minutes: 15);
+      final calculatedTimeout = baseTimeout + extraTimeNeeded;
+
+      return calculatedTimeout > maxTimeout ? maxTimeout : calculatedTimeout;
+    } catch (e) {
+      // If we can't read the file size, use a longer default timeout
+      return const Duration(minutes: 5);
+    }
   }
 }

@@ -6,12 +6,19 @@ library;
 
 import 'dart:async';
 import 'dart:isolate';
+import 'dart:io';
+import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'isolate_messages.dart';
-import '../decoders/audio_decoder_factory.dart';
-import '../decoders/audio_decoder.dart';
-import '../processing/waveform_generator.dart';
-import '../exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/decoders/audio_decoder_factory.dart';
+import 'package:sonix/src/decoders/audio_decoder.dart';
+import 'package:sonix/src/decoders/chunked_audio_decoder.dart';
+import 'package:sonix/src/models/file_chunk.dart';
+import 'package:sonix/src/models/audio_data.dart';
+import 'package:sonix/src/processing/waveform_generator.dart';
+import 'package:sonix/src/processing/waveform_algorithms.dart';
+import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 /// Entry point for background processing isolates
 ///
@@ -136,25 +143,45 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
     }
 
     try {
-      // Step 2: Decode the audio file with progress updates
+      // Step 2: Check file size and determine processing strategy
       if (request.streamResults) {
-        _sendProgressUpdate(mainSendPort, request.id, 0.2, 'Reading audio file');
+        _sendProgressUpdate(mainSendPort, request.id, 0.2, 'Analyzing file size');
       }
 
-      // Check for cancellation before decoding
+      // Check for cancellation before file analysis
       if (operation.isCancelled) {
         _sendCancellationResponse(mainSendPort, request.id);
         return;
       }
 
-      final audioData = await decoder.decode(request.filePath);
+      // Get file size to determine processing strategy
+      final file = File(request.filePath);
+      final fileSize = await file.length();
+      const chunkThreshold = 50 * 1024 * 1024; // 50MB threshold
+
+      final AudioData audioData;
+
+      if (fileSize > chunkThreshold && decoder is ChunkedAudioDecoder) {
+        // Use selective decoding for large files
+        if (request.streamResults) {
+          _sendProgressUpdate(mainSendPort, request.id, 0.25, 'Using selective decoding for large file (${(fileSize / 1024 / 1024).toStringAsFixed(1)}MB)');
+        }
+
+        audioData = await _processWithSelectiveDecoding(decoder, request.filePath, request.config, mainSendPort, request.id, request.streamResults, operation);
+      } else {
+        // Use regular processing for smaller files
+        if (request.streamResults) {
+          _sendProgressUpdate(mainSendPort, request.id, 0.25, 'Reading audio file (${(fileSize / 1024 / 1024).toStringAsFixed(1)}MB)');
+        }
+
+        audioData = await decoder.decode(request.filePath);
+      }
 
       // Check for cancellation after decoding
       if (operation.isCancelled) {
         _sendCancellationResponse(mainSendPort, request.id);
         return;
       }
-
       if (request.streamResults) {
         _sendProgressUpdate(mainSendPort, request.id, 0.5, 'Audio decoding complete');
       }
@@ -284,4 +311,147 @@ void _sendCancellationResponse(SendPort mainSendPort, String requestId) {
   );
 
   mainSendPort.send(response.toJson());
+}
+
+/// Process large files using selective decoding at strategic time positions
+///
+/// Instead of decoding the entire file, this method:
+/// 1. Estimates the file duration
+/// 2. Calculates strategic time positions based on desired resolution
+/// 3. Seeks to each position and decodes a small chunk
+/// 4. Extracts amplitude from each chunk to build the waveform
+///
+/// This is much more efficient for large files as it only decodes what's needed.
+Future<AudioData> _processWithSelectiveDecoding(
+  ChunkedAudioDecoder decoder,
+  String filePath,
+  WaveformConfig config,
+  SendPort mainSendPort,
+  String requestId,
+  bool streamResults,
+  _ActiveOperation operation,
+) async {
+  // Initialize decoder for chunked processing
+  await decoder.initializeChunkedDecoding(filePath);
+
+  // Check for cancellation after initialization
+  if (operation.isCancelled) {
+    throw Exception('Operation cancelled during selective decoder initialization');
+  }
+
+  if (streamResults) {
+    _sendProgressUpdate(mainSendPort, requestId, 0.1, 'Estimating file duration');
+  }
+
+  // Get file metadata and estimate duration
+  final metadata = decoder.getFormatMetadata();
+  final sampleRate = metadata['sampleRate'] as int? ?? 44100;
+  final channels = metadata['channels'] as int? ?? 2;
+
+  // Estimate duration from file size and format
+  Duration? estimatedDuration = await decoder.estimateDuration();
+  if (estimatedDuration == null) {
+    // Fallback: estimate from file size (rough approximation)
+    final file = File(filePath);
+    final fileSize = await file.length();
+    // Rough estimate: assume 128kbps average bitrate for MP3
+    final estimatedSeconds = (fileSize * 8) / (128 * 1000);
+    estimatedDuration = Duration(seconds: estimatedSeconds.round());
+  }
+
+  if (streamResults) {
+    _sendProgressUpdate(mainSendPort, requestId, 0.2, 'Planning selective decode positions');
+  }
+
+  // Calculate how many sample positions we need
+  final resolution = config.resolution;
+
+  if (streamResults) {
+    _sendProgressUpdate(mainSendPort, requestId, 0.3, 'Beginning selective decode');
+  }
+
+  // Sample audio at each position
+  final amplitudes = <double>[];
+  final file = File(filePath);
+  final fileSize = await file.length();
+
+  for (int i = 0; i < resolution; i++) {
+    // Check for cancellation during processing
+    if (operation.isCancelled) {
+      throw Exception('Operation cancelled during selective processing');
+    }
+
+    try {
+      // Use a simple approach: distribute sample positions across the file
+      // Don't rely on duration estimation for byte positioning
+      final progress = resolution <= 1 ? 0.5 : i / (resolution - 1); // 0.0 to 1.0
+      final bytePosition = (fileSize * progress).round();
+
+      // Ensure byte position is within valid bounds
+      final safeBytePosition = math.max(0, math.min(bytePosition, fileSize - (16 * 1024)));
+
+      // Read a small chunk directly from the calculated position
+      const chunkSize = 16 * 1024; // 16KB
+      final endPosition = math.min(fileSize, safeBytePosition + chunkSize);
+
+      final chunkData = await file.openRead(safeBytePosition, endPosition).fold<List<int>>([], (previous, element) => previous..addAll(element));
+
+      if (chunkData.isNotEmpty) {
+        // Create a file chunk for processing
+        final fileChunk = FileChunk(
+          data: Uint8List.fromList(chunkData),
+          startPosition: safeBytePosition,
+          endPosition: endPosition,
+          isLast: i == resolution - 1,
+        );
+
+        // Process this chunk to get audio samples
+        final audioChunks = await decoder.processFileChunk(fileChunk);
+
+        // Extract amplitude from the decoded chunk
+        double amplitude = 0.0;
+        if (audioChunks.isNotEmpty) {
+          final samples = audioChunks.first.samples;
+          if (samples.isNotEmpty) {
+            // Calculate amplitude from this chunk
+            if (config.algorithm == DownsamplingAlgorithm.rms) {
+              // RMS calculation
+              double sum = 0.0;
+              for (final sample in samples) {
+                sum += sample * sample;
+              }
+              amplitude = math.sqrt(sum / samples.length);
+            } else {
+              // Peak calculation
+              amplitude = samples.map((s) => s.abs()).reduce(math.max);
+            }
+          }
+        }
+
+        amplitudes.add(amplitude);
+      } else {
+        // No data at this position
+        amplitudes.add(0.0);
+      }
+
+      // Send progress updates
+      if (streamResults && i % 50 == 0) {
+        // Reduce frequency for better performance
+        final progress = 0.3 + (i / resolution) * 0.6; // 30% to 90%
+        _sendProgressUpdate(mainSendPort, requestId, progress, 'Sampling position ${i + 1}/$resolution');
+      }
+    } catch (e) {
+      // Add a zero amplitude for failed positions (silently handle errors)
+      amplitudes.add(0.0);
+    }
+  }
+
+  // Cleanup decoder resources
+  await decoder.cleanupChunkedProcessing();
+
+  if (streamResults) {
+    _sendProgressUpdate(mainSendPort, requestId, 0.9, 'Finalizing waveform data');
+  }
+
+  return AudioData(samples: amplitudes, sampleRate: sampleRate, channels: channels, duration: estimatedDuration);
 }
