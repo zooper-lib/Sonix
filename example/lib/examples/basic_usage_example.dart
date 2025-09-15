@@ -104,10 +104,72 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
               const Text('Generated Waveform:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
               const SizedBox(height: 16),
 
-              // Basic waveform display
+              // Basic waveform display with auto display resolution
               WaveformWidget(
                 waveformData: _waveformData!,
-                style: const WaveformStyle(playedColor: Colors.blue, unplayedColor: Colors.grey, height: 80),
+                style: const WaveformStyle(
+                  playedColor: Colors.blue,
+                  unplayedColor: Colors.grey,
+                  height: 80,
+                  barWidth: 3.0,
+                  barSpacing: 1.0,
+                  autoDisplayResolution: true, // Automatically calculate optimal bars
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              const Text('Different Display Resolutions:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 12),
+
+              // Wide bars example
+              const Text('Wide bars (6px width, 2px spacing):', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const SizedBox(height: 8),
+              WaveformWidget(
+                waveformData: _waveformData!,
+                style: const WaveformStyle(
+                  playedColor: Colors.green,
+                  unplayedColor: Colors.grey,
+                  height: 60,
+                  barWidth: 6.0,
+                  barSpacing: 2.0,
+                  autoDisplayResolution: true,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Thin bars example
+              const Text('Thin bars (1px width, 0.5px spacing):', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const SizedBox(height: 8),
+              WaveformWidget(
+                waveformData: _waveformData!,
+                style: const WaveformStyle(
+                  playedColor: Colors.orange,
+                  unplayedColor: Colors.grey,
+                  height: 60,
+                  barWidth: 1.0,
+                  barSpacing: 0.5,
+                  autoDisplayResolution: true,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Fixed resolution example
+              const Text('Fixed resolution (100 bars):', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const SizedBox(height: 8),
+              WaveformWidget(
+                waveformData: _waveformData!,
+                style: const WaveformStyle(
+                  playedColor: Colors.purple,
+                  unplayedColor: Colors.grey,
+                  height: 60,
+                  barWidth: 2.0,
+                  barSpacing: 1.0,
+                  autoDisplayResolution: false,
+                  fixedDisplayResolution: 100, // Always show exactly 100 bars
+                ),
               ),
 
               const SizedBox(height: 16),
@@ -129,6 +191,14 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
                     Text('Sample Rate: ${_waveformData!.sampleRate} Hz'),
                     Text('Type: ${_waveformData!.metadata.type.name}'),
                     Text('Normalized: ${_waveformData!.metadata.normalized}'),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Display Resolution Features:',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                    ),
+                    const Text('✓ Auto-calculated display resolution', style: TextStyle(color: Colors.green)),
+                    const Text('✓ Exact bar width & spacing control', style: TextStyle(color: Colors.green)),
+                    const Text('✓ Smart data sampling', style: TextStyle(color: Colors.green)),
                   ],
                 ),
               ),
@@ -174,7 +244,7 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
       // Basic waveform generation with default settings
       final waveformData = await sonix.generateWaveform(
         _selectedFilePath,
-        resolution: 200, // Number of data points
+        resolution: 1000, // Number of data points
         normalize: true, // Normalize amplitude values
       );
 
