@@ -3,9 +3,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
+import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/utils/performance_profiler.dart';
+import 'package:sonix/src/utils/performance_report.dart';
+import 'package:sonix/src/utils/benchmark_result.dart';
 import 'package:sonix/src/utils/platform_validator.dart';
 import '../test_data_generator.dart';
 import 'dart:math' as math;

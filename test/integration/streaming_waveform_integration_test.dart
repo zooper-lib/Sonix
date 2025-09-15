@@ -11,7 +11,7 @@ import '../test_helpers/test_sonix_instance.dart';
 
 void main() {
   group('Streaming Waveform Integration Tests', () {
-    late SonixInstance sonix;
+    late Sonix sonix;
 
     setUp(() {
       sonix = TestSonixInstance(const TestSonixConfig());

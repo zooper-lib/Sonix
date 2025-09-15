@@ -1,111 +1,29 @@
 /// Main API for the Sonix audio waveform library
 ///
-/// This file provides the core SonixInstance class and SonixConfig for
+/// This file provides the core Sonix class for
 /// instance-based audio processing with isolate support.
 library;
 
 import 'dart:async';
 import 'dart:io';
 
+import 'config/sonix_config.dart';
 import 'isolate/isolate_manager.dart';
 import 'models/waveform_data.dart';
+import 'models/waveform_type.dart';
+import 'models/waveform_progress.dart';
 import 'processing/waveform_generator.dart';
+import 'processing/waveform_config.dart';
+import 'processing/waveform_use_case.dart';
 import 'decoders/audio_decoder_factory.dart';
 import 'exceptions/sonix_exceptions.dart';
-
-/// Configuration class for Sonix instances
-///
-/// Provides configuration options for isolate management and memory usage.
-class SonixConfig implements IsolateConfig {
-  /// Maximum number of concurrent operations
-  @override
-  final int maxConcurrentOperations;
-
-  /// Size of the isolate pool for background processing
-  @override
-  final int isolatePoolSize;
-
-  /// Timeout for idle isolates before cleanup
-  @override
-  final Duration isolateIdleTimeout;
-
-  /// Maximum memory usage in bytes
-  @override
-  final int maxMemoryUsage;
-
-  /// Whether to enable caching (for future use)
-  final bool enableCaching;
-
-  /// Maximum cache size (for future use)
-  final int maxCacheSize;
-
-  /// Whether to enable progress reporting
-  final bool enableProgressReporting;
-
-  const SonixConfig({
-    this.maxConcurrentOperations = 3,
-    this.isolatePoolSize = 2,
-    this.isolateIdleTimeout = const Duration(minutes: 5),
-    this.maxMemoryUsage = 100 * 1024 * 1024, // 100MB
-    this.enableCaching = true,
-    this.maxCacheSize = 50,
-    this.enableProgressReporting = true,
-  });
-
-  /// Create a default configuration
-  factory SonixConfig.defaultConfig() => const SonixConfig();
-
-  /// Create a configuration optimized for mobile devices
-  factory SonixConfig.mobile() => const SonixConfig(
-    maxConcurrentOperations: 2,
-    isolatePoolSize: 1,
-    maxMemoryUsage: 50 * 1024 * 1024, // 50MB
-  );
-
-  /// Create a configuration optimized for desktop devices
-  factory SonixConfig.desktop() => const SonixConfig(
-    maxConcurrentOperations: 4,
-    isolatePoolSize: 3,
-    maxMemoryUsage: 200 * 1024 * 1024, // 200MB
-  );
-
-  @override
-  String toString() {
-    return 'SonixConfig('
-        'maxConcurrentOperations: $maxConcurrentOperations, '
-        'isolatePoolSize: $isolatePoolSize, '
-        'isolateIdleTimeout: $isolateIdleTimeout, '
-        'maxMemoryUsage: ${(maxMemoryUsage / 1024 / 1024).toStringAsFixed(1)}MB'
-        ')';
-  }
-}
-
-/// Progress information for waveform generation
-class WaveformProgress {
-  /// Progress percentage (0.0 to 1.0)
-  final double progress;
-
-  /// Optional status message describing current operation
-  final String? statusMessage;
-
-  /// Partial waveform data for streaming (optional)
-  final WaveformData? partialData;
-
-  /// Whether this is the final progress update
-  final bool isComplete;
-
-  /// Error message if processing failed
-  final String? error;
-
-  const WaveformProgress({required this.progress, this.statusMessage, this.partialData, this.isComplete = false, this.error});
-}
 
 /// Main API class for the Sonix package
 ///
 /// This is an instance-based class that ensures all audio processing happens
 /// in background isolates, preventing UI thread blocking. Each instance manages
 /// its own isolate pool and configuration.
-class SonixInstance {
+class Sonix {
   /// Configuration for this Sonix instance
   final SonixConfig config;
 
@@ -129,17 +47,17 @@ class SonixInstance {
   /// Example:
   /// ```dart
   /// // Create with default configuration
-  /// final sonix = SonixInstance();
+  /// final sonix = Sonix();
   ///
   /// // Create with custom configuration
-  /// final sonix = SonixInstance(SonixConfig.mobile());
+  /// final sonix = Sonix(SonixConfig.mobile());
   ///
   /// // Create with specific options
-  /// final sonix = SonixInstance(SonixConfig(
+  /// final sonix = Sonix(SonixConfig(
   ///   maxMemoryUsage: 50 * 1024 * 1024, // 50MB
   /// ));
   /// ```
-  SonixInstance([SonixConfig? config]) : config = config ?? SonixConfig.defaultConfig() {
+  Sonix([SonixConfig? config]) : config = config ?? SonixConfig.defaultConfig() {
     _isolateManager = createIsolateManager();
   }
 
@@ -186,7 +104,7 @@ class SonixInstance {
   ///
   /// Example:
   /// ```dart
-  /// final sonix = SonixInstance();
+  /// final sonix = Sonix();
   /// final waveformData = await sonix.generateWaveform('audio.mp3');
   /// ```
   Future<WaveformData> generateWaveform(
@@ -241,7 +159,7 @@ class SonixInstance {
   ///
   /// Example:
   /// ```dart
-  /// final sonix = SonixInstance();
+  /// final sonix = Sonix();
   /// await for (final progress in sonix.generateWaveformStream('large_audio.mp3')) {
   ///   print('Progress: ${(progress.progress * 100).toStringAsFixed(1)}%');
   ///   if (progress.isComplete && progress.partialData != null) {
@@ -339,7 +257,7 @@ class SonixInstance {
   ///
   /// Example:
   /// ```dart
-  /// final sonix = SonixInstance();
+  /// final sonix = Sonix();
   /// final stats = sonix.getResourceStatistics();
   /// print('Active isolates: ${stats.activeIsolates}');
   /// print('Completed tasks: ${stats.completedTasks}');
@@ -356,7 +274,7 @@ class SonixInstance {
   ///
   /// Example:
   /// ```dart
-  /// final sonix = SonixInstance();
+  /// final sonix = Sonix();
   /// sonix.optimizeResources(); // Clean up idle resources
   /// ```
   void optimizeResources() {
@@ -377,7 +295,7 @@ class SonixInstance {
   ///
   /// Example:
   /// ```dart
-  /// final sonix = SonixInstance();
+  /// final sonix = Sonix();
   /// final taskId = 'my_task_id';
   /// final cancelled = sonix.cancelOperation(taskId);
   /// if (cancelled) {
@@ -405,7 +323,7 @@ class SonixInstance {
   ///
   /// Example:
   /// ```dart
-  /// final sonix = SonixInstance();
+  /// final sonix = Sonix();
   /// final cancelledCount = sonix.cancelAllOperations();
   /// print('Cancelled $cancelledCount operations');
   /// ```
@@ -432,7 +350,7 @@ class SonixInstance {
   ///
   /// Example:
   /// ```dart
-  /// final sonix = SonixInstance();
+  /// final sonix = Sonix();
   /// final activeOperations = sonix.getActiveOperations();
   /// print('Active operations: ${activeOperations.length}');
   /// ```
@@ -449,7 +367,7 @@ class SonixInstance {
   ///
   /// Example:
   /// ```dart
-  /// final sonix = SonixInstance();
+  /// final sonix = Sonix();
   /// // ... use sonix for operations
   /// await sonix.dispose(); // Clean up when done
   /// ```
@@ -506,96 +424,134 @@ class SonixInstance {
     }
     return filePath.substring(lastDot + 1);
   }
-}
 
-/// Backward compatibility wrapper for the Sonix package
-///
-/// This class provides static methods that maintain backward compatibility
-/// with existing code while internally using SonixInstance for processing.
-///
-/// For new code, prefer using SonixInstance directly for better control
-/// and configuration options.
-class Sonix {
-  static SonixInstance? _defaultInstance;
+  // Static utility methods that don't require an instance
 
-  /// Initialize Sonix with optional configuration
+  /// Checks if a specific audio format is supported by the library.
   ///
-  /// This method initializes the default static Sonix instance for backward compatibility.
-  /// For new code, consider using `SonixInstance()` constructor to create instance-based objects.
+  /// This utility method determines format support based on file extension
+  /// or MIME type. It doesn't require initialization and can be called
+  /// independently of any Sonix instance.
   ///
-  /// [config] - Configuration for the default instance
+  /// **Parameters:**
+  /// - [filePath]: Path to audio file or just the filename with extension
   ///
-  /// This should be called once at the start of your application.
+  /// **Returns:** `true` if the format is supported, `false` otherwise
   ///
-  /// Example:
+  /// **Supported Formats:** MP3, OGG, WAV, FLAC, Opus
+  ///
+  /// ## Example
   /// ```dart
-  /// Sonix.initialize(); // Uses default configuration
-  /// // Or set a custom configuration:
-  /// // Sonix.initialize(SonixConfig.mobile());
-  /// ```
-  static Future<void> initialize([SonixConfig? config]) async {
-    if (_defaultInstance != null) {
-      return; // Already initialized
-    }
-
-    _defaultInstance = SonixInstance(config);
-    await _defaultInstance!.initialize();
-  }
-
-  /// Check if a specific audio format is supported
-  ///
-  /// This is a utility method that doesn't require a SonixInstance.
-  /// It checks format support based on file extension or content.
-  ///
-  /// Example:
-  /// ```dart
+  /// // Check before processing
   /// if (Sonix.isFormatSupported('audio.mp3')) {
-  ///   // Process the file
+  ///   print('MP3 is supported!');
+  ///   // Proceed with processing
+  /// } else {
+  ///   print('Unsupported format');
   /// }
+  ///
+  /// // Works with full paths too
+  /// final isSupported = Sonix.isFormatSupported('/path/to/song.flac');
   /// ```
+  ///
+  /// **Use Case:** Validation before file processing, UI filter setup,
+  /// or batch operation planning.
   static bool isFormatSupported(String filePath) {
     return AudioDecoderFactory.isFormatSupported(filePath);
   }
 
-  /// Get a list of supported audio format names
+  /// Returns a list of human-readable audio format names supported by the library.
   ///
-  /// This is a utility method that doesn't require a SonixInstance.
-  /// Returns human-readable format names like ['MP3', 'WAV', 'FLAC'].
+  /// This utility method provides format names suitable for display in user
+  /// interfaces, error messages, or documentation. The names are capitalized
+  /// and standardized (e.g., 'MP3', 'FLAC', 'OGG').
   ///
-  /// Example:
+  /// **Returns:** List of format names like `['MP3', 'WAV', 'FLAC', 'OGG', 'Opus']`
+  ///
+  /// ## Example
   /// ```dart
+  /// // Display supported formats to user
   /// final formats = Sonix.getSupportedFormats();
-  /// print('Supported: ${formats.join(', ')}');
+  /// final formatText = 'Supported formats: ${formats.join(', ')}';
+  /// print(formatText); // "Supported formats: MP3, WAV, FLAC, OGG, Opus"
+  ///
+  /// // Use in file picker dialog
+  /// showDialog(
+  ///   context: context,
+  ///   builder: (context) => AlertDialog(
+  ///     title: Text('Select Audio File'),
+  ///     content: Text('Supported: ${formats.join(', ')}'),
+  ///   ),
+  /// );
   /// ```
+  ///
+  /// **See also:** [getSupportedExtensions] for file extensions
   static List<String> getSupportedFormats() {
     return AudioDecoderFactory.getSupportedFormatNames();
   }
 
-  /// Get a list of supported file extensions
+  /// Returns a list of supported file extensions (without dots).
   ///
-  /// This is a utility method that doesn't require a SonixInstance.
-  /// Returns file extensions like ['mp3', 'wav', 'flac'].
+  /// This utility method provides file extensions that can be used for
+  /// file filtering, validation, or building file picker dialogs. All
+  /// extensions are lowercase and don't include the leading dot.
   ///
-  /// Example:
+  /// **Returns:** List of extensions like `['mp3', 'wav', 'flac', 'ogg', 'opus']`
+  ///
+  /// ## Example
   /// ```dart
+  /// // Build file picker filter
   /// final extensions = Sonix.getSupportedExtensions();
-  /// print('Extensions: ${extensions.join(', ')}');
+  /// final filter = extensions.map((ext) => '*.$ext').join(';');
+  ///
+  /// // Use in file picker
+  /// final result = await FilePicker.platform.pickFiles(
+  ///   type: FileType.custom,
+  ///   allowedExtensions: extensions,
+  /// );
+  ///
+  /// // Validate file extension
+  /// bool isValidFile(String filename) {
+  ///   final ext = filename.split('.').last.toLowerCase();
+  ///   return extensions.contains(ext);
+  /// }
   /// ```
+  ///
+  /// **See also:** [getSupportedFormats] for display names
   static List<String> getSupportedExtensions() {
     return AudioDecoderFactory.getSupportedExtensions();
   }
 
-  /// Check if a specific file extension is supported
+  /// Checks if a specific file extension is supported by the library.
   ///
-  /// This is a utility method that doesn't require a SonixInstance.
-  /// Accepts extensions with or without leading dot, case-insensitive.
+  /// This utility method provides flexible extension checking with automatic
+  /// normalization. It accepts extensions with or without leading dots and
+  /// is case-insensitive for user convenience.
   ///
-  /// Example:
+  /// **Parameters:**
+  /// - [extension]: File extension to check (e.g., 'mp3', '.MP3', 'Flac')
+  ///
+  /// **Returns:** `true` if supported, `false` otherwise
+  ///
+  /// ## Example
   /// ```dart
-  /// if (Sonix.isExtensionSupported('mp3')) {
-  ///   // Extension is supported
+  /// // All of these work
+  /// print(Sonix.isExtensionSupported('mp3'));    // true
+  /// print(Sonix.isExtensionSupported('.MP3'));   // true
+  /// print(Sonix.isExtensionSupported('FLAC'));   // true
+  /// print(Sonix.isExtensionSupported('.xyz'));   // false
+  ///
+  /// // Use for file validation
+  /// bool validateAudioFile(File file) {
+  ///   final extension = file.path.split('.').last;
+  ///   if (!Sonix.isExtensionSupported(extension)) {
+  ///     throw UnsupportedError('File type not supported: $extension');
+  ///   }
+  ///   return true;
   /// }
   /// ```
+  ///
+  /// **See also:** [isFormatSupported] for full file path checking
   static bool isExtensionSupported(String extension) {
     // Normalize the extension
     String normalizedExt = extension.toLowerCase();
@@ -606,27 +562,50 @@ class Sonix {
     return AudioDecoderFactory.getSupportedExtensions().contains(normalizedExt);
   }
 
-  /// Get optimal configuration for different use cases
+  /// Returns optimized waveform configuration for specific use cases.
   ///
-  /// This is a utility method that doesn't require a SonixInstance.
-  /// Returns optimized WaveformConfig for specific use cases.
+  /// This utility method provides pre-tuned configurations that work well
+  /// for common waveform visualization scenarios. Each use case has been
+  /// optimized for the best balance of quality, performance, and visual appeal.
   ///
-  /// Example:
+  /// **Parameters:**
+  /// - [useCase]: The intended use case (see [WaveformUseCase] for options)
+  /// - [customResolution]: Optional override for the resolution parameter
+  ///
+  /// **Returns:** [WaveformConfig] optimized for the specified use case
+  ///
+  /// ## Available Use Cases
+  ///
+  /// - `WaveformUseCase.musicVisualization`: For music players and visualizers
+  /// - `WaveformUseCase.podcastPlayer`: Optimized for speech content
+  /// - `WaveformUseCase.audioEditor`: High detail for editing applications
+  /// - `WaveformUseCase.thumbnail`: Low resolution for preview/thumbnail
+  /// - `WaveformUseCase.streaming`: Balanced for real-time streaming
+  ///
+  /// ## Example
   /// ```dart
-  /// final config = Sonix.getOptimalConfig(
+  /// // Get config for music player
+  /// final musicConfig = Sonix.getOptimalConfig(
   ///   useCase: WaveformUseCase.musicVisualization,
-  ///   customResolution: 2000
+  /// );
+  ///
+  /// // Override resolution for specific needs
+  /// final customConfig = Sonix.getOptimalConfig(
+  ///   useCase: WaveformUseCase.audioEditor,
+  ///   customResolution: 5000, // High detail
+  /// );
+  ///
+  /// // Use with instance API
+  /// final sonix = Sonix();
+  /// final waveform = await sonix.generateWaveform(
+  ///   'audio.mp3',
+  ///   config: musicConfig,
   /// );
   /// ```
+  ///
+  /// **Benefits:** Saves time on configuration tuning and ensures optimal
+  /// settings for common scenarios.
   static WaveformConfig getOptimalConfig({required WaveformUseCase useCase, int? customResolution}) {
     return WaveformGenerator.getOptimalConfig(useCase: useCase, customResolution: customResolution);
-  }
-
-  /// Dispose of all Sonix resources
-  static Future<void> dispose() async {
-    if (_defaultInstance != null) {
-      await _defaultInstance!.dispose();
-      _defaultInstance = null;
-    }
   }
 }

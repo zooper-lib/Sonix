@@ -13,12 +13,13 @@ import 'dart:math' as math;
 import 'isolate_messages.dart';
 import 'processing_isolate.dart';
 import 'isolate_health_monitor.dart';
+import 'package:sonix/src/processing/waveform_config.dart';
 import 'error_serializer.dart';
 import 'package:sonix/src/models/waveform_data.dart';
-import 'package:sonix/src/processing/waveform_generator.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/utils/memory_manager.dart';
 import 'package:sonix/src/utils/lru_cache.dart';
+import 'isolate_config.dart';
 
 /// Statistics about isolate resource usage
 class IsolateStatistics {
@@ -258,14 +259,6 @@ class _ManagedIsolate implements Disposable {
   /// Get info about this isolate
   IsolateInfo get info =>
       IsolateInfo(id: id, createdAt: createdAt, lastUsed: lastUsed, tasksProcessed: tasksProcessed, isActive: isActive, currentTaskId: currentTaskId);
-}
-
-/// Configuration interface for isolate management
-abstract class IsolateConfig {
-  int get maxConcurrentOperations;
-  int get isolatePoolSize;
-  Duration get isolateIdleTimeout;
-  int get maxMemoryUsage;
 }
 
 /// Manages background isolates for audio processing

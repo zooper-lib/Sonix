@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/processing/display_sampler.dart';
-import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_type.dart';
+import 'package:sonix/src/processing/downsample_method.dart';
+import 'package:sonix/src/processing/upsample_method.dart';
 
 void main() {
   group('DisplaySampler', () {

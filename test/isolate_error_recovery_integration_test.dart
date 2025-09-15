@@ -1,12 +1,6 @@
-/// Integration tests for isolate error recovery mechanisms
-///
-/// Tests the complete error handling and recovery flow in the isolate manager
-/// including retry logic, crash detection, and isolate restart functionality.
-library;
-
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:sonix/src/isolate/isolate_manager.dart';
+import 'package:sonix/src/isolate/isolate_config.dart';
 import 'package:sonix/src/isolate/isolate_health_monitor.dart';
 
 /// Mock configuration for testing

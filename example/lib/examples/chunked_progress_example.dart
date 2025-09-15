@@ -572,7 +572,7 @@ class _ChunkedProgressExampleState extends State<ChunkedProgressExample> with Ti
       });
 
       // Create a Sonix instance for processing
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       // Generate waveform with progress reporting using streaming
       await for (final progress in sonix.generateWaveformStream(_selectedFilePath, resolution: 1000)) {

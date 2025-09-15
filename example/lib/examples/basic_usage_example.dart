@@ -239,7 +239,7 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
 
     try {
       // Create a Sonix instance for processing
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       // Basic waveform generation with default settings
       final waveformData = await sonix.generateWaveform(

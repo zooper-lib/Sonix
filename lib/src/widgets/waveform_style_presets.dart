@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_type.dart';
 import 'waveform_style.dart';
 
 /// Predefined waveform style presets for common use cases

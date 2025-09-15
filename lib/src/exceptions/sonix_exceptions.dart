@@ -1,9 +1,54 @@
-/// Base exception class for all Sonix-related errors
+/// Base exception class for all Sonix audio processing errors.
+///
+/// This abstract class serves as the foundation for all specific exception
+/// types in the Sonix library. It provides a consistent interface for error
+/// handling and includes both primary error messages and optional additional
+/// details for debugging.
+///
+/// ## Exception Hierarchy
+///
+/// All Sonix exceptions inherit from this base class:
+/// - [UnsupportedFormatException]: Unsupported audio file formats
+/// - [DecodingException]: Audio decoding failures
+/// - [MemoryException]: Memory allocation or management issues
+/// - [FileAccessException]: File system access problems
+/// - [FFIException]: Native library interface errors
+/// - [InvalidWaveformDataException]: Waveform data validation failures
+///
+/// ## Usage in Error Handling
+///
+/// ```dart
+/// try {
+///   final waveform = await sonix.generateWaveform('audio.mp3');
+/// } on SonixException catch (e) {
+///   print('Sonix error: ${e.message}');
+///   if (e.details != null) {
+///     print('Details: ${e.details}');
+///   }
+/// } catch (e) {
+///   print('Unexpected error: $e');
+/// }
+/// ```
+///
+/// ## Error Message Structure
+///
+/// Each exception provides:
+/// - **message**: Primary error description for users
+/// - **details**: Technical details for debugging (optional)
+/// - **toString()**: Formatted output combining both
 abstract class SonixException implements Exception {
-  /// Error message
+  /// Primary error message describing what went wrong.
+  ///
+  /// This message should be user-friendly and suitable for display in user
+  /// interfaces. It provides a clear, concise description of the error that
+  /// occurred during audio processing.
   final String message;
 
-  /// Additional error details
+  /// Optional additional technical details for debugging and logging.
+  ///
+  /// Contains technical information that may be useful for developers
+  /// debugging issues, such as specific error codes, file paths, or
+  /// system-level error messages. May be null for simple errors.
   final String? details;
 
   const SonixException(this.message, [this.details]);
@@ -17,9 +62,56 @@ abstract class SonixException implements Exception {
   }
 }
 
-/// Exception thrown when an unsupported audio format is encountered
+/// Exception thrown when attempting to process an unsupported audio format.
+///
+/// This exception is raised when the library encounters an audio file format
+/// that is not supported by the current configuration. The library supports
+/// MP3, OGG, WAV, FLAC, and Opus formats through native codecs.
+///
+/// ## Common Causes
+///
+/// - File has an unsupported extension (e.g., .aac, .m4a, .wma)
+/// - File is corrupted or not a valid audio file
+/// - Required codec is not available on the platform
+/// - File uses an unsupported audio encoding variant
+///
+/// ## How to Handle
+///
+/// ```dart
+/// try {
+///   final waveform = await sonix.generateWaveform('audio.aac');
+/// } on UnsupportedFormatException catch (e) {
+///   // Show user-friendly error message
+///   showSnackBar('Unsupported file format: ${e.format}');
+///
+///   // Log technical details
+///   logger.warning('Format error: ${e.details}');
+///
+///   // Suggest alternatives
+///   final supported = Sonix.getSupportedFormats();
+///   showDialog('Supported formats: ${supported.join(', ')}');
+/// }
+/// ```
+///
+/// ## Prevention
+///
+/// ```dart
+/// // Check format before processing
+/// if (Sonix.isFormatSupported(filePath)) {
+///   final waveform = await sonix.generateWaveform(filePath);
+/// } else {
+///   throw UnsupportedFormatException(
+///     path.extension(filePath),
+///     'File format validation failed'
+///   );
+/// }
+/// ```
 class UnsupportedFormatException extends SonixException {
-  /// The unsupported format
+  /// The specific audio format that is not supported.
+  ///
+  /// This typically contains the file extension (e.g., 'aac', 'm4a') or
+  /// MIME type that caused the error. Use this to provide specific feedback
+  /// to users about which format was problematic.
   final String format;
 
   const UnsupportedFormatException(this.format, [String? details]) : super('Unsupported audio format: $format', details);
@@ -33,7 +125,45 @@ class UnsupportedFormatException extends SonixException {
   }
 }
 
-/// Exception thrown when audio decoding fails
+/// Exception thrown when audio decoding operations fail.
+///
+/// This exception occurs when the library can recognize an audio format but
+/// encounters errors while actually decoding the audio data. This is different
+/// from [UnsupportedFormatException] - the format is supported, but something
+/// went wrong during the decoding process.
+///
+/// ## Common Causes
+///
+/// - Corrupted or incomplete audio files
+/// - Unsupported audio encoding parameters (e.g., unusual sample rates)
+/// - Files that are too large for available memory
+/// - Network interruption during streaming decode
+/// - Insufficient system resources during processing
+///
+/// ## Recovery Strategies
+///
+/// ```dart
+/// try {
+///   final waveform = await sonix.generateWaveform('audio.mp3');
+/// } on DecodingException catch (e) {
+///   // Try with lower resolution to reduce memory usage
+///   try {
+///     final waveform = await sonix.generateWaveform(
+///       'audio.mp3',
+///       resolution: 500, // Reduced from default 1000
+///     );
+///   } on DecodingException {
+///     // Show error to user if retry also fails
+///     showErrorDialog('Unable to process audio file: ${e.message}');
+///   }
+/// }
+/// ```
+///
+/// ## Debugging Information
+///
+/// The [details] field often contains technical information useful for
+/// debugging, such as specific codec error messages or system resource
+/// information.
 class DecodingException extends SonixException {
   const DecodingException(super.message, [super.details]);
 
@@ -319,4 +449,13 @@ class IsolateCommunicationException extends SonixException {
   factory IsolateCommunicationException.parseFailure(String messageType, {String? isolateId, Object? cause, String? details}) {
     return IsolateCommunicationException(messageType, 'parse', isolateId: isolateId, cause: cause, details: details);
   }
+}
+
+/// Exception thrown when a task is cancelled
+class TaskCancelledException implements Exception {
+  final String message;
+  TaskCancelledException(this.message);
+
+  @override
+  String toString() => 'TaskCancelledException: $message';
 }

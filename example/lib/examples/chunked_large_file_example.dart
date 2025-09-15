@@ -476,7 +476,7 @@ class _ChunkedLargeFileExampleState extends State<ChunkedLargeFileExample> {
       });
 
       // Create a Sonix instance for processing
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       // Use streaming waveform generation with progress updates
       await for (final progress in sonix.generateWaveformStream(_selectedFilePath, resolution: 1000)) {
@@ -543,7 +543,7 @@ class _ChunkedLargeFileExampleState extends State<ChunkedLargeFileExample> {
 
     try {
       // Create a Sonix instance for processing
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       // Use traditional processing for comparison
       final waveformData = await sonix.generateWaveform(_selectedFilePath);

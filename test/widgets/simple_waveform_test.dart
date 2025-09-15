@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_type.dart';
 
 void main() {
   group('Simplified Waveform Data Tests', () {

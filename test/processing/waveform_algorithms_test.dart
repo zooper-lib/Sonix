@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/processing/waveform_algorithms.dart';
+import 'package:sonix/src/processing/downsampling_algorithm.dart';
+import 'package:sonix/src/processing/normalization_method.dart';
+import 'package:sonix/src/processing/scaling_curve.dart';
 import 'dart:math' as math;
 
 void main() {

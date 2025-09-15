@@ -427,7 +427,7 @@ class _StyleCustomizationExampleState extends State<StyleCustomizationExample> {
 
     try {
       // Create a Sonix instance for processing
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       final waveformData = await sonix.generateWaveform(_selectedFilePath, resolution: 150, normalize: true);
 

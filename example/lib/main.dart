@@ -276,7 +276,7 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
   double _playbackPosition = 0.0;
 
   // Sonix instance for audio processing
-  late final SonixInstance _sonix;
+  late final Sonix _sonix;
 
   // Pre-create waveform styles to ensure consistent references
   late final WaveformStyle _soundCloudStyle = WaveformStylePresets.soundCloud;
@@ -293,7 +293,7 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
   void initState() {
     super.initState();
     // Initialize Sonix instance with mobile configuration for better performance
-    _sonix = SonixInstance(SonixConfig.mobile());
+    _sonix = Sonix(SonixConfig.mobile());
   }
 
   @override

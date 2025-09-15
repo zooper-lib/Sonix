@@ -4,13 +4,13 @@
 /// with isolate-based processing to prevent UI thread blocking. Supports multiple
 /// audio formats (MP3, OGG, WAV, FLAC, Opus) using native C libraries through Dart FFI.
 ///
-/// ## Quick Start (New Instance-Based API)
+/// ## Quick Start
 ///
 /// ```dart
 /// import 'package:sonix/sonix.dart';
 ///
 /// // Create a Sonix instance with configuration
-/// final sonix = SonixInstance(SonixConfig.mobile());
+/// final sonix = Sonix(SonixConfig.mobile());
 ///
 /// // Generate waveform from audio file (processed in background isolate)
 /// final waveformData = await sonix.generateWaveform('audio.mp3');
@@ -29,14 +29,6 @@
 /// await sonix.dispose();
 /// ```
 ///
-/// ## Backward Compatibility (Deprecated)
-///
-/// ```dart
-/// // Legacy static API (deprecated, but still supported)
-/// await Sonix.initialize();
-/// final waveformData = await Sonix.generateWaveform('audio.mp3');
-/// ```
-///
 /// ## Key Features
 ///
 /// - **Isolate-Based Processing**: All audio processing happens in background isolates
@@ -46,20 +38,33 @@
 /// - **Memory Efficient**: Automatic resource management and cleanup
 /// - **Streaming API**: Real-time progress updates
 /// - **Error Recovery**: Comprehensive error handling across isolate boundaries
-/// - **Backward Compatible**: Existing code continues to work
 
 library;
 
 // Main API - the primary entry point
-export 'src/sonix_api.dart' show Sonix, SonixInstance, SonixConfig, WaveformProgress;
+export 'src/sonix_api.dart' show Sonix;
+
+// Configuration
+export 'src/config/sonix_config.dart';
 
 // Core data models
 export 'src/models/waveform_data.dart';
+export 'src/models/waveform_type.dart';
+export 'src/models/waveform_metadata.dart';
+export 'src/models/waveform_chunk.dart';
+export 'src/models/waveform_progress.dart';
 export 'src/models/audio_data.dart';
 
 // Processing and generation
-export 'src/processing/waveform_generator.dart' show WaveformConfig, WaveformUseCase;
-export 'src/processing/waveform_algorithms.dart' show DownsamplingAlgorithm, NormalizationMethod, ScalingCurve;
+export 'src/processing/waveform_generator.dart' show WaveformGenerator;
+export 'src/processing/waveform_config.dart';
+export 'src/processing/waveform_use_case.dart';
+export 'src/processing/waveform_algorithms.dart';
+export 'src/processing/downsampling_algorithm.dart';
+export 'src/processing/normalization_method.dart';
+export 'src/processing/scaling_curve.dart';
+export 'src/processing/downsample_method.dart';
+export 'src/processing/upsample_method.dart';
 
 // Exceptions
 export 'src/exceptions/sonix_exceptions.dart';
@@ -78,10 +83,15 @@ export 'src/isolate/isolate_messages.dart';
 export 'src/isolate/processing_isolate.dart' show processingIsolateEntryPoint;
 export 'src/isolate/error_serializer.dart';
 export 'src/isolate/isolate_health_monitor.dart' show IsolateHealthStatus, IsolateHealth;
+export 'src/isolate/isolate_config.dart';
 
 // Utilities (selective exports)
 export 'src/utils/memory_manager.dart' show MemoryManager;
 export 'src/utils/resource_manager.dart' show ResourceManager, ResourceStatistics;
 export 'src/utils/lru_cache.dart' show CacheStatistics;
-export 'src/utils/performance_profiler.dart' show PerformanceProfiler, PerformanceReport;
+export 'src/utils/performance_profiler.dart' show PerformanceProfiler;
+export 'src/utils/profiled_operation.dart';
+export 'src/utils/operation_statistics.dart';
+export 'src/utils/performance_report.dart';
+export 'src/utils/benchmark_result.dart';
 export 'src/utils/platform_validator.dart' show PlatformValidator;

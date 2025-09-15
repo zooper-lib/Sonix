@@ -8,12 +8,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sonix/src/sonix_api.dart';
+import 'package:sonix/src/config/sonix_config.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'test_helpers/test_sonix_instance.dart';
 
 void main() {
   group('Basic Isolate Waveform Generation Tests', () {
-    late SonixInstance sonix;
+    late Sonix sonix;
 
     setUp(() async {
       // Create a new test Sonix instance for each test
@@ -25,7 +26,7 @@ void main() {
       await sonix.dispose();
     });
 
-    test('should initialize SonixInstance correctly', () async {
+    test('should initialize Sonix correctly', () async {
       // Act & Assert
       expect(sonix.isDisposed, isFalse);
 
@@ -136,7 +137,7 @@ void main() {
       // Arrange
       final customConfig = SonixConfig(isolatePoolSize: 3, maxConcurrentOperations: 5, maxMemoryUsage: 200 * 1024 * 1024);
 
-      final customSonix = SonixInstance(customConfig);
+      final customSonix = Sonix(customConfig);
 
       try {
         await customSonix.initialize();
@@ -152,7 +153,7 @@ void main() {
 
     test('should handle multiple dispose calls gracefully', () async {
       // Arrange
-      final tempSonix = SonixInstance();
+      final tempSonix = Sonix();
       await tempSonix.initialize();
 
       // Act - Dispose multiple times

@@ -3,30 +3,206 @@ import '../models/waveform_data.dart';
 import 'waveform_style.dart';
 import 'waveform_painter.dart';
 
-/// A widget that displays audio waveform with playback position visualization
+/// A Flutter widget for displaying interactive audio waveforms with playback visualization.
+///
+/// This widget renders waveform data as a visual representation and provides
+/// interactive features like seeking, progress indication, and smooth animations.
+/// It's designed to integrate seamlessly with audio players and provides a
+/// professional-grade waveform visualization experience.
+///
+/// ## Key Features
+///
+/// - **Interactive Seeking**: Tap or drag to seek to specific positions
+/// - **Playback Progress**: Visual indicator showing current playback position
+/// - **Smooth Animations**: Customizable transitions for position changes
+/// - **Flexible Styling**: Comprehensive appearance customization
+/// - **Touch Support**: Full gesture support for mobile and desktop
+/// - **Performance Optimized**: Efficient rendering for large waveforms
+///
+/// ## Basic Usage
+///
+/// ```dart
+/// class AudioPlayerWidget extends StatefulWidget {
+///   @override
+///   _AudioPlayerWidgetState createState() => _AudioPlayerWidgetState();
+/// }
+///
+/// class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
+///   WaveformData? waveformData;
+///   double playbackPosition = 0.0;
+///   AudioPlayer? audioPlayer;
+///
+///   @override
+///   Widget build(BuildContext context) {
+///     return Column(
+///       children: [
+///         if (waveformData != null)
+///           WaveformWidget(
+///             waveformData: waveformData!,
+///             playbackPosition: playbackPosition,
+///             onSeek: (position) {
+///               final seekTime = waveformData!.duration * position;
+///               audioPlayer?.seek(seekTime);
+///             },
+///           ),
+///         // Audio controls here...
+///       ],
+///     );
+///   }
+/// }
+/// ```
+///
+/// ## Advanced Styling
+///
+/// ```dart
+/// WaveformWidget(
+///   waveformData: waveformData,
+///   playbackPosition: position,
+///   style: WaveformStyle(
+///     waveColor: Colors.blue.withOpacity(0.6),
+///     progressColor: Colors.blue,
+///     backgroundColor: Colors.grey[100],
+///     borderRadius: BorderRadius.circular(8),
+///     showBorder: true,
+///   ),
+///   animationDuration: Duration(milliseconds: 200),
+///   onSeek: (position) => _handleSeek(position),
+/// )
+/// ```
+///
+/// ## Real-time Updates
+///
+/// ```dart
+/// // Update playback position in real-time
+/// Timer.periodic(Duration(milliseconds: 100), (timer) {
+///   if (audioPlayer?.isPlaying == true) {
+///     setState(() {
+///       playbackPosition = audioPlayer!.position.inMilliseconds /
+///                        audioPlayer!.duration!.inMilliseconds;
+///     });
+///   }
+/// });
+/// ```
+///
+/// ## Custom Interaction
+///
+/// ```dart
+/// WaveformWidget(
+///   waveformData: waveformData,
+///   enableSeek: true,  // Allow touch seeking
+///   onTap: () {
+///     // Handle tap events
+///     if (audioPlayer?.isPlaying == true) {
+///       audioPlayer?.pause();
+///     } else {
+///       audioPlayer?.play();
+///     }
+///   },
+///   onSeek: (position) {
+///     // Handle seek events with validation
+///     if (position >= 0.0 && position <= 1.0) {
+///       final seekTime = waveformData.duration * position;
+///       audioPlayer?.seek(seekTime);
+///     }
+///   },
+/// )
+/// ```
 class WaveformWidget extends StatefulWidget {
-  /// Waveform data to display
+  /// The waveform data to visualize.
+  ///
+  /// This should be a [WaveformData] instance generated using [Sonix.generateWaveform]
+  /// or created from existing amplitude data. The widget will render all amplitude
+  /// values in the data as a visual waveform.
+  ///
+  /// **Required:** Must not be null and should contain valid amplitude data.
   final WaveformData waveformData;
 
-  /// Current playback position (0.0 to 1.0)
+  /// Current playback position as a fraction from 0.0 to 1.0.
+  ///
+  /// - 0.0 = beginning of audio
+  /// - 0.5 = middle of audio
+  /// - 1.0 = end of audio
+  /// - null = no position indicator shown
+  ///
+  /// The widget displays a vertical line or highlight at this position.
+  /// Update this value as audio plays to show real-time progress.
   final double? playbackPosition;
 
-  /// Style configuration for the waveform
+  /// Visual styling configuration for the waveform.
+  ///
+  /// Controls colors, dimensions, borders, and other appearance aspects.
+  /// Use [WaveformStyle] or predefined styles from [WaveformStylePresets].
+  ///
+  /// **Default:** Basic blue waveform with standard dimensions.
   final WaveformStyle style;
 
-  /// Callback when the waveform is tapped
+  /// Callback invoked when the user taps the waveform widget.
+  ///
+  /// Useful for implementing play/pause functionality or other general
+  /// interactions. For position-based interactions, use [onSeek] instead.
+  ///
+  /// ## Example
+  /// ```dart
+  /// onTap: () {
+  ///   if (audioPlayer.isPlaying) {
+  ///     audioPlayer.pause();
+  ///   } else {
+  ///     audioPlayer.play();
+  ///   }
+  /// }
+  /// ```
   final VoidCallback? onTap;
 
-  /// Callback when user seeks to a position (0.0 to 1.0)
+  /// Callback invoked when the user seeks to a specific position.
+  ///
+  /// The position parameter is a fraction from 0.0 to 1.0 representing
+  /// the relative position in the audio. Convert this to actual time
+  /// using the waveform's duration.
+  ///
+  /// **Parameters:**
+  /// - position: Seek position from 0.0 (start) to 1.0 (end)
+  ///
+  /// ## Example
+  /// ```dart
+  /// onSeek: (position) {
+  ///   final seekTime = waveformData.duration * position;
+  ///   audioPlayer.seek(seekTime);
+  ///   setState(() {
+  ///     playbackPosition = position;
+  ///   });
+  /// }
+  /// ```
   final Function(double)? onSeek;
 
-  /// Duration for smooth position transitions
+  /// Duration for animating playback position changes.
+  ///
+  /// When [playbackPosition] changes, the position indicator will smoothly
+  /// animate to the new location over this duration. Shorter durations
+  /// provide more responsive feedback, longer durations create smoother motion.
+  ///
+  /// **Typical values:**
+  /// - 50-100ms: Very responsive, minimal animation
+  /// - 150-200ms: Balanced smooth motion (default)
+  /// - 300-500ms: Slow, emphasizes position changes
   final Duration animationDuration;
 
-  /// Animation curve for position transitions
+  /// Animation curve for position transitions.
+  ///
+  /// Defines the easing function used when animating position changes.
+  /// Common options include [Curves.easeInOut], [Curves.linear],
+  /// [Curves.bounceOut], etc.
   final Curve animationCurve;
 
-  /// Whether to enable touch interaction for seeking
+  /// Whether to enable touch interaction for seeking.
+  ///
+  /// When true, users can tap or drag on the waveform to seek to specific
+  /// positions. When false, the widget is display-only and [onSeek] will
+  /// never be called.
+  ///
+  /// **Use cases for disabling:**
+  /// - Read-only waveform displays
+  /// - During loading states
+  /// - When seeking is handled elsewhere in the UI
   final bool enableSeek;
 
   const WaveformWidget({

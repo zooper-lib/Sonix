@@ -1,32 +1,7 @@
 import 'dart:math' as math;
-import '../models/waveform_data.dart';
-
-/// Methods for downsampling when data points exceed display resolution
-enum DownsampleMethod {
-  /// Use maximum amplitude in each group (preserves peaks)
-  max,
-
-  /// Use RMS (Root Mean Square) of each group (preserves energy)
-  rms,
-
-  /// Use average amplitude of each group (smooth representation)
-  average,
-
-  /// Use both min and max to preserve dynamic range (returns pairs)
-  minMax,
-}
-
-/// Methods for upsampling when data points are fewer than display resolution
-enum UpsampleMethod {
-  /// Linear interpolation between points
-  linear,
-
-  /// Repeat each point to fill space
-  repeat,
-
-  /// Cubic interpolation for smoother curves
-  cubic,
-}
+import 'package:sonix/src/models/waveform_type.dart';
+import 'downsample_method.dart';
+import 'upsample_method.dart';
 
 /// Utility class for converting waveform data resolution to display resolution
 ///

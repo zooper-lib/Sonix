@@ -1,14 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/sonix_api.dart';
+import 'package:sonix/src/config/sonix_config.dart';
 import 'package:sonix/src/models/waveform_data.dart';
-import 'package:sonix/src/processing/waveform_generator.dart';
+import 'package:sonix/src/models/waveform_type.dart';
+import 'package:sonix/src/models/waveform_metadata.dart';
+import 'package:sonix/src/models/waveform_progress.dart';
+import 'package:sonix/src/processing/waveform_config.dart';
+import 'package:sonix/src/processing/waveform_use_case.dart';
 import 'package:sonix/src/isolate/isolate_manager.dart';
+import 'package:sonix/src/isolate/isolate_config.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 void main() {
-  group('SonixInstance', () {
+  group('Sonix', () {
     test('should create with default configuration', () {
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       expect(sonix.config, isA<SonixConfig>());
       expect(sonix.config.maxConcurrentOperations, equals(3));
@@ -19,7 +25,7 @@ void main() {
 
     test('should create with custom configuration', () {
       final config = SonixConfig.mobile();
-      final sonix = SonixInstance(config);
+      final sonix = Sonix(config);
 
       expect(sonix.config, equals(config));
       expect(sonix.config.maxConcurrentOperations, equals(2));
@@ -90,7 +96,7 @@ void main() {
     });
 
     test('should handle disposal correctly', () async {
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       expect(sonix.isDisposed, isFalse);
 
@@ -104,7 +110,7 @@ void main() {
     });
 
     test('should not allow operations after disposal', () async {
-      final sonix = SonixInstance();
+      final sonix = Sonix();
       await sonix.dispose();
 
       expect(() => sonix.generateWaveform('test.mp3'), throwsA(isA<StateError>()));
@@ -113,7 +119,7 @@ void main() {
     });
 
     test('should throw for unsupported format', () async {
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       expect(() => sonix.generateWaveform('test.unknown'), throwsA(isA<UnsupportedFormatException>()));
 
@@ -121,7 +127,7 @@ void main() {
     });
 
     test('should throw UnsupportedFormatException for generateWaveform with invalid format', () async {
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       try {
         await sonix.generateWaveform('test.xyz');
@@ -134,7 +140,7 @@ void main() {
     });
 
     test('should throw UnsupportedFormatException for generateWaveformStream with invalid format', () async {
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       try {
         await for (final _ in sonix.generateWaveformStream('test.xyz')) {
@@ -150,7 +156,7 @@ void main() {
 
     group('Resource Management', () {
       test('should provide resource statistics', () async {
-        final sonix = SonixInstance();
+        final sonix = Sonix();
 
         // Should be able to get statistics
         final stats = sonix.getResourceStatistics();
@@ -163,7 +169,7 @@ void main() {
       });
 
       test('should optimize resources', () async {
-        final sonix = SonixInstance();
+        final sonix = Sonix();
 
         // Should not throw
         sonix.optimizeResources();
@@ -175,7 +181,7 @@ void main() {
       });
 
       test('should handle resource operations after disposal gracefully', () async {
-        final sonix = SonixInstance();
+        final sonix = Sonix();
         await sonix.dispose();
 
         expect(() => sonix.getResourceStatistics(), throwsA(isA<StateError>()));
@@ -187,7 +193,7 @@ void main() {
 
     group('Waveform Generation', () {
       test('should accept custom resolution parameter', () async {
-        final sonix = SonixInstance();
+        final sonix = Sonix();
 
         // Test that the method accepts the parameter without actually processing
         expect(() => sonix.generateWaveform('test.mp3', resolution: 500), returnsNormally);
@@ -196,7 +202,7 @@ void main() {
       });
 
       test('should accept custom configuration parameter', () async {
-        final sonix = SonixInstance();
+        final sonix = Sonix();
         final config = const WaveformConfig(resolution: 200, type: WaveformType.line, normalize: false);
 
         // Test that the method accepts the parameter without actually processing

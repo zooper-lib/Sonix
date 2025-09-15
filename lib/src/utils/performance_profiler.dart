@@ -1,9 +1,15 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import '../models/waveform_data.dart';
-import '../models/audio_data.dart';
+import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_type.dart';
+import 'package:sonix/src/models/waveform_metadata.dart';
+import 'package:sonix/src/models/audio_data.dart';
 import 'resource_manager.dart';
+import 'profiled_operation.dart';
+import 'operation_statistics.dart';
+import 'performance_report.dart';
+import 'benchmark_result.dart';
 
 /// Comprehensive performance profiler for Sonix operations
 class PerformanceProfiler {
@@ -333,181 +339,5 @@ class PerformanceProfiler {
       sampleRate: 44100,
       metadata: WaveformMetadata(resolution: amplitudeCount, type: WaveformType.bars, normalized: true, generatedAt: DateTime.now()),
     );
-  }
-}
-
-/// Information about a profiled operation
-class ProfiledOperation {
-  final String name;
-  final Duration duration;
-  final int memoryUsage;
-  final DateTime startTime;
-  final DateTime endTime;
-  final bool success;
-  final String? error;
-  final Map<String, dynamic> metadata;
-
-  const ProfiledOperation({
-    required this.name,
-    required this.duration,
-    required this.memoryUsage,
-    required this.startTime,
-    required this.endTime,
-    required this.success,
-    this.error,
-    required this.metadata,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'duration_ms': duration.inMilliseconds,
-      'memory_usage_bytes': memoryUsage,
-      'start_time': startTime.toIso8601String(),
-      'end_time': endTime.toIso8601String(),
-      'success': success,
-      'error': error,
-      'metadata': metadata,
-    };
-  }
-}
-
-/// Statistics for a specific operation type
-class OperationStatistics {
-  final String operationName;
-  final int totalExecutions;
-  final int successfulExecutions;
-  final double failureRate;
-  final double averageDuration;
-  final double medianDuration;
-  final double minDuration;
-  final double maxDuration;
-  final double standardDeviation;
-  final double averageMemoryUsage;
-  final double totalMemoryUsage;
-  final List<ProfiledOperation> operations;
-
-  const OperationStatistics({
-    required this.operationName,
-    required this.totalExecutions,
-    required this.successfulExecutions,
-    required this.failureRate,
-    required this.averageDuration,
-    required this.medianDuration,
-    required this.minDuration,
-    required this.maxDuration,
-    required this.standardDeviation,
-    required this.averageMemoryUsage,
-    required this.totalMemoryUsage,
-    required this.operations,
-  });
-
-  @override
-  String toString() {
-    return 'OperationStatistics(\n'
-        '  operation: $operationName\n'
-        '  executions: $totalExecutions ($successfulExecutions successful)\n'
-        '  failure rate: ${(failureRate * 100).toStringAsFixed(1)}%\n'
-        '  duration: ${averageDuration.toStringAsFixed(1)}ms avg, '
-        '${medianDuration.toStringAsFixed(1)}ms median\n'
-        '  range: ${minDuration.toStringAsFixed(1)}ms - ${maxDuration.toStringAsFixed(1)}ms\n'
-        '  std dev: ${standardDeviation.toStringAsFixed(1)}ms\n'
-        '  memory: ${(averageMemoryUsage / 1024).toStringAsFixed(1)}KB avg\n'
-        ')';
-  }
-}
-
-/// Overall performance report
-class PerformanceReport {
-  final int totalOperations;
-  final int successfulOperations;
-  final double failureRate;
-  final Duration totalDuration;
-  final int totalMemoryUsage;
-  final Map<String, OperationStatistics> operationStatistics;
-  final List<String> bottlenecks;
-  final List<String> memoryIntensiveOperations;
-  final DateTime generatedAt;
-
-  const PerformanceReport({
-    required this.totalOperations,
-    required this.successfulOperations,
-    required this.failureRate,
-    required this.totalDuration,
-    required this.totalMemoryUsage,
-    required this.operationStatistics,
-    required this.bottlenecks,
-    required this.memoryIntensiveOperations,
-    required this.generatedAt,
-  });
-
-  @override
-  String toString() {
-    final buffer = StringBuffer();
-    buffer.writeln('=== Sonix Performance Report ===');
-    buffer.writeln('Generated: $generatedAt');
-    buffer.writeln('');
-    buffer.writeln('Overall Statistics:');
-    buffer.writeln('  Total operations: $totalOperations');
-    buffer.writeln('  Successful: $successfulOperations');
-    buffer.writeln('  Failure rate: ${(failureRate * 100).toStringAsFixed(1)}%');
-    buffer.writeln('  Total duration: ${totalDuration.inMilliseconds}ms');
-    buffer.writeln('  Total memory usage: ${(totalMemoryUsage / 1024 / 1024).toStringAsFixed(1)}MB');
-    buffer.writeln('');
-
-    if (bottlenecks.isNotEmpty) {
-      buffer.writeln('Performance Bottlenecks:');
-      for (final bottleneck in bottlenecks) {
-        buffer.writeln('  - $bottleneck');
-      }
-      buffer.writeln('');
-    }
-
-    if (memoryIntensiveOperations.isNotEmpty) {
-      buffer.writeln('Memory-Intensive Operations:');
-      for (final operation in memoryIntensiveOperations) {
-        buffer.writeln('  - $operation');
-      }
-      buffer.writeln('');
-    }
-
-    buffer.writeln('Operation Details:');
-    for (final stats in operationStatistics.values) {
-      buffer.writeln(stats.toString());
-    }
-
-    return buffer.toString();
-  }
-}
-
-/// Result of a benchmark test
-class BenchmarkResult {
-  final String testName;
-  final Map<String, List<double>> results;
-  final int iterations;
-  final DateTime completedAt;
-
-  const BenchmarkResult({required this.testName, required this.results, required this.iterations, required this.completedAt});
-
-  @override
-  String toString() {
-    final buffer = StringBuffer();
-    buffer.writeln('=== $testName ===');
-    buffer.writeln('Completed: $completedAt');
-    buffer.writeln('Iterations per test: $iterations');
-    buffer.writeln('');
-
-    for (final entry in results.entries) {
-      final values = entry.value;
-      final avg = values.reduce((a, b) => a + b) / values.length;
-      final min = values.reduce(math.min);
-      final max = values.reduce(math.max);
-
-      buffer.writeln('${entry.key}:');
-      buffer.writeln('  Average: ${avg.toStringAsFixed(2)}ms');
-      buffer.writeln('  Range: ${min.toStringAsFixed(2)}ms - ${max.toStringAsFixed(2)}ms');
-    }
-
-    return buffer.toString();
   }
 }

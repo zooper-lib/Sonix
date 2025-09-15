@@ -1,4 +1,7 @@
 import 'dart:math' as math;
+import 'downsampling_algorithm.dart';
+import 'normalization_method.dart';
+import 'scaling_curve.dart';
 
 /// Core algorithms for waveform data processing
 class WaveformAlgorithms {
@@ -260,43 +263,4 @@ class WaveformAlgorithms {
 
     return result;
   }
-}
-
-/// Available downsampling algorithms
-enum DownsamplingAlgorithm {
-  /// Root Mean Square - best for perceived loudness
-  rms,
-
-  /// Peak detection - shows maximum amplitude
-  peak,
-
-  /// Simple average - balanced approach
-  average,
-
-  /// Median value - reduces noise impact
-  median,
-}
-
-/// Normalization methods
-enum NormalizationMethod {
-  /// Normalize to peak value
-  peak,
-
-  /// Normalize to RMS value
-  rms,
-}
-
-/// Amplitude scaling curves
-enum ScalingCurve {
-  /// Linear scaling (no curve)
-  linear,
-
-  /// Logarithmic scaling (emphasizes quiet sounds)
-  logarithmic,
-
-  /// Exponential scaling (emphasizes loud sounds)
-  exponential,
-
-  /// Square root scaling (balanced)
-  sqrt,
 }

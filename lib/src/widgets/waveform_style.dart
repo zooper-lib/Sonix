@@ -1,8 +1,85 @@
 import 'package:flutter/material.dart';
-import 'package:sonix/src/models/waveform_data.dart';
-import 'package:sonix/src/processing/display_sampler.dart';
+import 'package:sonix/src/models/waveform_type.dart';
+import 'package:sonix/src/processing/downsample_method.dart';
+import 'package:sonix/src/processing/upsample_method.dart';
 
-/// Style configuration for waveform visualization
+/// Comprehensive styling configuration for waveform visualization widgets.
+///
+/// This class provides extensive customization options for visual appearance,
+/// performance optimization, and interactive behavior of waveform displays.
+/// It supports multiple visualization types, color schemes, gradients, and
+/// advanced rendering options.
+///
+/// ## Key Features
+///
+/// - **Multiple Visual Types**: Bars, lines, and filled area rendering
+/// - **Flexible Coloring**: Solid colors, gradients, and blend modes
+/// - **Performance Controls**: Automatic resolution scaling and sampling methods
+/// - **Layout Options**: Padding, margins, borders, and shadows
+/// - **Interactive Elements**: Progress indication and center line markers
+///
+/// ## Basic Usage
+///
+/// ```dart
+/// // Simple blue waveform
+/// WaveformWidget(
+///   waveformData: data,
+///   style: WaveformStyle(
+///     playedColor: Colors.blue,
+///     unplayedColor: Colors.grey[300]!,
+///     height: 80,
+///   ),
+/// )
+/// ```
+///
+/// ## Advanced Styling
+///
+/// ```dart
+/// // Gradient waveform with custom appearance
+/// WaveformWidget(
+///   waveformData: data,
+///   style: WaveformStyle(
+///     type: WaveformType.filled,
+///     playedGradient: LinearGradient(
+///       colors: [Colors.purple, Colors.blue],
+///       begin: Alignment.topCenter,
+///       end: Alignment.bottomCenter,
+///     ),
+///     unplayedGradient: LinearGradient(
+///       colors: [Colors.grey[300]!, Colors.grey[100]!],
+///       begin: Alignment.topCenter,
+///       end: Alignment.bottomCenter,
+///     ),
+///     height: 120,
+///     borderRadius: BorderRadius.circular(12),
+///     padding: EdgeInsets.all(8),
+///     showCenterLine: true,
+///     centerLineColor: Colors.white.withOpacity(0.5),
+///   ),
+/// )
+/// ```
+///
+/// ## Performance Optimization
+///
+/// ```dart
+/// // Optimized for large waveforms
+/// WaveformStyle(
+///   autoDisplayResolution: true,    // Scale to widget size
+///   downsampleMethod: DownsampleMethod.rms,  // Quality downsampling
+///   antiAlias: true,                 // Smooth rendering
+///   amplitudeScale: 0.9,            // Prevent clipping
+/// )
+/// ```
+///
+/// ## Preset Styles
+///
+/// For common use cases, consider using [WaveformStylePresets]:
+/// ```dart
+/// WaveformWidget(
+///   waveformData: data,
+///   style: WaveformStylePresets.soundcloud(),
+/// )
+/// ```
 class WaveformStyle {
   /// Color for the played portion of the waveform
   final Color playedColor;

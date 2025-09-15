@@ -234,7 +234,7 @@ class _PlaybackPositionExampleState extends State<PlaybackPositionExample> {
 
     try {
       // Create a Sonix instance for processing
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       // Generate waveform optimized for music visualization
       final config = Sonix.getOptimalConfig(useCase: WaveformUseCase.musicVisualization, customResolution: 300);

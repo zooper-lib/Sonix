@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_type.dart';
 import 'package:sonix/src/processing/display_sampler.dart';
 import 'waveform_style.dart';
 

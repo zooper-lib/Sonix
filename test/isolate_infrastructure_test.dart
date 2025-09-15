@@ -10,8 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sonix/src/isolate/isolate_messages.dart';
 import 'package:sonix/src/isolate/processing_isolate.dart';
-import 'package:sonix/src/processing/waveform_generator.dart';
+import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_type.dart';
+import 'package:sonix/src/models/waveform_metadata.dart';
 
 void main() {
   group('Isolate Infrastructure Tests', () {

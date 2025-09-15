@@ -706,7 +706,7 @@ class _SeekingPartialWaveformExampleState extends State<SeekingPartialWaveformEx
 
     try {
       // Create a Sonix instance for processing
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       final waveformData = await sonix.generateWaveform(_selectedFilePath);
 
@@ -747,7 +747,7 @@ class _SeekingPartialWaveformExampleState extends State<SeekingPartialWaveformEx
 
     try {
       // Create a Sonix instance for processing
-      final sonix = SonixInstance();
+      final sonix = Sonix();
 
       // Generate full waveform and simulate section extraction
       // Note: This is a demonstration - real seeking would be implemented in the native layer

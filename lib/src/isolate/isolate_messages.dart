@@ -5,8 +5,8 @@
 /// isolate boundaries.
 library;
 
-import '../models/waveform_data.dart';
-import '../processing/waveform_generator.dart';
+import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/processing/waveform_config.dart';
 
 /// Base class for all isolate messages
 ///

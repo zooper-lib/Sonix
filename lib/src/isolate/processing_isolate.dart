@@ -17,7 +17,8 @@ import 'package:sonix/src/decoders/chunked_audio_decoder.dart';
 import 'package:sonix/src/models/file_chunk.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
-import 'package:sonix/src/processing/waveform_algorithms.dart';
+import 'package:sonix/src/processing/waveform_config.dart';
+import 'package:sonix/src/processing/downsampling_algorithm.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 /// Entry point for background processing isolates

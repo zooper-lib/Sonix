@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
-import 'package:sonix/src/processing/waveform_algorithms.dart';
+import 'package:sonix/src/processing/waveform_config.dart';
+import 'package:sonix/src/processing/waveform_use_case.dart';
+import 'package:sonix/src/processing/downsampling_algorithm.dart';
 import 'package:sonix/src/models/audio_data.dart';
-import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_type.dart';
 import '../test_data_generator.dart';
 import 'dart:math' as math;
 

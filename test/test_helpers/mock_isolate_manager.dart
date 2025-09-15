@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:sonix/src/isolate/isolate_manager.dart';
 import 'package:sonix/src/isolate/isolate_messages.dart';
 import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_metadata.dart';
 
 /// Mock isolate manager for testing
 class MockIsolateManager extends IsolateManager {

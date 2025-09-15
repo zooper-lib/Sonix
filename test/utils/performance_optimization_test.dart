@@ -3,7 +3,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_type.dart';
+import 'package:sonix/src/models/waveform_metadata.dart';
 import 'package:sonix/src/utils/performance_profiler.dart';
+import 'package:sonix/src/utils/performance_report.dart';
 import 'package:sonix/src/utils/platform_validator.dart';
 import 'package:sonix/src/utils/memory_manager.dart';
 import 'package:sonix/src/utils/resource_manager.dart';

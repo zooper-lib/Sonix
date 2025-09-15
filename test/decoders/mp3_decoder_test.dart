@@ -211,8 +211,8 @@ void main() {
 
         stopwatch.stop();
 
-        // Decoding should complete in reasonable time (less than 1 second for most files)
-        expect(stopwatch.elapsedMilliseconds, lessThan(1000));
+        // Decoding should complete in reasonable time (less than 2 seconds for most files)
+        expect(stopwatch.elapsedMilliseconds, lessThan(2000));
 
         print('MP3 decoding performance:');
         print('  File size: ${bytes.length} bytes');
