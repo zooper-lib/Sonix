@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/processing/display_sampler.dart';
 
 /// Style configuration for waveform visualization
 class WaveformStyle {
@@ -78,6 +79,22 @@ class WaveformStyle {
   /// Blend mode for gradient overlays
   final BlendMode gradientBlendMode;
 
+  /// Method for downsampling when data points exceed display resolution
+  final DownsampleMethod downsampleMethod;
+
+  /// Method for upsampling when data points are fewer than display resolution
+  final UpsampleMethod upsampleMethod;
+
+  /// Whether to automatically calculate display resolution based on widget width
+  final bool autoDisplayResolution;
+
+  /// Manual override for display resolution (null = automatic calculation)
+  final int? fixedDisplayResolution;
+
+  /// Target density for automatic display resolution calculation (points per 100px)
+  /// Only used when autoDisplayResolution is true and fixedDisplayResolution is null
+  final double? displayDensity;
+
   const WaveformStyle({
     this.playedColor = Colors.blue,
     this.unplayedColor = Colors.grey,
@@ -104,6 +121,11 @@ class WaveformStyle {
     this.maxBarHeight,
     this.antiAlias = true,
     this.gradientBlendMode = BlendMode.overlay,
+    this.downsampleMethod = DownsampleMethod.max,
+    this.upsampleMethod = UpsampleMethod.linear,
+    this.autoDisplayResolution = true,
+    this.fixedDisplayResolution,
+    this.displayDensity,
   });
 
   /// Create a copy with modified properties
@@ -133,6 +155,11 @@ class WaveformStyle {
     double? maxBarHeight,
     bool? antiAlias,
     BlendMode? gradientBlendMode,
+    DownsampleMethod? downsampleMethod,
+    UpsampleMethod? upsampleMethod,
+    bool? autoDisplayResolution,
+    int? fixedDisplayResolution,
+    double? displayDensity,
   }) {
     return WaveformStyle(
       playedColor: playedColor ?? this.playedColor,
@@ -160,6 +187,11 @@ class WaveformStyle {
       maxBarHeight: maxBarHeight ?? this.maxBarHeight,
       antiAlias: antiAlias ?? this.antiAlias,
       gradientBlendMode: gradientBlendMode ?? this.gradientBlendMode,
+      downsampleMethod: downsampleMethod ?? this.downsampleMethod,
+      upsampleMethod: upsampleMethod ?? this.upsampleMethod,
+      autoDisplayResolution: autoDisplayResolution ?? this.autoDisplayResolution,
+      fixedDisplayResolution: fixedDisplayResolution ?? this.fixedDisplayResolution,
+      displayDensity: displayDensity ?? this.displayDensity,
     );
   }
 
@@ -191,7 +223,12 @@ class WaveformStyle {
         other.minBarHeight == minBarHeight &&
         other.maxBarHeight == maxBarHeight &&
         other.antiAlias == antiAlias &&
-        other.gradientBlendMode == gradientBlendMode;
+        other.gradientBlendMode == gradientBlendMode &&
+        other.downsampleMethod == downsampleMethod &&
+        other.upsampleMethod == upsampleMethod &&
+        other.autoDisplayResolution == autoDisplayResolution &&
+        other.fixedDisplayResolution == fixedDisplayResolution &&
+        other.displayDensity == displayDensity;
   }
 
   @override
@@ -222,6 +259,11 @@ class WaveformStyle {
       maxBarHeight,
       antiAlias,
       gradientBlendMode,
+      downsampleMethod,
+      upsampleMethod,
+      autoDisplayResolution,
+      fixedDisplayResolution,
+      displayDensity,
     ]);
   }
 }

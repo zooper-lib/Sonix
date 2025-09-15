@@ -70,6 +70,9 @@ export 'src/widgets/waveform_style.dart';
 export 'src/widgets/waveform_style_presets.dart';
 export 'src/widgets/waveform_widget.dart';
 
+// Display resolution and sampling
+export 'src/processing/display_sampler.dart';
+
 // Isolate infrastructure (for advanced usage)
 export 'src/isolate/isolate_messages.dart';
 export 'src/isolate/processing_isolate.dart' show processingIsolateEntryPoint;

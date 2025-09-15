@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/waveform_data.dart';
+import 'package:sonix/src/models/waveform_data.dart';
+import 'package:sonix/src/processing/display_sampler.dart';
 import 'waveform_style.dart';
 
 /// Custom painter for efficient waveform rendering
@@ -20,8 +21,8 @@ class WaveformPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final amplitudes = waveformData.amplitudes;
-    if (amplitudes.isEmpty) return;
+    final sourceAmplitudes = waveformData.amplitudes;
+    if (sourceAmplitudes.isEmpty) return;
 
     // Apply anti-aliasing
     if (style.antiAlias) {
@@ -42,6 +43,25 @@ class WaveformPainter extends CustomPainter {
       canvas.drawRect(Offset.zero & size, backgroundPaint);
     }
 
+    // Calculate display resolution based on style and available width
+    final displayResolution = style.autoDisplayResolution 
+      ? (style.fixedDisplayResolution ?? DisplaySampler.calculateDisplayResolution(
+          availableWidth: contentRect.width,
+          barWidth: style.barWidth,
+          barSpacing: style.barSpacing,
+          displayDensity: style.displayDensity,
+          waveformType: style.type,
+        ))
+      : (style.fixedDisplayResolution ?? sourceAmplitudes.length);
+
+    // Resample amplitudes to match display resolution
+    final displayAmplitudes = DisplaySampler.resampleForDisplay(
+      sourceAmplitudes: sourceAmplitudes,
+      targetCount: displayResolution,
+      downsampleMethod: style.downsampleMethod,
+      upsampleMethod: style.upsampleMethod,
+    );
+
     // Calculate dimensions
     final centerY = contentRect.center.dy;
     final playedWidth = playbackPosition != null ? contentRect.width * playbackPosition! * animationValue : 0.0;
@@ -54,16 +74,16 @@ class WaveformPainter extends CustomPainter {
       canvas.drawLine(Offset(contentRect.left, centerY), Offset(contentRect.right, centerY), centerLinePaint);
     }
 
-    // Render based on waveform type
+    // Render based on waveform type using display-sampled amplitudes
     switch (style.type) {
       case WaveformType.bars:
-        _paintBars(canvas, contentRect, amplitudes, centerY, playedWidth);
+        _paintBars(canvas, contentRect, displayAmplitudes, centerY, playedWidth);
         break;
       case WaveformType.line:
-        _paintLine(canvas, contentRect, amplitudes, centerY, playedWidth);
+        _paintLine(canvas, contentRect, displayAmplitudes, centerY, playedWidth);
         break;
       case WaveformType.filled:
-        _paintFilled(canvas, contentRect, amplitudes, centerY, playedWidth);
+        _paintFilled(canvas, contentRect, displayAmplitudes, centerY, playedWidth);
         break;
     }
 
@@ -84,12 +104,14 @@ class WaveformPainter extends CustomPainter {
   /// Paint waveform as bars
   void _paintBars(Canvas canvas, Rect contentRect, List<double> amplitudes, double centerY, double playedWidth) {
     final barCount = amplitudes.length;
-    final availableWidth = contentRect.width - style.barSpacing;
-    final actualBarWidth = (availableWidth / barCount).clamp(1.0, style.barWidth);
-    final actualSpacing = barCount > 1 ? (availableWidth - (actualBarWidth * barCount)) / (barCount - 1) : 0.0;
+    if (barCount == 0) return;
 
+    // Use exact user-specified bar width and spacing
+    // The display sampling already calculated the optimal number of bars
+    final barUnit = style.barWidth + style.barSpacing;
+    
     for (int i = 0; i < barCount; i++) {
-      final x = contentRect.left + i * (actualBarWidth + actualSpacing) + style.barSpacing / 2;
+      final x = contentRect.left + i * barUnit;
       final amplitude = (amplitudes[i] * style.amplitudeScale).clamp(0.0, 1.0);
 
       // Apply min/max height constraints
@@ -115,8 +137,8 @@ class WaveformPainter extends CustomPainter {
           ..style = PaintingStyle.fill;
       }
 
-      // Draw bar (centered around centerY)
-      final rect = Rect.fromLTWH(x, centerY - barHeight / 2, actualBarWidth, barHeight);
+      // Draw bar (centered around centerY) using exact user-specified width
+      final rect = Rect.fromLTWH(x, centerY - barHeight / 2, style.barWidth, barHeight);
 
       if (style.borderRadius != null) {
         final rrect = RRect.fromRectAndCorners(
