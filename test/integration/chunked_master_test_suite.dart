@@ -4,13 +4,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 // Import all test suites
-import 'test_data_generator.dart';
+import '../../tools/test_data_generator.dart';
 
-/// Master test suite for comprehensive chunked audio processing testing
+/// Master integration test suite for chunked audio processing testing
 ///
 /// This is the main entry point for running all chunked processing tests.
-/// It orchestrates the execution of all test suites and provides comprehensive
-/// reporting and validation of the chunked processing system.
+/// It orchestrates the execution of all test suites and provides integration
+/// testing and validation of the chunked processing system.
 void main() {
   group('Chunked Processing Master Test Suite', () {
     setUpAll(() async {

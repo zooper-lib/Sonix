@@ -2,13 +2,13 @@
 
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'test_data_generator.dart';
+import '../../tools/test_data_generator.dart';
 
-/// Simple comprehensive test to verify basic functionality
+/// Integration test to verify core functionality
 void main() {
-  group('Simple Comprehensive Test', () {
-    test('should generate basic test files', () async {
-      print('Generating basic test files...');
+  group('Core Functionality Integration Test', () {
+    test('should generate essential test files', () async {
+      print('Generating essential test files...');
 
       // Generate only essential files for faster testing
       await TestDataGenerator.generateEssentialTestData();
@@ -24,8 +24,8 @@ void main() {
     });
 
     test('should validate test file metadata extraction', () async {
-      // Test with a simple WAV file
-      final testFile = '${TestDataGenerator.assetsPath}/test_mono_44100.wav';
+      // Test with a mono WAV file
+      final testFile = '${TestDataGenerator.assetsPath}/mono_44100.wav';
 
       if (await File(testFile).exists()) {
         final metadata = await TestFileValidator.validateAndExtractMetadata(testFile);

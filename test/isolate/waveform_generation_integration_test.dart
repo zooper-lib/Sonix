@@ -12,8 +12,8 @@ import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/models/waveform_type.dart';
 import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/processing/downsampling_algorithm.dart';
-import 'test_data_generator.dart';
-import 'test_helpers/test_sonix_instance.dart';
+import '../../tools/test_data_generator.dart';
+import '../test_helpers/test_sonix_instance.dart';
 
 void main() {
   group('Isolate Waveform Generation Integration Tests', () {

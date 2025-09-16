@@ -3,9 +3,9 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
-import 'test_data_generator.dart';
+import '../../tools/test_data_generator.dart';
 
-/// Comprehensive accuracy and compatibility testing suite for chunked audio processing
+/// Integration test suite for accuracy and compatibility testing of chunked audio processing
 ///
 /// This test suite validates bit-perfect accuracy, waveform generation accuracy,
 /// seeking accuracy, and backward compatibility across all supported formats.

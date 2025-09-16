@@ -3,7 +3,7 @@ import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/models/waveform_type.dart';
 
 void main() {
-  group('Simplified Waveform Data Tests', () {
+  group('Waveform Data Tests', () {
     test('should create WaveformData from amplitude list', () {
       final amplitudes = [0.1, 0.5, 0.8, 0.3, 0.9, 0.2];
       final waveformData = WaveformData.fromAmplitudes(amplitudes);

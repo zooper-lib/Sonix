@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
-import '../test_data_generator.dart';
+import '../../tools/test_data_generator.dart';
 
 void main() {
   group('Audio Decoding Tests', () {

@@ -1,15 +1,15 @@
 name: SonixNativeBindings
-description: 'Native audio decoding bindings for Sonix Flutter package'
-output: 'lib/src/native/sonix_bindings.dart'
+description: "Native audio decoding bindings for Sonix Flutter package"
+output: "lib/src/native/sonix_bindings.dart"
 
 headers:
   entry-points:
-    - 'native/src/sonix_native.h'
+    - "native/src/sonix_native.h"
   include-directives:
-    - 'native/src/sonix_native.h'
+    - "native/src/sonix_native.h"
 
 compiler-opts:
-  - '-Inative/src'
+  - "-Inative/src"
 
 preamble: |
   // Generated FFI bindings for Sonix native audio library
@@ -62,8 +62,8 @@ macros:
     - SONIX_ERROR_INVALID_DATA
 
 type-map:
-  'native-types':
-    'char': 
-      'lib': 'ffi'
-      'c-type': 'Char'
-      'dart-type': 'int'
+  "native-types":
+    "char":
+      "lib": "ffi"
+      "c-type": "Char"
+      "dart-type": "int"

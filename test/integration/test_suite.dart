@@ -2,14 +2,14 @@
 
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'test_data_generator.dart';
+import '../../tools/test_data_generator.dart';
 
-/// Comprehensive test suite for chunked audio processing
+/// Integration test suite for chunked audio processing
 ///
 /// This test suite generates and validates test files of various sizes
 /// and characteristics for thorough testing of the chunked processing system.
 void main() {
-  group('Comprehensive Test File Suite', () {
+  group('Chunked Audio Processing Integration Test', () {
     setUpAll(() async {
       print('Setting up comprehensive test file suite...');
 

@@ -8,7 +8,7 @@ import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/models/waveform_type.dart';
 import 'package:sonix/src/models/waveform_metadata.dart';
 import 'package:sonix/src/processing/waveform_config.dart';
-import 'mocks/mock_processing_isolate.dart';
+import '../mocks/mock_processing_isolate.dart';
 
 // Test configuration class
 class TestSonixConfig implements IsolateConfig {

@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/utils/memory_manager.dart';
 
 void main() {
-  group('Simple Memory Pressure Tests', () {
+  group('Memory Pressure Tests', () {
     late MemoryManager memoryManager;
 
     setUp(() {

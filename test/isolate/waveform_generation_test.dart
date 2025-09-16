@@ -1,4 +1,4 @@
-/// Basic integration tests for isolate-based waveform generation
+/// Integration tests for isolate-based waveform generation
 ///
 /// These tests verify the core isolate communication and processing functionality
 /// without relying on complex audio decoding infrastructure.
@@ -10,10 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/sonix_api.dart';
 import 'package:sonix/src/config/sonix_config.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
-import 'test_helpers/test_sonix_instance.dart';
+import '../test_helpers/test_sonix_instance.dart';
 
 void main() {
-  group('Basic Isolate Waveform Generation Tests', () {
+  group('Isolate Waveform Generation Tests', () {
     late Sonix sonix;
 
     setUp(() async {

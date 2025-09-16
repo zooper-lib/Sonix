@@ -2,14 +2,14 @@
 
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'test_data_generator.dart';
+import '../../tools/test_data_generator.dart';
 
-/// Practical comprehensive test suite for chunked audio processing
+/// Practical integration test suite for chunked audio processing
 ///
 /// This test suite focuses on essential functionality without generating
 /// massive files that could cause memory or timeout issues.
 void main() {
-  group('Practical Comprehensive Testing Suite', () {
+  group('Practical Integration Testing Suite', () {
     setUpAll(() async {
       print('Setting up practical comprehensive test suite...');
 
