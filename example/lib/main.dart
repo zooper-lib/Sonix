@@ -372,7 +372,7 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary, title: const Text('Sonix Audio Decoder')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -426,28 +426,29 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
                 ),
               ),
             if (_waveformData != null)
-              Expanded(
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Decoded Audio Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 16),
-                        if (_detectedFormat != null) _buildInfoRow('Detected Format', _detectedFormat!),
-                        const Text('Sample Preview (first 10 values):', style: TextStyle(fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Decoded Audio Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      if (_detectedFormat != null) _buildInfoRow('Detected Format', _detectedFormat!),
+                      const Text('Sample Preview (first 10 values):', style: TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 8),
 
-                        // Waveform Visualization Section
-                        const Text('Waveform Visualization', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 16),
+                      // Waveform Visualization Section
+                      const Text('Waveform Visualization', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
 
-                        if (_isGeneratingWaveform)
-                          const Center(child: Column(children: [CircularProgressIndicator(), SizedBox(height: 8), Text('Generating waveform...')]))
-                        else if (_waveformData != null) ...[
-                          // Style selector
-                          Row(
+                      if (_isGeneratingWaveform)
+                        const Center(child: Column(children: [CircularProgressIndicator(), SizedBox(height: 8), Text('Generating waveform...')]))
+                      else if (_waveformData != null) ...[
+                        // Style selector
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
                             children: [
                               const Text('Style: ', style: TextStyle(fontWeight: FontWeight.w500)),
                               DropdownButton<WaveformStyle>(
@@ -470,10 +471,13 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                        ),
+                        const SizedBox(height: 12),
 
-                          // Algorithm selector
-                          Row(
+                        // Algorithm selector
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
                             children: [
                               const Text('Algorithm: ', style: TextStyle(fontWeight: FontWeight.w500)),
                               DropdownButton<DownsamplingAlgorithm>(
@@ -495,10 +499,13 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                        ),
+                        const SizedBox(height: 16),
 
-                          // Waveform widget
-                          WaveformWidget(
+                        // Waveform widget with constrained height
+                        SizedBox(
+                          height: 200,
+                          child: WaveformWidget(
                             waveformData: _waveformData!,
                             playbackPosition: _playbackPosition,
                             style: _selectedStyle,
@@ -508,10 +515,13 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
                               });
                             },
                           ),
-                          const SizedBox(height: 16),
+                        ),
+                        const SizedBox(height: 16),
 
-                          // Playback controls
-                          Row(
+                        // Playback controls
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               ElevatedButton.icon(
@@ -535,33 +545,33 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                        ),
+                        const SizedBox(height: 16),
 
-                          // Waveform info
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue.shade200),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Waveform Information:', style: TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 8),
-                                Text('Resolution: ${_waveformData!.amplitudes.length} points'),
-                                Text('Algorithm: ${_selectedAlgorithm.name.toUpperCase()}'),
-                                Text('Type: ${_waveformData!.metadata.type.name}'),
-                                Text('Normalized: ${_waveformData!.metadata.normalized}'),
-                                Text('Generated: ${_waveformData!.metadata.generatedAt.toString().split('.')[0]}'),
-                                Text('Playback Position: ${(_playbackPosition * 100).toStringAsFixed(1)}%'),
-                              ],
-                            ),
+                        // Waveform info
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
                           ),
-                        ],
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Waveform Information:', style: TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              Text('Resolution: ${_waveformData!.amplitudes.length} points'),
+                              Text('Algorithm: ${_selectedAlgorithm.name.toUpperCase()}'),
+                              Text('Type: ${_waveformData!.metadata.type.name}'),
+                              Text('Normalized: ${_waveformData!.metadata.normalized}'),
+                              Text('Generated: ${_waveformData!.metadata.generatedAt.toString().split('.')[0]}'),
+                              Text('Playback Position: ${(_playbackPosition * 100).toStringAsFixed(1)}%'),
+                            ],
+                          ),
+                        ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ),
