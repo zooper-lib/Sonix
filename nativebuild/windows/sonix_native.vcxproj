@@ -362,7 +362,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\sonix_native.c" />
-    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis\stb_vorbis_impl.c" />
+    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis_wrapper.c" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

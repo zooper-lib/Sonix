@@ -4,7 +4,7 @@
     <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\sonix_native.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis\stb_vorbis_impl.c">
+    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis_wrapper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

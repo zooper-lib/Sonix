@@ -8,7 +8,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Define source files
 set(SOURCES
     src/sonix_native.c
-    src/stb_vorbis/stb_vorbis_impl.c
+    src/stb_vorbis_wrapper.c
 )
 
 # Define header directories

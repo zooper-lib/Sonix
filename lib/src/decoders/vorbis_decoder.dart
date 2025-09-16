@@ -240,6 +240,7 @@ class VorbisDecoder implements ChunkedAudioDecoder {
     _checkDisposed();
     return {
       'format': 'OGG Vorbis',
+      'fileExtensions': ['ogg'],
       'sampleRate': _sampleRate,
       'channels': _channels,
       'duration': _totalDuration?.inMilliseconds,
@@ -248,6 +249,8 @@ class VorbisDecoder implements ChunkedAudioDecoder {
       'supportsSeekTable': false, // OGG uses granule positions instead
       'seekingAccuracy': _granulePositions.isNotEmpty ? 'good' : 'approximate',
       'avgPageSize': 4096,
+      'supportsChunkedDecoding': true,
+      'implementationStatus': 'Implemented with stb_vorbis',
     };
   }
 
