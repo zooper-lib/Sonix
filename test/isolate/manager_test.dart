@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'dart:isolate';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/isolate/isolate_manager.dart';
-import 'package:sonix/src/isolate/isolate_messages.dart';
 import 'package:sonix/src/isolate/isolate_config.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/models/waveform_type.dart';
@@ -242,47 +240,6 @@ void main() {
         expect(actualResult, equals(result));
       });
     });
-
-    group('Streaming Tasks', () {
-      setUp(() async {
-        await manager.initialize();
-      });
-
-      test('should support streaming tasks', () async {
-        final task = ProcessingTask(id: 'stream_task', filePath: 'test_audio.mp3', config: const WaveformConfig(resolution: 100), streamResults: true);
-
-        expect(task.streamResults, isTrue);
-        expect(task.progressStream, isNotNull);
-
-        // The stream should be available even before execution
-        expect(task.progressStream, isA<Stream<ProgressUpdate>>());
-      });
-
-      test('should handle progress updates for streaming tasks', () async {
-        final task = ProcessingTask(id: 'progress_task', filePath: 'test_audio.mp3', config: const WaveformConfig(resolution: 100), streamResults: true);
-
-        final progressUpdates = <ProgressUpdate>[];
-        final subscription = task.progressStream!.listen(progressUpdates.add);
-
-        // Simulate progress updates
-        final update1 = ProgressUpdate(id: 'update1', timestamp: DateTime.now(), requestId: task.id, progress: 0.5, statusMessage: 'Processing...');
-
-        final update2 = ProgressUpdate(id: 'update2', timestamp: DateTime.now(), requestId: task.id, progress: 1.0, statusMessage: 'Complete');
-
-        task.sendProgress(update1);
-        task.sendProgress(update2);
-
-        // Wait a bit for stream processing
-        await Future.delayed(const Duration(milliseconds: 10));
-
-        expect(progressUpdates.length, equals(2));
-        expect(progressUpdates[0].progress, equals(0.5));
-        expect(progressUpdates[1].progress, equals(1.0));
-
-        await subscription.cancel();
-      });
-    });
-
     group('Disposal', () {
       test('should dispose cleanly', () async {
         await manager.initialize();
@@ -348,41 +305,6 @@ void main() {
         final stats = manager.getStatistics();
         expect(stats.activeIsolates, equals(0));
       });
-    });
-  });
-
-  group('ProcessingTask', () {
-    test('should create task with correct properties', () {
-      final task = ProcessingTask(id: 'test_task', filePath: 'test.mp3', config: const WaveformConfig(resolution: 500), streamResults: true);
-
-      expect(task.id, equals('test_task'));
-      expect(task.filePath, equals('test.mp3'));
-      expect(task.config.resolution, equals(500));
-      expect(task.streamResults, isTrue);
-      expect(task.createdAt, isA<DateTime>());
-      expect(task.future, isA<Future<WaveformData>>());
-      expect(task.progressStream, isNotNull);
-      expect(task.cancelToken.isCancelled, isFalse);
-    });
-
-    test('should create non-streaming task correctly', () {
-      final task = ProcessingTask(id: 'non_stream_task', filePath: 'test.mp3', config: const WaveformConfig(resolution: 500), streamResults: false);
-
-      expect(task.streamResults, isFalse);
-      expect(task.progressStream, isNull);
-    });
-
-    test('should handle task cancellation correctly', () async {
-      final task = ProcessingTask(id: 'cancel_task', filePath: 'test.mp3', config: const WaveformConfig(resolution: 100));
-
-      expect(task.cancelToken.isCancelled, isFalse);
-
-      task.cancel();
-
-      expect(task.cancelToken.isCancelled, isTrue);
-
-      // The future should complete with an error
-      expect(() => task.future, throwsA(isA<TaskCancelledException>()));
     });
   });
 

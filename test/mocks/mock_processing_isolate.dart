@@ -82,32 +82,8 @@ Future<void> _processMockWaveformRequest(ProcessingRequest request, SendPort mai
       return;
     }
 
-    // Send initial progress update if streaming is enabled
-    if (request.streamResults) {
-      final progressUpdate = ProgressUpdate(
-        id: 'progress_${DateTime.now().millisecondsSinceEpoch}',
-        timestamp: DateTime.now(),
-        requestId: request.id,
-        progress: 0.0,
-        statusMessage: 'Starting mock processing',
-      );
-      mainSendPort.send(progressUpdate.toJson());
-    }
-
     // Simulate some processing time
     await Future.delayed(const Duration(milliseconds: 10));
-
-    // Send progress update for decoding phase
-    if (request.streamResults) {
-      final progressUpdate = ProgressUpdate(
-        id: 'progress_${DateTime.now().millisecondsSinceEpoch}',
-        timestamp: DateTime.now(),
-        requestId: request.id,
-        progress: 0.5,
-        statusMessage: 'Mock decoding complete',
-      );
-      mainSendPort.send(progressUpdate.toJson());
-    }
 
     // Simulate more processing time
     await Future.delayed(const Duration(milliseconds: 10));
@@ -140,18 +116,6 @@ Future<void> _processMockWaveformRequest(ProcessingRequest request, SendPort mai
       duration: const Duration(seconds: 3),
       metadata: WaveformMetadata(resolution: resolution, type: waveformType, normalized: normalize, generatedAt: DateTime.now()),
     );
-
-    // Send final progress update
-    if (request.streamResults) {
-      final progressUpdate = ProgressUpdate(
-        id: 'progress_${DateTime.now().millisecondsSinceEpoch}',
-        timestamp: DateTime.now(),
-        requestId: request.id,
-        progress: 1.0,
-        statusMessage: 'Mock processing complete',
-      );
-      mainSendPort.send(progressUpdate.toJson());
-    }
 
     // Send completion response
     final response = ProcessingResponse(

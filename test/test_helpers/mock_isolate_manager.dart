@@ -7,7 +7,6 @@ library;
 import 'dart:async';
 
 import 'package:sonix/src/isolate/isolate_manager.dart';
-import 'package:sonix/src/isolate/isolate_messages.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/models/waveform_metadata.dart';
 
@@ -133,35 +132,16 @@ class MockIsolateManager extends IsolateManager {
   /// Simulate processing with cancellation checks at different stages
   Future<void> _simulateProcessingWithCancellation(ProcessingTask task) async {
     // Stage 1: Decoder creation
-    if (task.streamResults) {
-      task.sendProgress(
-        ProgressUpdate(id: 'progress_1', timestamp: DateTime.now(), requestId: task.id, progress: 0.1, statusMessage: 'Creating audio decoder'),
-      );
-    }
-
     final decoderDelay = _stageDelays['decoder_creation'] ?? const Duration(milliseconds: 20);
     await _delayWithCancellationCheck(task, decoderDelay);
 
     // Stage 2: Audio decoding
-    if (task.streamResults) {
-      task.sendProgress(ProgressUpdate(id: 'progress_2', timestamp: DateTime.now(), requestId: task.id, progress: 0.5, statusMessage: 'Decoding audio file'));
-    }
-
     final decodingDelay = _stageDelays['audio_decoding'] ?? const Duration(milliseconds: 30);
     await _delayWithCancellationCheck(task, decodingDelay);
 
     // Stage 3: Waveform generation
-    if (task.streamResults) {
-      task.sendProgress(ProgressUpdate(id: 'progress_3', timestamp: DateTime.now(), requestId: task.id, progress: 0.9, statusMessage: 'Generating waveform'));
-    }
-
     final waveformDelay = _stageDelays['waveform_generation'] ?? const Duration(milliseconds: 50);
     await _delayWithCancellationCheck(task, waveformDelay);
-
-    // Final progress
-    if (task.streamResults) {
-      task.sendProgress(ProgressUpdate(id: 'progress_final', timestamp: DateTime.now(), requestId: task.id, progress: 1.0, statusMessage: 'Complete'));
-    }
   }
 
   /// Delay with periodic cancellation checks

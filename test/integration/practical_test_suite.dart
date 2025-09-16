@@ -406,3 +406,4 @@ class CoverageResult {
     required this.uncoveredRequirements,
   });
 }
+

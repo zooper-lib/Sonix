@@ -57,24 +57,14 @@ class ProcessingRequest extends IsolateMessage {
   /// Configuration for waveform generation
   final WaveformConfig config;
 
-  /// Whether to stream results as they become available
-  final bool streamResults;
-
   @override
   String get messageType => 'ProcessingRequest';
 
-  const ProcessingRequest({required super.id, required super.timestamp, required this.filePath, required this.config, this.streamResults = false});
+  const ProcessingRequest({required super.id, required super.timestamp, required this.filePath, required this.config});
 
   @override
   Map<String, dynamic> toJson() {
-    return {
-      'messageType': messageType,
-      'id': id,
-      'timestamp': timestamp.toIso8601String(),
-      'filePath': filePath,
-      'config': config.toJson(),
-      'streamResults': streamResults,
-    };
+    return {'messageType': messageType, 'id': id, 'timestamp': timestamp.toIso8601String(), 'filePath': filePath, 'config': config.toJson()};
   }
 
   factory ProcessingRequest.fromJson(Map<String, dynamic> json) {
@@ -83,7 +73,6 @@ class ProcessingRequest extends IsolateMessage {
       timestamp: DateTime.parse(json['timestamp'] as String),
       filePath: json['filePath'] as String,
       config: WaveformConfig.fromJson(json['config'] as Map<String, dynamic>),
-      streamResults: json['streamResults'] as bool? ?? false,
     );
   }
 }

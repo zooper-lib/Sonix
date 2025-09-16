@@ -112,11 +112,6 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
   activeOperations[request.id] = operation;
 
   try {
-    // Send initial progress update if streaming is enabled
-    if (request.streamResults) {
-      _sendProgressUpdate(mainSendPort, request.id, 0.0, 'Initializing audio processing');
-    }
-
     // Check for cancellation before starting
     if (operation.isCancelled) {
       _sendCancellationResponse(mainSendPort, request.id);
@@ -126,10 +121,6 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
     // Step 1: Create appropriate decoder for the file format
     AudioDecoder? decoder;
     try {
-      if (request.streamResults) {
-        _sendProgressUpdate(mainSendPort, request.id, 0.1, 'Creating audio decoder');
-      }
-
       // Check for cancellation before decoder creation
       if (operation.isCancelled) {
         _sendCancellationResponse(mainSendPort, request.id);
@@ -145,9 +136,6 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
 
     try {
       // Step 2: Check file size and determine processing strategy
-      if (request.streamResults) {
-        _sendProgressUpdate(mainSendPort, request.id, 0.2, 'Analyzing file size');
-      }
 
       // Check for cancellation before file analysis
       if (operation.isCancelled) {
@@ -158,23 +146,36 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       // Get file size to determine processing strategy
       final file = File(request.filePath);
       final fileSize = await file.length();
+
+      // AUTOMATIC PROCESSING STRATEGY SELECTION:
+      //
+      // The isolate automatically selects between two processing approaches:
+      //
+      // 1. File-Level Chunked Processing (files > 50MB):
+      //    - Uses _processWithSelectiveDecoding() for memory efficiency
+      //    - Reads audio file in chunks without loading entirely into memory
+      //    - Samples specific time positions from the file
+      //    - Memory usage stays low and controlled
+      //    - Best for large files where loading entire file would use too much RAM
+      //
+      // 2. In-Memory Processing (files ≤ 50MB):
+      //    - Uses standard decoder.decode() to load entire file
+      //    - Then processes with WaveformGenerator.generateInMemory()
+      //    - Faster processing but higher memory usage
+      //    - Best for small to medium files where speed is prioritized
+      //
+      // Both strategies ultimately use logical chunking (downsampling) for waveform
+      // generation, but differ in how they manage memory during audio loading.
+      //
       const chunkThreshold = 50 * 1024 * 1024; // 50MB threshold
 
       final AudioData audioData;
 
       if (fileSize > chunkThreshold && decoder is ChunkedAudioDecoder) {
-        // Use selective decoding for large files
-        if (request.streamResults) {
-          _sendProgressUpdate(mainSendPort, request.id, 0.25, 'Using selective decoding for large file (${(fileSize / 1024 / 1024).toStringAsFixed(1)}MB)');
-        }
-
-        audioData = await _processWithSelectiveDecoding(decoder, request.filePath, request.config, mainSendPort, request.id, request.streamResults, operation);
+        // Use file-level chunked processing for large files (memory-efficient)
+        audioData = await _processWithSelectiveDecoding(decoder, request.filePath, request.config, mainSendPort, request.id, operation);
       } else {
-        // Use regular processing for smaller files
-        if (request.streamResults) {
-          _sendProgressUpdate(mainSendPort, request.id, 0.25, 'Reading audio file (${(fileSize / 1024 / 1024).toStringAsFixed(1)}MB)');
-        }
-
+        // Use in-memory processing for smaller files (performance-optimized)
         audioData = await decoder.decode(request.filePath);
       }
 
@@ -183,14 +184,8 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
         _sendCancellationResponse(mainSendPort, request.id);
         return;
       }
-      if (request.streamResults) {
-        _sendProgressUpdate(mainSendPort, request.id, 0.5, 'Audio decoding complete');
-      }
 
-      // Step 3: Generate waveform from audio data with progress updates
-      if (request.streamResults) {
-        _sendProgressUpdate(mainSendPort, request.id, 0.6, 'Analyzing audio data');
-      }
+      // Step 3: Generate waveform from audio data
 
       // Check for cancellation before waveform generation
       if (operation.isCancelled) {
@@ -198,21 +193,12 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
         return;
       }
 
-      final waveformData = await WaveformGenerator.generate(audioData, config: request.config);
+      final waveformData = await WaveformGenerator.generateInMemory(audioData, config: request.config);
 
       // Check for cancellation after waveform generation
       if (operation.isCancelled) {
         _sendCancellationResponse(mainSendPort, request.id);
         return;
-      }
-
-      if (request.streamResults) {
-        _sendProgressUpdate(mainSendPort, request.id, 0.9, 'Finalizing waveform data');
-      }
-
-      // Send final progress update before completion
-      if (request.streamResults) {
-        _sendProgressUpdate(mainSendPort, request.id, 1.0, 'Waveform generation complete');
       }
 
       // Send completion response
@@ -239,18 +225,6 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
     activeOperations.remove(request.id);
     operation.complete();
   }
-}
-
-/// Send a progress update to the main isolate
-void _sendProgressUpdate(SendPort mainSendPort, String requestId, double progress, String statusMessage) {
-  final progressUpdate = ProgressUpdate(
-    id: 'progress_${DateTime.now().millisecondsSinceEpoch}',
-    timestamp: DateTime.now(),
-    requestId: requestId,
-    progress: progress,
-    statusMessage: statusMessage,
-  );
-  mainSendPort.send(progressUpdate.toJson());
 }
 
 /// Send an error response back to the main isolate
@@ -329,7 +303,6 @@ Future<AudioData> _processWithSelectiveDecoding(
   WaveformConfig config,
   SendPort mainSendPort,
   String requestId,
-  bool streamResults,
   _ActiveOperation operation,
 ) async {
   // Initialize decoder for chunked processing
@@ -338,10 +311,6 @@ Future<AudioData> _processWithSelectiveDecoding(
   // Check for cancellation after initialization
   if (operation.isCancelled) {
     throw Exception('Operation cancelled during selective decoder initialization');
-  }
-
-  if (streamResults) {
-    _sendProgressUpdate(mainSendPort, requestId, 0.1, 'Estimating file duration');
   }
 
   // Get file metadata and estimate duration
@@ -360,16 +329,8 @@ Future<AudioData> _processWithSelectiveDecoding(
     estimatedDuration = Duration(seconds: estimatedSeconds.round());
   }
 
-  if (streamResults) {
-    _sendProgressUpdate(mainSendPort, requestId, 0.2, 'Planning selective decode positions');
-  }
-
   // Calculate how many sample positions we need
   final resolution = config.resolution;
-
-  if (streamResults) {
-    _sendProgressUpdate(mainSendPort, requestId, 0.3, 'Beginning selective decode');
-  }
 
   // Sample audio at each position
   final amplitudes = <double>[];
@@ -434,13 +395,6 @@ Future<AudioData> _processWithSelectiveDecoding(
         // No data at this position
         amplitudes.add(0.0);
       }
-
-      // Send progress updates
-      if (streamResults && i % 50 == 0) {
-        // Reduce frequency for better performance
-        final progress = 0.3 + (i / resolution) * 0.6; // 30% to 90%
-        _sendProgressUpdate(mainSendPort, requestId, progress, 'Sampling position ${i + 1}/$resolution');
-      }
     } catch (e) {
       // Add a zero amplitude for failed positions (silently handle errors)
       amplitudes.add(0.0);
@@ -449,10 +403,6 @@ Future<AudioData> _processWithSelectiveDecoding(
 
   // Cleanup decoder resources
   await decoder.cleanupChunkedProcessing();
-
-  if (streamResults) {
-    _sendProgressUpdate(mainSendPort, requestId, 0.9, 'Finalizing waveform data');
-  }
 
   return AudioData(samples: amplitudes, sampleRate: sampleRate, channels: channels, duration: estimatedDuration);
 }

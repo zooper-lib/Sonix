@@ -29,31 +29,17 @@ void main() {
         expect(request.id, equals('test-request'));
         expect(request.filePath, equals('/path/to/audio.mp3'));
         expect(request.config, equals(testConfig));
-        expect(request.streamResults, isFalse);
         expect(request.messageType, equals('ProcessingRequest'));
       });
 
-      test('should create ProcessingRequest with streaming enabled', () {
-        final request = ProcessingRequest(
-          id: 'streaming-request',
-          timestamp: testTimestamp,
-          filePath: '/path/to/large_audio.flac',
-          config: testConfig,
-          streamResults: true,
-        );
-
-        expect(request.streamResults, isTrue);
-      });
-
       test('should serialize and deserialize correctly', () {
-        final request = ProcessingRequest(id: 'serialize-test', timestamp: testTimestamp, filePath: '/test/file.wav', config: testConfig, streamResults: true);
+        final request = ProcessingRequest(id: 'serialize-test', timestamp: testTimestamp, filePath: '/test/file.wav', config: testConfig);
 
         final json = request.toJson();
         final deserialized = ProcessingRequest.fromJson(json);
 
         expect(deserialized.id, equals(request.id));
         expect(deserialized.filePath, equals(request.filePath));
-        expect(deserialized.streamResults, equals(request.streamResults));
         expect(deserialized.config.resolution, equals(request.config.resolution));
         expect(deserialized.timestamp, equals(request.timestamp));
       });

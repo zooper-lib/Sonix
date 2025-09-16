@@ -28,7 +28,7 @@ class _ChunkedProgressExampleState extends State<ChunkedProgressExample> with Ti
   String _statusMessage = '';
 
   // Performance metrics
-  double _throughputMBps = 0.0;
+  final double _throughputMBps = 0.0;
   int _currentMemoryUsage = 0;
   int _peakMemoryUsage = 0;
   final List<String> _errorLog = [];
@@ -568,26 +568,21 @@ class _ChunkedProgressExampleState extends State<ChunkedProgressExample> with Ti
       // final fileSize = await File(_selectedFilePath).length();
 
       setState(() {
-        _statusMessage = 'Starting streaming processing...';
+        _statusMessage = 'Starting chunked processing...';
       });
 
       // Create a Sonix instance for processing
       final sonix = Sonix();
 
-      // Generate waveform with progress reporting using streaming
-      await for (final progress in sonix.generateWaveformStream(_selectedFilePath, resolution: 1000)) {
-        _handleProgress(progress);
+      // Generate waveform with chunked processing
+      final waveformData = await sonix.generateWaveform(_selectedFilePath, resolution: 1000);
 
-        if (progress.isComplete) {
-          setState(() {
-            _waveformData = progress.partialData;
-            _isProcessing = false;
-            _progress = 1.0;
-            _statusMessage = 'Processing completed successfully!';
-          });
-          break;
-        }
-      }
+      setState(() {
+        _waveformData = waveformData;
+        _isProcessing = false;
+        _progress = 1.0;
+        _statusMessage = 'Processing completed successfully!';
+      });
 
       // Clean up the instance
       await sonix.dispose();
@@ -601,41 +596,6 @@ class _ChunkedProgressExampleState extends State<ChunkedProgressExample> with Ti
     } finally {
       _stopElapsedTimer();
     }
-  }
-
-  void _handleProgress(WaveformProgress progress) {
-    setState(() {
-      _progress = progress.progress;
-      _processedChunks = (_progress * _totalChunks).round();
-
-      // Simulate estimated time remaining
-      if (_elapsedTime.inMilliseconds > 0 && _progress > 0) {
-        final totalEstimatedTime = _elapsedTime.inMilliseconds / _progress;
-        final remainingTime = totalEstimatedTime - _elapsedTime.inMilliseconds;
-        _estimatedTimeRemaining = Duration(milliseconds: remainingTime.round());
-      }
-
-      // Update status message
-      if (progress.error != null) {
-        _statusMessage = 'Processing with errors';
-        _errorLog.add('Error: ${progress.error}');
-      } else if (progress.statusMessage != null) {
-        _statusMessage = progress.statusMessage!;
-      } else {
-        _statusMessage = 'Processing chunk $_processedChunks of $_totalChunks';
-      }
-
-      // Simulate memory usage
-      _currentMemoryUsage = (50 * 1024 * 1024 * (0.5 + _progress * 0.5)).round();
-      _peakMemoryUsage = (_peakMemoryUsage < _currentMemoryUsage) ? _currentMemoryUsage : _peakMemoryUsage;
-
-      // Calculate throughput
-      if (_elapsedTime.inMilliseconds > 0) {
-        final fileSizeMB = 100; // Simulated file size
-        final elapsedSeconds = _elapsedTime.inMilliseconds / 1000.0;
-        _throughputMBps = (fileSizeMB * _progress) / elapsedSeconds;
-      }
-    });
   }
 
   void _cancelProcessing() {

@@ -23,7 +23,6 @@ class VorbisDecoder implements ChunkedAudioDecoder {
   final List<int> _pageOffsets = []; // Byte positions of OGG pages
   final List<Duration> _pageTimestamps = []; // Timestamps for OGG pages
   final List<int> _granulePositions = []; // Granule positions for seeking
-  static const int _chunkSize = 64 * 1024; // 64KB chunks for streaming
 
   @override
   Future<AudioData> decode(String filePath) async {
@@ -49,45 +48,6 @@ class VorbisDecoder implements ChunkedAudioDecoder {
         rethrow;
       }
       throw DecodingException('Failed to decode OGG Vorbis file', 'Error decoding $filePath: $e');
-    }
-  }
-
-  @override
-  Stream<AudioChunk> decodeStream(String filePath) async* {
-    _checkDisposed();
-
-    try {
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        throw FileAccessException(filePath, 'File does not exist');
-      }
-
-      // OGG Vorbis supports streaming decode, but for simplicity we'll decode and stream results
-      final audioData = await decode(filePath);
-
-      // Stream the decoded samples in chunks
-      final samples = audioData.samples;
-      int currentIndex = 0;
-
-      while (currentIndex < samples.length) {
-        final endIndex = (currentIndex + _chunkSize).clamp(0, samples.length);
-        final chunkSamples = samples.sublist(currentIndex, endIndex);
-        final isLast = endIndex >= samples.length;
-
-        yield AudioChunk(samples: chunkSamples, startSample: currentIndex, isLast: isLast);
-
-        currentIndex = endIndex;
-
-        // Add a small delay to prevent blocking the UI thread
-        if (!isLast) {
-          await Future.delayed(const Duration(microseconds: 100));
-        }
-      }
-    } catch (e) {
-      if (e is SonixException) {
-        rethrow;
-      }
-      throw DecodingException('Failed to stream OGG Vorbis file', 'Error streaming $filePath: $e');
     }
   }
 

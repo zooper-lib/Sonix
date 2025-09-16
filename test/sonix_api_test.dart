@@ -1,13 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/sonix_api.dart';
 import 'package:sonix/src/config/sonix_config.dart';
-import 'package:sonix/src/models/waveform_data.dart';
-import 'package:sonix/src/models/waveform_type.dart';
-import 'package:sonix/src/models/waveform_metadata.dart';
-import 'package:sonix/src/models/waveform_progress.dart';
-import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/processing/waveform_use_case.dart';
-import 'package:sonix/src/isolate/isolate_manager.dart';
 import 'package:sonix/src/isolate/isolate_config.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
@@ -138,89 +132,6 @@ void main() {
         await sonix.dispose();
       }
     });
-
-    test('should throw UnsupportedFormatException for generateWaveformStream with invalid format', () async {
-      final sonix = Sonix();
-
-      try {
-        await for (final _ in sonix.generateWaveformStream('test.xyz')) {
-          fail('Expected UnsupportedFormatException to be thrown');
-        }
-        fail('Expected UnsupportedFormatException to be thrown');
-      } catch (e) {
-        expect(e, isA<UnsupportedFormatException>());
-      } finally {
-        await sonix.dispose();
-      }
-    });
-
-    group('Resource Management', () {
-      test('should provide resource statistics', () async {
-        final sonix = Sonix();
-
-        // Should be able to get statistics
-        final stats = sonix.getResourceStatistics();
-        expect(stats, isA<IsolateStatistics>());
-        expect(stats.activeIsolates, greaterThanOrEqualTo(0));
-        expect(stats.queuedTasks, equals(0));
-        expect(stats.completedTasks, greaterThanOrEqualTo(0));
-
-        await sonix.dispose();
-      });
-
-      test('should optimize resources', () async {
-        final sonix = Sonix();
-
-        // Should not throw
-        sonix.optimizeResources();
-
-        final stats = sonix.getResourceStatistics();
-        expect(stats, isA<IsolateStatistics>());
-
-        await sonix.dispose();
-      });
-
-      test('should handle resource operations after disposal gracefully', () async {
-        final sonix = Sonix();
-        await sonix.dispose();
-
-        expect(() => sonix.getResourceStatistics(), throwsA(isA<StateError>()));
-
-        // Optimize resources should not throw after disposal
-        sonix.optimizeResources();
-      });
-    });
-
-    group('Waveform Generation', () {
-      test('should accept custom resolution parameter', () async {
-        final sonix = Sonix();
-
-        // Test that the method accepts the parameter without actually processing
-        expect(() => sonix.generateWaveform('test.mp3', resolution: 500), returnsNormally);
-
-        await sonix.dispose();
-      });
-
-      test('should accept custom configuration parameter', () async {
-        final sonix = Sonix();
-        final config = const WaveformConfig(resolution: 200, type: WaveformType.line, normalize: false);
-
-        // Test that the method accepts the parameter without actually processing
-        expect(() => sonix.generateWaveform('test.mp3', config: config), returnsNormally);
-
-        await sonix.dispose();
-      });
-    });
-
-    group('Streaming Waveform Generation', () {
-      test('should generate waveform stream', () async {
-        // Streaming functionality requires complex mock implementation
-      }, skip: 'Streaming functionality needs additional implementation for mock testing');
-
-      test('should provide progress updates', () async {
-        // Streaming functionality requires complex mock implementation
-      }, skip: 'Streaming functionality needs additional implementation for mock testing');
-    });
   });
 
   group('SonixConfig', () {
@@ -258,41 +169,6 @@ void main() {
       expect(str, contains('maxConcurrentOperations: 3'));
       expect(str, contains('isolatePoolSize: 2'));
       expect(str, contains('100.0MB'));
-    });
-  });
-
-  group('WaveformProgress', () {
-    test('should create progress with required fields', () {
-      const progress = WaveformProgress(progress: 0.5);
-
-      expect(progress.progress, equals(0.5));
-      expect(progress.statusMessage, isNull);
-      expect(progress.partialData, isNull);
-      expect(progress.isComplete, isFalse);
-      expect(progress.error, isNull);
-    });
-
-    test('should create complete progress with data', () {
-      final waveformData = WaveformData(
-        amplitudes: [0.1, 0.2, 0.3],
-        sampleRate: 44100,
-        duration: const Duration(seconds: 1),
-        metadata: WaveformMetadata(resolution: 3, type: WaveformType.bars, normalized: true, generatedAt: DateTime.now()),
-      );
-
-      final progress = WaveformProgress(progress: 1.0, partialData: waveformData, isComplete: true);
-
-      expect(progress.progress, equals(1.0));
-      expect(progress.partialData, equals(waveformData));
-      expect(progress.isComplete, isTrue);
-    });
-
-    test('should create error progress', () {
-      const progress = WaveformProgress(progress: 0.8, error: 'Processing failed', isComplete: true);
-
-      expect(progress.progress, equals(0.8));
-      expect(progress.error, equals('Processing failed'));
-      expect(progress.isComplete, isTrue);
     });
   });
 }

@@ -982,3 +982,4 @@ class OggAnalysis {
 
   OggAnalysis({required this.invalidPages, required this.granuleAccuracy});
 }
+

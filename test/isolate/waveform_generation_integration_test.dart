@@ -87,11 +87,6 @@ void main() {
       }
     });
 
-    test('should provide streaming waveform generation with progress updates', () async {
-      // This test is skipped because streaming functionality requires more complex mock implementation
-      // The basic generateWaveform functionality is tested in other tests
-    }, skip: 'Streaming functionality needs additional implementation for mock testing');
-
     test('should handle unsupported file format gracefully', () async {
       // Act & Assert - Use a filename that the mock will recognize as unsupported
       expect(() => sonix.generateWaveform('test_unsupported.xyz'), throwsA(isA<Exception>()));

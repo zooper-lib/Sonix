@@ -774,3 +774,4 @@ class ProcessInfo {
     _memoryPressureLimit = 100 * 1024 * 1024;
   }
 }
+

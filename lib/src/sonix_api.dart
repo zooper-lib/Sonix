@@ -11,7 +11,6 @@ import 'config/sonix_config.dart';
 import 'isolate/isolate_manager.dart';
 import 'models/waveform_data.dart';
 import 'models/waveform_type.dart';
-import 'models/waveform_progress.dart';
 import 'processing/waveform_generator.dart';
 import 'processing/waveform_config.dart';
 import 'processing/waveform_use_case.dart';
@@ -138,110 +137,6 @@ class Sonix {
       // Execute task in background isolate
       final result = await _isolateManager.executeTask(task);
       return result;
-    } finally {
-      // Remove task from active tasks when complete
-      _activeTasks.remove(task.id);
-    }
-  }
-
-  /// Generate waveform data with streaming progress updates
-  ///
-  /// This method provides real-time progress updates during waveform generation,
-  /// which is useful for large files or when you need to show progress to users.
-  ///
-  /// [filePath] - Path to the audio file
-  /// [resolution] - Number of data points in the waveform (default: 1000)
-  /// [type] - Type of waveform visualization (default: bars)
-  /// [normalize] - Whether to normalize amplitude values (default: true)
-  /// [config] - Advanced configuration options (optional)
-  ///
-  /// Returns a [Stream<WaveformProgress>] that emits progress updates
-  ///
-  /// Example:
-  /// ```dart
-  /// final sonix = Sonix();
-  /// await for (final progress in sonix.generateWaveformStream('large_audio.mp3')) {
-  ///   print('Progress: ${(progress.progress * 100).toStringAsFixed(1)}%');
-  ///   if (progress.isComplete && progress.partialData != null) {
-  ///     // Use the final waveform data
-  ///     final waveformData = progress.partialData!;
-  ///   }
-  /// }
-  /// ```
-  Stream<WaveformProgress> generateWaveformStream(
-    String filePath, {
-    int resolution = 1000,
-    WaveformType type = WaveformType.bars,
-    bool normalize = true,
-    WaveformConfig? config,
-  }) async* {
-    await _ensureInitialized();
-
-    // Validate file format
-    if (!AudioDecoderFactory.isFormatSupported(filePath)) {
-      final extension = _getFileExtension(filePath);
-      throw UnsupportedFormatException(
-        extension,
-        'Unsupported audio format: $extension. Supported formats: ${AudioDecoderFactory.getSupportedFormatNames().join(', ')}',
-      );
-    }
-
-    // Create waveform configuration
-    final waveformConfig = config ?? WaveformConfig(resolution: resolution, type: type, normalize: normalize);
-
-    // Create streaming processing task
-    final task = ProcessingTask(id: _generateTaskId(), filePath: filePath, config: waveformConfig, streamResults: true);
-
-    // Track the task for cancellation support
-    _activeTasks[task.id] = task;
-
-    // Set up a stream controller to manage the complete streaming flow
-    final streamController = StreamController<WaveformProgress>();
-
-    // Handle the task execution and progress updates
-    _handleStreamingTask(task, streamController);
-
-    // Return the stream
-    yield* streamController.stream;
-  }
-
-  /// Handle streaming task execution with proper error handling and progress updates
-  Future<void> _handleStreamingTask(ProcessingTask task, StreamController<WaveformProgress> streamController) async {
-    try {
-      // Listen to progress updates from the task
-      final progressSubscription = task.progressStream?.listen(
-        (update) {
-          if (!streamController.isClosed) {
-            streamController.add(
-              WaveformProgress(progress: update.progress, statusMessage: update.statusMessage, partialData: update.partialData, isComplete: false),
-            );
-          }
-        },
-        onError: (error) {
-          if (!streamController.isClosed) {
-            streamController.add(WaveformProgress(progress: task.progressStream?.isBroadcast == true ? 1.0 : 0.0, error: error.toString(), isComplete: true));
-            streamController.close();
-          }
-        },
-      );
-
-      // Execute the task
-      final result = await _isolateManager.executeTask(task);
-
-      // Send final result
-      if (!streamController.isClosed) {
-        streamController.add(WaveformProgress(progress: 1.0, partialData: result, isComplete: true, statusMessage: 'Waveform generation complete'));
-        streamController.close();
-      }
-
-      // Clean up subscription
-      await progressSubscription?.cancel();
-    } catch (error) {
-      // Handle execution errors
-      if (!streamController.isClosed) {
-        streamController.add(WaveformProgress(progress: 1.0, error: error.toString(), isComplete: true));
-        streamController.close();
-      }
     } finally {
       // Remove task from active tasks when complete
       _activeTasks.remove(task.id);

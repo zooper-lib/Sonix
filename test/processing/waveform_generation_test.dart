@@ -21,7 +21,7 @@ void main() {
       test('should generate waveform from simple audio data', () async {
         final audioData = _createTestAudioData();
 
-        final waveformData = await WaveformGenerator.generate(audioData);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData);
 
         expect(waveformData.amplitudes, isNotEmpty);
         expect(waveformData.amplitudes.length, equals(1000)); // Default resolution
@@ -34,7 +34,7 @@ void main() {
         final audioData = _createTestAudioData();
 
         final config = WaveformConfig(resolution: 500);
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
         expect(waveformData.amplitudes.length, equals(500));
         expect(waveformData.metadata.resolution, equals(500));
@@ -44,15 +44,15 @@ void main() {
         final audioData = _createTestAudioData();
 
         final barConfig = WaveformConfig(type: WaveformType.bars);
-        final barWaveform = await WaveformGenerator.generate(audioData, config: barConfig);
+        final barWaveform = await WaveformGenerator.generateInMemory(audioData, config: barConfig);
         expect(barWaveform.metadata.type, equals(WaveformType.bars));
 
         final lineConfig = WaveformConfig(type: WaveformType.line);
-        final lineWaveform = await WaveformGenerator.generate(audioData, config: lineConfig);
+        final lineWaveform = await WaveformGenerator.generateInMemory(audioData, config: lineConfig);
         expect(lineWaveform.metadata.type, equals(WaveformType.line));
 
         final filledConfig = WaveformConfig(type: WaveformType.filled);
-        final filledWaveform = await WaveformGenerator.generate(audioData, config: filledConfig);
+        final filledWaveform = await WaveformGenerator.generateInMemory(audioData, config: filledConfig);
         expect(filledWaveform.metadata.type, equals(WaveformType.filled));
       });
 
@@ -60,10 +60,10 @@ void main() {
         final audioData = _createTestAudioData(amplitude: 0.5);
 
         final normalizedConfig = WaveformConfig(normalize: true);
-        final normalizedWaveform = await WaveformGenerator.generate(audioData, config: normalizedConfig);
+        final normalizedWaveform = await WaveformGenerator.generateInMemory(audioData, config: normalizedConfig);
 
         final unnormalizedConfig = WaveformConfig(normalize: false);
-        final unnormalizedWaveform = await WaveformGenerator.generate(audioData, config: unnormalizedConfig);
+        final unnormalizedWaveform = await WaveformGenerator.generateInMemory(audioData, config: unnormalizedConfig);
 
         expect(normalizedWaveform.metadata.normalized, isTrue);
         expect(unnormalizedWaveform.metadata.normalized, isFalse);
@@ -95,7 +95,7 @@ void main() {
           resolution: 4, // One amplitude per pattern repetition
           normalize: false, // Don't normalize to see actual RMS values
         );
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
         // Each amplitude should be close to the RMS of the pattern
         final expectedRms = math.sqrt((0.25 + 0.25 + 0.64 + 0.64) / 4);
@@ -122,7 +122,7 @@ void main() {
           resolution: 4,
           normalize: false, // Don't normalize to see actual peak values
         );
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
         // Each amplitude should be close to the peak of the pattern (0.8)
         for (final amplitude in waveformData.amplitudes) {
@@ -148,7 +148,7 @@ void main() {
           resolution: 4,
           normalize: false, // Don't normalize to see actual average values
         );
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
         // Each amplitude should be close to the average absolute value
         final expectedAverage = (0.2 + 0.4 + 0.6 + 0.8) / 4;
@@ -176,7 +176,7 @@ void main() {
           duration: const Duration(milliseconds: 23), // ~1000 samples at 44.1kHz
         );
 
-        final waveformData = await WaveformGenerator.generate(audioData);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData);
 
         expect(waveformData.amplitudes, isNotEmpty);
         // For stereo audio, the downsampling algorithm may return more samples than the target resolution
@@ -192,7 +192,7 @@ void main() {
         final monoSamples = List.generate(1000, (i) => math.sin(i * 0.1));
         final audioData = AudioData(samples: monoSamples, sampleRate: 44100, channels: 1, duration: const Duration(milliseconds: 23));
 
-        final waveformData = await WaveformGenerator.generate(audioData);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData);
 
         expect(waveformData.amplitudes, isNotEmpty);
         expect(waveformData.amplitudes.length, equals(1000));
@@ -210,7 +210,7 @@ void main() {
 
         final audioData = AudioData(samples: samples, sampleRate: 44100, channels: channels, duration: const Duration(milliseconds: 23));
 
-        final waveformData = await WaveformGenerator.generate(audioData);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData);
 
         expect(waveformData.amplitudes, isNotEmpty);
         // For multi-channel audio, the downsampling algorithm may return more samples than the target resolution
@@ -223,7 +223,7 @@ void main() {
         final audioData = _createTestAudioData();
 
         final config = WaveformConfig(resolution: 10);
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
         expect(waveformData.amplitudes.length, equals(10));
         expect(waveformData.amplitudes.every((a) => a >= 0.0), isTrue);
@@ -233,7 +233,7 @@ void main() {
         final audioData = _createTestAudioData();
 
         final config = WaveformConfig(resolution: 10000);
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
         expect(waveformData.amplitudes.length, equals(10000));
       });
@@ -247,7 +247,7 @@ void main() {
         );
 
         final config = WaveformConfig(resolution: 100);
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
         // Should not exceed the number of available samples
         expect(waveformData.amplitudes.length, lessThanOrEqualTo(100));
@@ -259,7 +259,7 @@ void main() {
       test('should generate waveform with memory constraints', () async {
         final audioData = _createTestAudioData(durationSeconds: 5);
 
-        final waveformData = await WaveformGenerator.generateMemoryEfficient(
+        final waveformData = await WaveformGenerator.generateChunked(
           audioData,
           maxMemoryUsage: 1024 * 1024, // 1MB limit
         );
@@ -272,7 +272,7 @@ void main() {
         final audioData = _createTestAudioData(durationSeconds: 60); // Large file
 
         final config = WaveformConfig(resolution: 500);
-        final waveformData = await WaveformGenerator.generateMemoryEfficient(
+        final waveformData = await WaveformGenerator.generateChunked(
           audioData,
           config: config,
           maxMemoryUsage: 10 * 1024 * 1024, // 10MB limit
@@ -290,7 +290,7 @@ void main() {
           duration: const Duration(milliseconds: 23),
         );
 
-        final waveformData = await WaveformGenerator.generateMemoryEfficient(
+        final waveformData = await WaveformGenerator.generateChunked(
           audioData,
           maxMemoryUsage: 100 * 1024 * 1024, // Large limit
         );
@@ -303,31 +303,31 @@ void main() {
       test('should handle empty audio data', () async {
         final audioData = AudioData(samples: [], sampleRate: 44100, channels: 1, duration: Duration.zero);
 
-        expect(() async => await WaveformGenerator.generate(audioData), throwsA(isA<ArgumentError>()));
+        expect(() async => await WaveformGenerator.generateInMemory(audioData), throwsA(isA<ArgumentError>()));
       });
 
       test('should handle invalid resolution', () async {
         final audioData = _createTestAudioData();
 
         final invalidConfig1 = WaveformConfig(resolution: 0);
-        expect(() async => await WaveformGenerator.generate(audioData, config: invalidConfig1), throwsA(isA<ArgumentError>()));
+        expect(() async => await WaveformGenerator.generateInMemory(audioData, config: invalidConfig1), throwsA(isA<ArgumentError>()));
 
         final invalidConfig2 = WaveformConfig(resolution: -1);
-        expect(() async => await WaveformGenerator.generate(audioData, config: invalidConfig2), throwsA(isA<ArgumentError>()));
+        expect(() async => await WaveformGenerator.generateInMemory(audioData, config: invalidConfig2), throwsA(isA<ArgumentError>()));
       });
 
       test('should handle invalid sample rate', () async {
         final audioData = AudioData(samples: [0.1, 0.2, 0.3], sampleRate: 0, channels: 1, duration: const Duration(seconds: 1));
 
         // The generator should handle this gracefully or throw ArgumentError
-        expect(() async => await WaveformGenerator.generate(audioData), returnsNormally);
+        expect(() async => await WaveformGenerator.generateInMemory(audioData), returnsNormally);
       });
 
       test('should handle invalid channel count', () async {
         final audioData = AudioData(samples: [0.1, 0.2, 0.3], sampleRate: 44100, channels: 0, duration: const Duration(seconds: 1));
 
         // The generator should throw an error for invalid channel count
-        expect(() async => await WaveformGenerator.generate(audioData), throwsA(isA<UnsupportedError>()));
+        expect(() async => await WaveformGenerator.generateInMemory(audioData), throwsA(isA<UnsupportedError>()));
       });
 
       test('should handle mismatched sample count and channels', () async {
@@ -339,7 +339,7 @@ void main() {
         );
 
         // The generator should handle this gracefully
-        expect(() async => await WaveformGenerator.generate(audioData), returnsNormally);
+        expect(() async => await WaveformGenerator.generateInMemory(audioData), returnsNormally);
       });
     });
 
@@ -348,7 +348,7 @@ void main() {
         final audioData = _createTestAudioData(durationSeconds: 1);
 
         final stopwatch = Stopwatch()..start();
-        final waveformData = await WaveformGenerator.generate(audioData);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData);
         stopwatch.stop();
 
         expect(waveformData.amplitudes, isNotEmpty);
@@ -359,7 +359,7 @@ void main() {
         final audioData = _createTestAudioData(durationSeconds: 10);
 
         final stopwatch = Stopwatch()..start();
-        final waveformData = await WaveformGenerator.generate(audioData);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData);
         stopwatch.stop();
 
         expect(waveformData.amplitudes, isNotEmpty);
@@ -371,7 +371,11 @@ void main() {
         final audioData2 = _createTestAudioData(durationSeconds: 2);
         final audioData3 = _createTestAudioData(durationSeconds: 3);
 
-        final futures = [WaveformGenerator.generate(audioData1), WaveformGenerator.generate(audioData2), WaveformGenerator.generate(audioData3)];
+        final futures = [
+          WaveformGenerator.generateInMemory(audioData1),
+          WaveformGenerator.generateInMemory(audioData2),
+          WaveformGenerator.generateInMemory(audioData3),
+        ];
 
         final results = await Future.wait(futures);
 
@@ -384,7 +388,7 @@ void main() {
       test('should use memory efficient generation for large audio data', () async {
         final audioData = _createTestAudioData(durationSeconds: 60); // Large file
 
-        final waveformData = await WaveformGenerator.generateMemoryEfficient(
+        final waveformData = await WaveformGenerator.generateChunked(
           audioData,
           maxMemoryUsage: 5 * 1024 * 1024, // 5MB limit
         );
@@ -398,7 +402,7 @@ void main() {
 
         final config = WaveformConfig(resolution: 1000);
         // Should not throw memory exceptions for reasonable sizes
-        expect(() async => await WaveformGenerator.generate(audioData, config: config), returnsNormally);
+        expect(() async => await WaveformGenerator.generateInMemory(audioData, config: config), returnsNormally);
       });
     });
 
@@ -428,7 +432,7 @@ void main() {
 
         // Test invalid resolution
         final invalidConfig = WaveformConfig(resolution: 0);
-        expect(() async => await WaveformGenerator.generate(audioData, config: invalidConfig), throwsA(isA<ArgumentError>()));
+        expect(() async => await WaveformGenerator.generateInMemory(audioData, config: invalidConfig), throwsA(isA<ArgumentError>()));
       });
     });
   });

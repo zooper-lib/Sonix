@@ -46,7 +46,7 @@ void main() {
 
           final stopwatch = Stopwatch()..start();
           final waveformConfig = WaveformConfig(resolution: resolution);
-          final waveformData = await WaveformGenerator.generate(audioData, config: waveformConfig);
+          final waveformData = await WaveformGenerator.generateInMemory(audioData, config: waveformConfig);
           stopwatch.stop();
 
           expect(waveformData.amplitudes.length, equals(resolution));
@@ -73,7 +73,7 @@ void main() {
             final audioData = _createTestAudioData(durationSeconds: duration.toDouble());
 
             final stopwatch = Stopwatch()..start();
-            final waveformData = await WaveformGenerator.generate(audioData);
+            final waveformData = await WaveformGenerator.generateInMemory(audioData);
             stopwatch.stop();
 
             runTimes.add(stopwatch.elapsedMilliseconds);
@@ -120,7 +120,7 @@ void main() {
 
         final stopwatch = Stopwatch()..start();
 
-        final futures = List.generate(concurrentCount, (_) => WaveformGenerator.generate(audioData));
+        final futures = List.generate(concurrentCount, (_) => WaveformGenerator.generateInMemory(audioData));
 
         final results = await Future.wait(futures);
         stopwatch.stop();
@@ -243,41 +243,6 @@ void main() {
           // FLAC should generally be faster to decode than MP3 (less CPU-intensive decompression)
           expect(flacTime, lessThan(mp3Time * 2)); // FLAC should not be more than 2x slower than MP3
         }
-      });
-
-      test('should handle streaming decoding efficiently', () async {
-        final filePath = TestDataLoader.getAssetPath('test_stereo_44100.wav');
-        if (!await TestDataLoader.assetExists('test_stereo_44100.wav')) {
-          return; // Skip if file doesn't exist
-        }
-
-        try {
-          final decoder = AudioDecoderFactory.createDecoder(filePath);
-
-          final stopwatch = Stopwatch()..start();
-          final chunks = <AudioChunk>[];
-
-          await for (final chunk in decoder.decodeStream(filePath)) {
-            chunks.add(chunk);
-          }
-
-          stopwatch.stop();
-
-          expect(chunks, isNotEmpty);
-          expect(chunks.last.isLast, isTrue);
-
-          // Streaming should not be significantly slower than batch decoding
-          expect(stopwatch.elapsedMilliseconds, lessThan(2000)); // Allow 2 seconds
-
-          decoder.dispose();
-        } catch (e) {
-          // Skip test if decoder is not implemented yet
-          if (e is DecodingException) {
-            print('Skipping streaming decoder test - decoder not implemented');
-            return;
-          }
-          rethrow;
-        }
       }, skip: 'Audio decoders not fully implemented yet');
     });
 
@@ -288,7 +253,7 @@ void main() {
         // Monitor memory usage during processing
         final initialMemory = _getApproximateMemoryUsage();
 
-        final waveformData = await WaveformGenerator.generate(audioData);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData);
 
         final peakMemory = _getApproximateMemoryUsage();
         final memoryIncrease = peakMemory - initialMemory;
@@ -305,15 +270,15 @@ void main() {
         expect(finalMemory, lessThan(peakMemory + (10 * 1024 * 1024))); // Allow 10MB tolerance
       });
 
-      test('should use streaming for memory efficiency with very large files', () async {
+      test('should use chunked processing for memory efficiency with very large files', () async {
         final audioData = _createTestAudioData(durationSeconds: 300); // 5 minutes
 
         final initialMemory = _getApproximateMemoryUsage();
         var peakMemory = initialMemory;
 
-        // Process in batches to simulate streaming behavior
+        // Process in batches to simulate chunked behavior
         final config = WaveformConfig(resolution: 1000);
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
         // Simulate chunk processing for memory efficiency
         const chunkSize = 100;
@@ -329,7 +294,7 @@ void main() {
         waveformData.dispose();
 
         final memoryIncrease = peakMemory - initialMemory;
-        expect(memoryIncrease, lessThan(50 * 1024 * 1024)); // Streaming should use less memory
+        expect(memoryIncrease, lessThan(50 * 1024 * 1024)); // Chunked processing should use less memory
 
         audioData.dispose();
       });
@@ -345,7 +310,7 @@ void main() {
         for (final resolution in resolutions) {
           final stopwatch = Stopwatch()..start();
           final config = WaveformConfig(resolution: resolution);
-          final waveformData = await WaveformGenerator.generate(audioData, config: config);
+          final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
           stopwatch.stop();
 
           times[resolution] = stopwatch.elapsedMilliseconds;
@@ -369,13 +334,13 @@ void main() {
         // Test with low resolution
         final stopwatchLow = Stopwatch()..start();
         final config1 = WaveformConfig(resolution: 100);
-        final lowResWaveform = await WaveformGenerator.generate(audioData, config: config1);
+        final lowResWaveform = await WaveformGenerator.generateInMemory(audioData, config: config1);
         stopwatchLow.stop();
 
         // Test with high resolution
         final stopwatchHigh = Stopwatch()..start();
         final config2 = WaveformConfig(resolution: 2000);
-        final highResWaveform = await WaveformGenerator.generate(audioData, config: config2);
+        final highResWaveform = await WaveformGenerator.generateInMemory(audioData, config: config2);
         stopwatchHigh.stop();
 
         expect(lowResWaveform.amplitudes, isNotEmpty);
@@ -402,7 +367,7 @@ void main() {
         for (final resolution in resolutions) {
           final stopwatch = Stopwatch()..start();
           final config = WaveformConfig(resolution: resolution);
-          final waveformData = await WaveformGenerator.generate(audioData, config: config);
+          final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
           stopwatch.stop();
 
           times.add(stopwatch.elapsedMilliseconds);
@@ -428,7 +393,7 @@ void main() {
           final audioData = _createMultiChannelAudioData(durationSeconds: 3, channels: channels);
 
           final stopwatch = Stopwatch()..start();
-          final waveformData = await WaveformGenerator.generate(audioData);
+          final waveformData = await WaveformGenerator.generateInMemory(audioData);
           stopwatch.stop();
 
           times.add(stopwatch.elapsedMilliseconds);
@@ -466,7 +431,7 @@ void main() {
             // Then generate waveform from real audio
             final stopwatch = Stopwatch()..start();
             final config = WaveformConfig(resolution: 1000); // Typical resolution for UI
-            final waveformData = await WaveformGenerator.generate(audioData, config: config);
+            final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
             stopwatch.stop();
 
             expect(waveformData.amplitudes.length, equals(1000));
@@ -499,7 +464,7 @@ void main() {
 
         final stopwatch = Stopwatch()..start();
         final config = WaveformConfig(resolution: 1000); // Typical resolution for UI
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
         stopwatch.stop();
 
         expect(waveformData.amplitudes.length, equals(1000));
@@ -521,7 +486,7 @@ void main() {
         final stopwatch = Stopwatch()..start();
 
         final config = WaveformConfig(resolution: 2000);
-        final waveformData = await WaveformGenerator.generate(audioData, config: config);
+        final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
         stopwatch.stop();
 
@@ -551,7 +516,7 @@ void main() {
           final decoder = AudioDecoderFactory.createDecoder(filePath);
           final audioData = await decoder.decode(filePath);
           final config = WaveformConfig(resolution: 2000);
-          final waveformData = await WaveformGenerator.generate(audioData, config: config);
+          final waveformData = await WaveformGenerator.generateInMemory(audioData, config: config);
 
           stopwatch.stop();
 
@@ -588,7 +553,7 @@ void main() {
         // Run the same operation multiple times
         for (int i = 0; i < 5; i++) {
           final stopwatch = Stopwatch()..start();
-          final waveformData = await WaveformGenerator.generate(audioData);
+          final waveformData = await WaveformGenerator.generateInMemory(audioData);
           stopwatch.stop();
 
           times.add(stopwatch.elapsedMilliseconds);
@@ -621,7 +586,7 @@ void main() {
 
         // Profile a waveform generation operation
         final waveformData = await profiler.profile(operationName, () async {
-          return await WaveformGenerator.generate(audioData);
+          return await WaveformGenerator.generateInMemory(audioData);
         });
 
         expect(waveformData.amplitudes, isNotEmpty);
@@ -645,7 +610,7 @@ void main() {
         for (int i = 0; i < 3; i++) {
           final audioData = _createTestAudioData(durationSeconds: 1);
           await profiler.profile('${baseOperationName}_$i', () async {
-            final waveformData = await WaveformGenerator.generate(audioData);
+            final waveformData = await WaveformGenerator.generateInMemory(audioData);
             waveformData.dispose();
             return waveformData;
           });
@@ -764,3 +729,4 @@ int _getApproximateMemoryUsage() {
   // For testing purposes, we'll use a mock value
   return DateTime.now().millisecondsSinceEpoch % (100 * 1024 * 1024); // Mock memory usage
 }
+

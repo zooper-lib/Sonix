@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/models/waveform_type.dart';
-import 'package:sonix/src/models/waveform_chunk.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
 import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/processing/waveform_use_case.dart';
@@ -21,7 +20,7 @@ void main() {
 
     group('Basic Generation', () {
       test('should generate waveform with default config', () async {
-        final result = await WaveformGenerator.generate(testAudioData);
+        final result = await WaveformGenerator.generateInMemory(testAudioData);
 
         expect(result.amplitudes.length, equals(1000)); // Default resolution
         expect(result.duration, equals(testAudioData.duration));
@@ -32,7 +31,7 @@ void main() {
 
       test('should generate waveform with custom resolution', () async {
         final config = const WaveformConfig(resolution: 500);
-        final result = await WaveformGenerator.generate(testAudioData, config: config);
+        final result = await WaveformGenerator.generateInMemory(testAudioData, config: config);
 
         expect(result.amplitudes.length, equals(500));
         expect(result.metadata.resolution, equals(500));
@@ -42,8 +41,8 @@ void main() {
         final rmsConfig = const WaveformConfig(algorithm: DownsamplingAlgorithm.rms, resolution: 100);
         final peakConfig = const WaveformConfig(algorithm: DownsamplingAlgorithm.peak, resolution: 100);
 
-        final rmsResult = await WaveformGenerator.generate(testAudioData, config: rmsConfig);
-        final peakResult = await WaveformGenerator.generate(testAudioData, config: peakConfig);
+        final rmsResult = await WaveformGenerator.generateInMemory(testAudioData, config: rmsConfig);
+        final peakResult = await WaveformGenerator.generateInMemory(testAudioData, config: peakConfig);
 
         expect(rmsResult.amplitudes.length, equals(100));
         expect(peakResult.amplitudes.length, equals(100));
@@ -56,8 +55,8 @@ void main() {
         final normalizedConfig = const WaveformConfig(normalize: true);
         final unnormalizedConfig = const WaveformConfig(normalize: false);
 
-        final normalizedResult = await WaveformGenerator.generate(testAudioData, config: normalizedConfig);
-        final unnormalizedResult = await WaveformGenerator.generate(testAudioData, config: unnormalizedConfig);
+        final normalizedResult = await WaveformGenerator.generateInMemory(testAudioData, config: normalizedConfig);
+        final unnormalizedResult = await WaveformGenerator.generateInMemory(testAudioData, config: unnormalizedConfig);
 
         expect(normalizedResult.metadata.normalized, isTrue);
         expect(unnormalizedResult.metadata.normalized, isFalse);
@@ -71,8 +70,8 @@ void main() {
         final smoothConfig = const WaveformConfig(enableSmoothing: true, smoothingWindowSize: 5, resolution: 100);
         final noSmoothConfig = const WaveformConfig(enableSmoothing: false, resolution: 100);
 
-        final smoothResult = await WaveformGenerator.generate(testAudioData, config: smoothConfig);
-        final noSmoothResult = await WaveformGenerator.generate(testAudioData, config: noSmoothConfig);
+        final smoothResult = await WaveformGenerator.generateInMemory(testAudioData, config: smoothConfig);
+        final noSmoothResult = await WaveformGenerator.generateInMemory(testAudioData, config: noSmoothConfig);
 
         expect(smoothResult.amplitudes.length, equals(100));
         expect(noSmoothResult.amplitudes.length, equals(100));
@@ -86,13 +85,13 @@ void main() {
       test('should throw on invalid resolution', () async {
         final invalidConfig = const WaveformConfig(resolution: 0);
 
-        expect(() => WaveformGenerator.generate(testAudioData, config: invalidConfig), throwsArgumentError);
+        expect(() => WaveformGenerator.generateInMemory(testAudioData, config: invalidConfig), throwsArgumentError);
       });
 
       test('should throw on negative scaling factor', () async {
         final invalidConfig = const WaveformConfig(scalingFactor: -1.0);
 
-        expect(() => WaveformGenerator.generate(testAudioData, config: invalidConfig), throwsArgumentError);
+        expect(() => WaveformGenerator.generateInMemory(testAudioData, config: invalidConfig), throwsArgumentError);
       });
 
       test('should throw on invalid smoothing window size', () async {
@@ -101,13 +100,13 @@ void main() {
           smoothingWindowSize: 2, // Even number
         );
 
-        expect(() => WaveformGenerator.generate(testAudioData, config: invalidConfig), throwsArgumentError);
+        expect(() => WaveformGenerator.generateInMemory(testAudioData, config: invalidConfig), throwsArgumentError);
       });
 
       test('should throw on empty audio data', () async {
         final emptyAudioData = AudioData(samples: const [], sampleRate: 44100, channels: 1, duration: Duration.zero);
 
-        expect(() => WaveformGenerator.generate(emptyAudioData), throwsArgumentError);
+        expect(() => WaveformGenerator.generateInMemory(emptyAudioData), throwsArgumentError);
       });
     });
 
@@ -116,8 +115,8 @@ void main() {
         final linearConfig = const WaveformConfig(scalingCurve: ScalingCurve.linear, resolution: 100);
         final logConfig = const WaveformConfig(scalingCurve: ScalingCurve.logarithmic, resolution: 100);
 
-        final linearResult = await WaveformGenerator.generate(testAudioData, config: linearConfig);
-        final logResult = await WaveformGenerator.generate(testAudioData, config: logConfig);
+        final linearResult = await WaveformGenerator.generateInMemory(testAudioData, config: linearConfig);
+        final logResult = await WaveformGenerator.generateInMemory(testAudioData, config: logConfig);
 
         // Results should be different due to different scaling
         expect(linearResult.amplitudes, isNot(equals(logResult.amplitudes)));
@@ -130,7 +129,7 @@ void main() {
           resolution: 100,
         );
 
-        final result = await WaveformGenerator.generate(testAudioData, config: config);
+        final result = await WaveformGenerator.generateInMemory(testAudioData, config: config);
 
         // All values should be scaled down
         final maxValue = result.amplitudes.reduce(math.max);
@@ -140,7 +139,7 @@ void main() {
 
     group('Memory Efficient Generation', () {
       test('should generate waveform with memory constraints', () async {
-        final result = await WaveformGenerator.generateMemoryEfficient(
+        final result = await WaveformGenerator.generateChunked(
           testAudioData,
           maxMemoryUsage: 1024, // Very small memory limit
         );
@@ -157,66 +156,12 @@ void main() {
           duration: const Duration(milliseconds: 100),
         );
 
-        final result = await WaveformGenerator.generateMemoryEfficient(
+        final result = await WaveformGenerator.generateChunked(
           smallAudioData,
           maxMemoryUsage: 10 * 1024 * 1024, // Large memory limit
         );
 
         expect(result.amplitudes.isNotEmpty, isTrue);
-      });
-    });
-
-    group('Streaming Generation', () {
-      test('should generate waveform from audio stream', () async {
-        // Create a stream of audio chunks
-        final chunks = <AudioChunk>[];
-        const chunkSize = 100;
-
-        for (int i = 0; i < testAudioData.samples.length; i += chunkSize) {
-          final end = math.min(i + chunkSize, testAudioData.samples.length);
-          final chunkSamples = testAudioData.samples.sublist(i, end);
-          final isLast = end >= testAudioData.samples.length;
-
-          chunks.add(AudioChunk(samples: chunkSamples, startSample: i, isLast: isLast));
-        }
-
-        final audioStream = Stream.fromIterable(chunks);
-        final waveformChunks = <WaveformChunk>[];
-
-        await for (final chunk in WaveformGenerator.generateStream(audioStream)) {
-          waveformChunks.add(chunk);
-        }
-
-        expect(waveformChunks.isNotEmpty, isTrue);
-        expect(waveformChunks.last.isLast, isTrue);
-
-        // Verify time progression
-        Duration lastTime = Duration.zero;
-        for (final chunk in waveformChunks) {
-          expect(chunk.startTime, greaterThanOrEqualTo(lastTime));
-          lastTime = chunk.startTime;
-        }
-      });
-
-      test('should handle empty stream', () async {
-        final emptyStream = Stream<AudioChunk>.empty();
-        final chunks = <WaveformChunk>[];
-
-        await for (final chunk in WaveformGenerator.generateStream(emptyStream)) {
-          chunks.add(chunk);
-        }
-
-        expect(chunks, isEmpty);
-      });
-
-      test('should validate chunk size', () async {
-        final audioStream = Stream<AudioChunk>.empty();
-
-        expect(() async {
-          await for (final _ in WaveformGenerator.generateStream(audioStream, chunkSize: 0)) {
-            // This should throw before yielding any values
-          }
-        }, throwsArgumentError);
       });
     });
 

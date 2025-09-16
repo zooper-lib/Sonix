@@ -21,7 +21,7 @@ void main() {
       // Arrange
       final config = WaveformConfig(resolution: 100, type: WaveformType.bars, normalize: true);
 
-      final request = ProcessingRequest(id: 'test_request_1', timestamp: DateTime.now(), filePath: 'test.wav', config: config, streamResults: false);
+      final request = ProcessingRequest(id: 'test_request_1', timestamp: DateTime.now(), filePath: 'test.wav', config: config);
 
       // Act
       final json = request.toJson();
@@ -33,7 +33,6 @@ void main() {
       expect(deserialized.config.resolution, equals(config.resolution));
       expect(deserialized.config.type, equals(config.type));
       expect(deserialized.config.normalize, equals(config.normalize));
-      expect(deserialized.streamResults, equals(request.streamResults));
     });
 
     test('should create and serialize ProcessingResponse message', () {

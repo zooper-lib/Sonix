@@ -96,32 +96,22 @@ class ProcessingTask {
   /// Configuration for waveform generation
   final WaveformConfig config;
 
-  /// Whether to stream results as they become available
-  final bool streamResults;
-
   /// When the task was created
   final DateTime createdAt;
 
   /// Completer for the task result
   final Completer<WaveformData> completer;
 
-  /// Stream controller for progress updates (if streaming)
-  final StreamController<ProgressUpdate>? progressController;
-
   /// Cancellation token
   final CancelToken cancelToken;
 
-  ProcessingTask({required this.id, required this.filePath, required this.config, this.streamResults = false, DateTime? createdAt})
+  ProcessingTask({required this.id, required this.filePath, required this.config, DateTime? createdAt})
     : createdAt = createdAt ?? DateTime.now(),
       completer = Completer<WaveformData>(),
-      progressController = streamResults ? StreamController<ProgressUpdate>.broadcast() : null,
       cancelToken = CancelToken();
 
   /// Get the future for this task's result
   Future<WaveformData> get future => completer.future;
-
-  /// Get the stream for progress updates (if streaming)
-  Stream<ProgressUpdate>? get progressStream => progressController?.stream;
 
   /// Cancel this task
   void cancel() {
@@ -129,7 +119,6 @@ class ProcessingTask {
     if (!completer.isCompleted) {
       completer.completeError(TaskCancelledException('Task $id was cancelled'));
     }
-    progressController?.close();
   }
 
   /// Complete this task with a result
@@ -137,7 +126,6 @@ class ProcessingTask {
     if (!completer.isCompleted) {
       completer.complete(result);
     }
-    progressController?.close();
   }
 
   /// Complete this task with an error
@@ -145,12 +133,6 @@ class ProcessingTask {
     if (!completer.isCompleted) {
       completer.completeError(error, stackTrace);
     }
-    progressController?.close();
-  }
-
-  /// Send a progress update
-  void sendProgress(ProgressUpdate update) {
-    progressController?.add(update);
   }
 }
 
@@ -467,12 +449,7 @@ class IsolateManager {
     await Future.delayed(delay);
 
     // Create a new task for the retry
-    final retryTask = ProcessingTask(
-      id: '${originalTask.id}_retry_$retryCount',
-      filePath: originalTask.filePath,
-      config: originalTask.config,
-      streamResults: originalTask.streamResults,
-    );
+    final retryTask = ProcessingTask(id: '${originalTask.id}_retry_$retryCount', filePath: originalTask.filePath, config: originalTask.config);
 
     try {
       return await executeTask(retryTask);
@@ -578,7 +555,6 @@ class IsolateManager {
       timestamp: DateTime.now(),
       filePath: task.filePath,
       config: task.config,
-      streamResults: task.streamResults,
     );
 
     // Track the mapping between request ID and isolate ID
@@ -592,8 +568,6 @@ class IsolateManager {
     try {
       if (message is ProcessingResponse) {
         _handleProcessingResponse(message);
-      } else if (message is ProgressUpdate) {
-        _handleProgressUpdate(message);
       } else if (message is ErrorMessage) {
         _handleErrorMessage(message);
       } else if (message.messageType == 'HealthCheckResponse') {
@@ -624,10 +598,6 @@ class IsolateManager {
   String? _findIsolateIdForMessage(IsolateMessage message) {
     // For messages with request IDs, use the request-to-isolate mapping
     if (message is ProcessingResponse) {
-      return _requestToIsolateMap[message.requestId];
-    }
-
-    if (message is ProgressUpdate) {
       return _requestToIsolateMap[message.requestId];
     }
 
@@ -684,14 +654,6 @@ class IsolateManager {
         _healthMonitor.reportFailure(isolateId, error);
         task.completeError(error);
       }
-    }
-  }
-
-  /// Handle progress update from isolate
-  void _handleProgressUpdate(ProgressUpdate update) {
-    final task = _activeTasks[update.requestId];
-    if (task != null) {
-      task.sendProgress(update);
     }
   }
 

@@ -11,7 +11,7 @@ A comprehensive Flutter package for generating and displaying audio waveforms wi
 🚀 **High Performance**: Native C libraries via Dart FFI (no FFMPEG dependency)  
 🎨 **Extensive Customization**: Colors, gradients, styles, and animations  
 📱 **Interactive Playback**: Real-time position visualization and seeking  
-💾 **Memory Efficient**: Streaming processing and intelligent caching  
+💾 **Memory Efficient**: Chunked processing and intelligent caching  
 🔧 **Easy Integration**: Simple API with comprehensive error handling  
 📊 **Multiple Algorithms**: RMS, Peak, Average, and Median downsampling  
 🎯 **Optimized Presets**: Ready-to-use configurations for different use cases  
@@ -143,17 +143,7 @@ final waveformData = await Sonix.generateWaveformAdaptive('any_size_audio.mp3');
 final waveformData = await Sonix.generateWaveformCached('audio.mp3');
 ```
 
-### 3. Streaming Processing
-
-```dart
-// Process large files in chunks
-await for (final chunk in Sonix.generateWaveformStream('large_audio.flac')) {
-  print('Received chunk with ${chunk.amplitudes.length} data points');
-  // Update UI progressively
-}
-```
-
-### 4. Custom Configuration
+### 3. Custom Configuration
 
 ```dart
 // Use optimal settings for different scenarios
@@ -220,7 +210,6 @@ The main entry point for generating waveforms.
 **Static Methods:**
 
 - `generateWaveform(String filePath, {...})` → `Future<WaveformData>`
-- `generateWaveformStream(String filePath, {...})` → `Stream<WaveformChunk>`
 - `generateWaveformMemoryEfficient(String filePath, {...})` → `Future<WaveformData>`
 - `generateWaveformCached(String filePath, {...})` → `Future<WaveformData>`
 - `generateWaveformAdaptive(String filePath, {...})` → `Future<WaveformData>`
@@ -442,7 +431,7 @@ memoryManager.initialize(memoryLimit: 100 * 1024 * 1024);
 final suggestion = memoryManager.getSuggestedQualityReduction();
 if (suggestion.shouldReduce) {
   print('Reduce resolution to: ${(suggestion.resolutionReduction * 100).toStringAsFixed(0)}%');
-  print('Enable streaming: ${suggestion.enableStreaming}');
+  print('Enable chunked processing: ${suggestion.enableChunkedProcessing}');
 }
 
 // Clean up when needed
@@ -453,7 +442,7 @@ await Sonix.forceCleanup();
 
 1. **Use appropriate resolution**: Higher resolution = more memory usage
 2. **Enable caching**: Use `generateWaveformCached()` for frequently accessed files
-3. **Stream large files**: Use `generateWaveformStream()` for files > 50MB
+3. **Use chunked processing**: Enable chunked processing for large files > 50MB
 4. **Dispose resources**: Call `dispose()` on WaveformData when no longer needed
 5. **Monitor memory**: Check `getResourceStatistics()` in memory-constrained environments
 6. **Profile in production**: Use `PerformanceProfiler` to identify bottlenecks

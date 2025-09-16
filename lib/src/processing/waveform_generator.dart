@@ -4,20 +4,87 @@ import 'dart:math' as math;
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/models/waveform_metadata.dart';
-import 'package:sonix/src/models/waveform_chunk.dart';
 import 'waveform_algorithms.dart';
 import 'waveform_config.dart';
 import 'waveform_use_case.dart';
 import 'downsampling_algorithm.dart';
 import 'scaling_curve.dart';
 
-/// Main waveform generation engine
+/// Main waveform generation engine with two-tier processing architecture
+///
+/// This class provides two distinct processing strategies for generating waveforms:
+///
+/// ## Two-Tier Architecture Overview
+///
+/// The Sonix library uses a two-tier chunked processing system that automatically
+/// selects the optimal strategy based on file size:
+///
+/// ### 1. In-Memory Processing (`generateInMemory`)
+/// - **When used**: Files ≤ 50MB (automatic selection by processing isolate)
+/// - **How it works**: Audio data is fully loaded into memory first, then processed
+/// - **Memory usage**: High initial load, but fast processing
+/// - **Chunking type**: Logical chunking only (downsampling algorithm)
+/// - **Performance**: Fastest for small to medium files
+///
+/// ### 2. File-Level Chunked Processing (`generateChunked`)
+/// - **When used**: Files > 50MB (automatic selection by processing isolate)
+/// - **How it works**: Audio is read from file in chunks without loading entirely
+/// - **Memory usage**: Low and controlled throughout processing
+/// - **Chunking type**: Both file-level chunking (memory management) AND logical chunking (downsampling)
+/// - **Performance**: Memory-efficient for large files
+///
+/// ## Important: Both Methods Use "Chunked Processing"
+///
+/// Both processing strategies perform chunked processing, but in different ways:
+///
+/// - **Logical Chunking**: Both methods divide the audio into time-based segments
+///   for downsampling (e.g., 1000 amplitude points from 10 minutes of audio)
+///
+/// - **File-Level Chunking**: Only `generateChunked()` additionally reads the
+///   audio file in memory-sized chunks to avoid loading large files entirely
+///
+/// ## Automatic Strategy Selection
+///
+/// The processing isolate automatically chooses the optimal strategy:
+/// ```dart
+/// // This selection happens automatically in processing_isolate.dart
+/// if (fileSize > 50 * 1024 * 1024 && decoder.supportsChunkedDecoding) {
+///   // Use file-level chunked processing
+///   result = await WaveformGenerator.generateChunked(...);
+/// } else {
+///   // Use in-memory processing
+///   result = await WaveformGenerator.generateInMemory(...);
+/// }
+/// ```
+///
+/// ## Direct Usage
+///
+/// While the processing isolate handles strategy selection automatically,
+/// you can also call these methods directly for specific use cases:
+///
+/// ```dart
+/// // For pre-loaded audio data
+/// final waveform = await WaveformGenerator.generateInMemory(audioData);
+///
+/// // For memory-constrained processing
+/// final waveform = await WaveformGenerator.generateChunked(
+///   audioData,
+///   maxMemoryUsage: 10 * 1024 * 1024 // 10MB limit
+/// );
+/// ```
 class WaveformGenerator {
-  /// Generate waveform data from audio data
+  /// Generate waveform data from pre-loaded audio data in memory
   ///
-  /// [audioData] - Input audio data
+  /// This method processes audio data that has already been fully loaded into memory.
+  /// It performs logical chunking (downsampling) to create the waveform visualization
+  /// but assumes all audio samples are available in the AudioData object.
+  ///
+  /// **Used for**: Small to medium files (≤ 50MB) where loading the entire file
+  /// into memory is acceptable and provides optimal processing performance.
+  ///
+  /// [audioData] - Complete audio data loaded in memory
   /// [config] - Configuration for waveform generation
-  static Future<WaveformData> generate(AudioData audioData, {WaveformConfig config = const WaveformConfig()}) async {
+  static Future<WaveformData> generateInMemory(AudioData audioData, {WaveformConfig config = const WaveformConfig()}) async {
     if (audioData.samples.isEmpty) {
       throw ArgumentError('Audio data cannot be empty');
     }
@@ -50,92 +117,23 @@ class WaveformGenerator {
     return WaveformData(amplitudes: processedAmplitudes, duration: audioData.duration, sampleRate: audioData.sampleRate, metadata: metadata);
   }
 
-  /// Generate waveform data from streaming audio chunks
+  /// Generate waveform using chunked processing for memory efficiency
   ///
-  /// [audioStream] - Stream of audio chunks
-  /// [config] - Configuration for waveform generation
-  /// [chunkSize] - Size of each output chunk (in data points)
-  static Stream<WaveformChunk> generateStream(Stream<AudioChunk> audioStream, {WaveformConfig config = const WaveformConfig(), int chunkSize = 100}) async* {
-    // Validate configuration
-    _validateConfig(config);
-
-    if (chunkSize <= 0) {
-      throw ArgumentError('Chunk size must be positive');
-    }
-
-    final buffer = <double>[];
-    Duration currentTime = Duration.zero;
-    int totalSamples = 0;
-    int sampleRate = 44100;
-    int channels = 1;
-
-    // For normalization across the entire stream
-    final allAmplitudes = <double>[];
-
-    await for (final chunk in audioStream) {
-      // Note: In streaming mode, we often don't have full metadata; use conservative defaults
-
-      buffer.addAll(chunk.samples);
-      totalSamples += chunk.samples.length;
-
-      // Process buffer when we have enough data or this is the last chunk
-      final samplesNeeded = (chunkSize * buffer.length) ~/ config.resolution;
-
-      if (buffer.length >= samplesNeeded || chunk.isLast) {
-        // Calculate how many samples to process for this chunk
-        final samplesToProcess = chunk.isLast ? buffer.length : samplesNeeded;
-        final chunkSamples = buffer.take(samplesToProcess).toList();
-
-        // Remove processed samples from buffer
-        buffer.removeRange(0, math.min(samplesToProcess, buffer.length));
-
-        if (chunkSamples.isNotEmpty) {
-          // Calculate target resolution for this chunk
-          final chunkResolution = chunk.isLast ? math.max(1, (config.resolution * chunkSamples.length) ~/ totalSamples) : chunkSize;
-
-          // Generate amplitudes for this chunk
-          var chunkAmplitudes = WaveformAlgorithms.downsample(chunkSamples, chunkResolution, algorithm: config.algorithm, channels: channels);
-
-          // Apply smoothing if enabled
-          if (config.enableSmoothing) {
-            chunkAmplitudes = WaveformAlgorithms.smoothAmplitudes(chunkAmplitudes, windowSize: config.smoothingWindowSize);
-          }
-
-          // Store for potential normalization
-          if (config.normalize) {
-            allAmplitudes.addAll(chunkAmplitudes);
-          }
-
-          // Apply scaling (but not normalization yet in streaming mode)
-          if (config.scalingCurve != ScalingCurve.linear || config.scalingFactor != 1.0) {
-            chunkAmplitudes = WaveformAlgorithms.scaleAmplitudes(chunkAmplitudes, scalingCurve: config.scalingCurve, factor: config.scalingFactor);
-          }
-
-          // Calculate time for this chunk (account for channels)
-          final chunkDuration = Duration(microseconds: (chunkSamples.length * Duration.microsecondsPerSecond) ~/ (sampleRate * channels));
-
-          yield WaveformChunk(amplitudes: chunkAmplitudes, startTime: currentTime, isLast: chunk.isLast);
-
-          currentTime += chunkDuration;
-        }
-      }
-    }
-
-    // If normalization was requested, we'd need a second pass
-    // This is a limitation of streaming processing
-    if (config.normalize && allAmplitudes.isNotEmpty) {
-      // In a real implementation, you might want to emit normalized chunks
-      // in a second stream or provide a callback for post-processing
-    }
-  }
-
-  /// Generate waveform with memory-efficient streaming for large files
+  /// This method processes pre-loaded audio data in memory chunks to minimize
+  /// peak memory usage. It's designed for scenarios where audio data has been
+  /// loaded into memory but needs to be processed with memory constraints.
   ///
-  /// This method processes audio in chunks to minimize memory usage
-  /// [audioData] - Input audio data
+  /// **Note**: This is different from file-level chunking. This method still
+  /// requires the complete AudioData in memory but processes it in chunks
+  /// during waveform generation to stay within memory limits.
+  ///
+  /// **Used for**: Special cases where memory-constrained processing is needed
+  /// even with pre-loaded audio data.
+  ///
+  /// [audioData] - Complete audio data loaded in memory
   /// [config] - Configuration for waveform generation
-  /// [maxMemoryUsage] - Maximum memory usage in bytes (approximate)
-  static Future<WaveformData> generateMemoryEfficient(
+  /// [maxMemoryUsage] - Maximum memory usage in bytes during processing (approximate)
+  static Future<WaveformData> generateChunked(
     AudioData audioData, {
     WaveformConfig config = const WaveformConfig(),
     int maxMemoryUsage = 50 * 1024 * 1024, // 50MB default
@@ -153,7 +151,7 @@ class WaveformGenerator {
 
     if (chunkSize >= audioData.samples.length) {
       // If the entire audio fits in memory, use regular generation
-      return generate(audioData, config: config);
+      return generateInMemory(audioData, config: config);
     }
 
     // Process in chunks

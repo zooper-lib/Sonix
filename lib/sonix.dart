@@ -16,15 +16,6 @@
 /// final waveformData = await sonix.generateWaveform('audio.mp3');
 /// print('Generated ${waveformData.amplitudes.length} waveform points');
 ///
-/// // Stream waveform generation with progress
-/// await for (final progress in sonix.generateWaveformStream('large_audio.flac')) {
-///   print('Progress: ${(progress.progress * 100).toStringAsFixed(1)}%');
-///   if (progress.isComplete && progress.partialData != null) {
-///     print('Waveform generation complete!');
-///     final waveformData = progress.partialData!;
-///   }
-/// }
-///
 /// // Clean up when done
 /// await sonix.dispose();
 /// ```
@@ -51,8 +42,8 @@ export 'src/config/sonix_config.dart';
 export 'src/models/waveform_data.dart';
 export 'src/models/waveform_type.dart';
 export 'src/models/waveform_metadata.dart';
-export 'src/models/waveform_chunk.dart';
-export 'src/models/waveform_progress.dart';
+
+
 export 'src/models/audio_data.dart';
 
 // Processing and generation

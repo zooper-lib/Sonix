@@ -472,43 +472,33 @@ class _ChunkedLargeFileExampleState extends State<ChunkedLargeFileExample> {
       final fileSizeMB = fileSize / (1024 * 1024);
 
       setState(() {
-        _statusMessage = 'Starting streaming processing for ${fileSizeMB.toStringAsFixed(1)}MB file...';
+        _statusMessage = 'Processing ${fileSizeMB.toStringAsFixed(1)}MB file with chunked processing...';
       });
 
       // Create a Sonix instance for processing
       final sonix = Sonix();
 
-      // Use streaming waveform generation with progress updates
-      await for (final progress in sonix.generateWaveformStream(_selectedFilePath, resolution: 1000)) {
-        setState(() {
-          _progress = progress.progress;
-          _processedChunks = (_progress * _totalChunks).round();
-          _processingTime = stopwatch.elapsed;
+      // Use regular waveform generation with chunked processing support
+      final waveformData = await sonix.generateWaveform(_selectedFilePath, resolution: 1000);
 
-          // Calculate throughput
-          final elapsedSeconds = _processingTime.inMilliseconds / 1000.0;
-          if (elapsedSeconds > 0) {
-            _throughputMBps = (fileSizeMB * _progress) / elapsedSeconds;
-          }
+      setState(() {
+        _progress = 1.0;
+        _processedChunks = _totalChunks;
+        _processingTime = stopwatch.elapsed;
 
-          // Simulate memory usage
-          _currentMemoryUsage = (50 * 1024 * 1024 * (0.5 + _progress * 0.5)).round();
-          _peakMemoryUsage = (_peakMemoryUsage < _currentMemoryUsage) ? _currentMemoryUsage : _peakMemoryUsage;
-
-          if (progress.error != null) {
-            _statusMessage = 'Processing with errors';
-          } else if (progress.isComplete) {
-            _statusMessage = 'Streaming processing completed successfully!';
-            _waveformData = progress.partialData;
-          } else {
-            _statusMessage = 'Processing chunk $_processedChunks of $_totalChunks';
-          }
-        });
-
-        if (progress.isComplete) {
-          break;
+        // Calculate throughput
+        final elapsedSeconds = _processingTime.inMilliseconds / 1000.0;
+        if (elapsedSeconds > 0) {
+          _throughputMBps = (fileSizeMB * _progress) / elapsedSeconds;
         }
-      }
+
+        // Simulate memory usage
+        _currentMemoryUsage = (50 * 1024 * 1024 * (0.5 + _progress * 0.5)).round();
+        _peakMemoryUsage = (_peakMemoryUsage < _currentMemoryUsage) ? _currentMemoryUsage : _peakMemoryUsage;
+
+        _statusMessage = 'Chunked processing completed successfully!';
+        _waveformData = waveformData;
+      });
 
       stopwatch.stop();
 

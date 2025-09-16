@@ -119,7 +119,7 @@ This ensures the entire package can be distributed under the MIT license.
 
 - The library is optimized for performance with `-O3` optimization in release builds
 - Memory management is handled carefully to prevent leaks
-- Streaming processing is supported for large files
+- Chunked processing is supported for large files
 - Platform-specific optimizations are applied where appropriate
 
 ## Troubleshooting

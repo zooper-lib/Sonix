@@ -453,3 +453,4 @@ class QualityResult {
 
   QualityResult({required this.testReliability, required this.testMaintainability});
 }
+

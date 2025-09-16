@@ -71,39 +71,6 @@ void main() {
       });
     });
 
-    group('Streaming Decode', () {
-      test('should handle large WAV file via streaming', () async {
-        final filePath = 'test/assets/Double-F the King - Your Blessing.wav';
-        final file = File(filePath);
-
-        if (!file.existsSync()) {
-          fail('Large test WAV file does not exist: $filePath');
-        }
-
-        // Streaming should work even for large files
-        // Note: Current implementation still loads full file first, but this tests the streaming interface
-        final chunks = <AudioChunk>[];
-
-        try {
-          await for (final chunk in decoder.decodeStream(filePath)) {
-            chunks.add(chunk);
-            // Only process first few chunks to avoid memory issues
-            if (chunks.length >= 3) {
-              break;
-            }
-          }
-
-          // If we get here, streaming worked
-          expect(chunks, isNotEmpty);
-          print('Streaming processed ${chunks.length} chunks successfully');
-        } catch (e) {
-          // This is expected to fail with current implementation
-          expect(e, isA<DecodingException>());
-          print('Streaming failed as expected with current implementation: $e');
-        }
-      });
-    });
-
     group('Format Validation', () {
       test('should validate WAV format through factory', () {
         expect(AudioDecoderFactory.isFormatSupported('test.wav'), isTrue);
@@ -127,3 +94,4 @@ void main() {
     });
   });
 }
+

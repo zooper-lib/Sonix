@@ -241,3 +241,4 @@ WaveformData _createTestWaveformData(int amplitudeCount) {
     metadata: WaveformMetadata(resolution: amplitudeCount, type: WaveformType.bars, normalized: true, generatedAt: DateTime.now()),
   );
 }
+

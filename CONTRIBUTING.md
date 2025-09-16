@@ -182,9 +182,9 @@ Types:
 
 Examples:
 ```
-feat(waveform): add streaming processing support
+feat(waveform): add chunked processing support
 
-Add support for streaming waveform generation to handle large audio files
+Add support for chunked waveform generation to handle large audio files
 more efficiently. This reduces memory usage by processing audio in chunks.
 
 Closes #123
@@ -203,7 +203,7 @@ descriptions for better developer experience.
 ### Branch Naming
 
 Use descriptive branch names:
-- `feature/streaming-processing`
+- `feature/chunked-processing`
 - `fix/memory-leak-disposal`
 - `docs/api-reference-update`
 - `perf/optimize-rendering`
@@ -414,7 +414,7 @@ dart doc --serve
 ### Memory Management
 
 - Always dispose of resources properly
-- Use streaming processing for large files
+- Use chunked processing for large files
 - Implement proper caching strategies
 - Monitor memory usage in tests
 

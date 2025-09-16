@@ -42,3 +42,4 @@ class TestSonixInstance extends Sonix {
   /// Get the mock isolate manager for testing
   TestIsolateManager get mockIsolateManager => _testIsolateManager;
 }
+
