@@ -200,7 +200,6 @@ class ExampleHomePage extends StatelessWidget {
                       _buildFeatureChip('WAV'),
                       _buildFeatureChip('FLAC'),
                       _buildFeatureChip('OGG'),
-                      _buildFeatureChip('Opus'),
                     ],
                   ),
                 ],

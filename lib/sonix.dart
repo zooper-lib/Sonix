@@ -2,7 +2,7 @@
 ///
 /// A comprehensive solution for generating and displaying audio waveforms
 /// with isolate-based processing to prevent UI thread blocking. Supports multiple
-/// audio formats (MP3, OGG, WAV, FLAC, Opus) using native C libraries through Dart FFI.
+/// audio formats (MP3, OGG, WAV, FLAC) using native C libraries through Dart FFI.
 ///
 /// ## Quick Start
 ///
@@ -24,7 +24,7 @@
 ///
 /// - **Isolate-Based Processing**: All audio processing happens in background isolates
 /// - **Instance-Based API**: Create multiple instances with different configurations
-/// - **Multi-format Support**: MP3, OGG, WAV, FLAC, Opus
+/// - **Multi-format Support**: MP3, OGG, WAV, FLAC
 /// - **High Performance**: Native C libraries via Dart FFI
 /// - **Memory Efficient**: Automatic resource management and cleanup
 /// - **Streaming API**: Real-time progress updates

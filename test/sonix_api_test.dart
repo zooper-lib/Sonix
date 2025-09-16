@@ -43,7 +43,6 @@ void main() {
       expect(Sonix.isFormatSupported('test.wav'), isTrue);
       expect(Sonix.isFormatSupported('test.flac'), isTrue);
       expect(Sonix.isFormatSupported('test.ogg'), isTrue);
-      expect(Sonix.isFormatSupported('test.opus'), isTrue);
       expect(Sonix.isFormatSupported('test.unknown'), isFalse);
       expect(Sonix.isFormatSupported('test.xyz'), isFalse);
       expect(Sonix.isFormatSupported('test.txt'), isFalse);
@@ -58,7 +57,6 @@ void main() {
       expect(formats, contains('WAV'));
       expect(formats, contains('FLAC'));
       expect(formats, contains('OGG Vorbis'));
-      expect(formats, contains('Opus'));
 
       final extensions = Sonix.getSupportedExtensions();
       expect(extensions, isA<List<String>>());
@@ -67,7 +65,6 @@ void main() {
       expect(extensions, contains('wav'));
       expect(extensions, contains('flac'));
       expect(extensions, contains('ogg'));
-      expect(extensions, contains('opus'));
     });
 
     test('should check extension support using static methods', () {

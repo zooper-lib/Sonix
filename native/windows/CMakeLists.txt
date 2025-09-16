@@ -17,7 +17,6 @@ set(INCLUDE_DIRS
     ../src/dr_flac
     ../src/dr_wav
     ../src/stb_vorbis
-    ../src/opus
 )
 
 # Create shared library (DLL)

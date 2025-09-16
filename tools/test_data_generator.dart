@@ -452,7 +452,6 @@ class TestDataGenerator {
     // Generate other format placeholders
     await _generateSyntheticAudioFile('sample_audio.flac', format: 'flac', durationSeconds: 2);
     await _generateSyntheticAudioFile('sample_audio.ogg', format: 'ogg', durationSeconds: 2);
-    await _generateSyntheticAudioFile('sample_audio.opus', format: 'opus', durationSeconds: 2);
   }
 
   /// Generates essential valid audio files (smaller, faster for regular testing)
@@ -601,14 +600,6 @@ class TestDataGenerator {
         data[1] = 0x67; // 'g'
         data[2] = 0x67; // 'g'
         data[3] = 0x53; // 'S'
-        break;
-      case 'opus':
-        // Opus in OGG container
-        data[0] = 0x4F; // 'O'
-        data[1] = 0x67; // 'g'
-        data[2] = 0x67; // 'g'
-        data[3] = 0x53; // 'S'
-        // Add Opus identification header later in the stream
         break;
     }
 

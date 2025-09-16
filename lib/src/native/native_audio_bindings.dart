@@ -147,8 +147,6 @@ class NativeAudioBindings {
         return SONIX_FORMAT_FLAC;
       case AudioFormat.ogg:
         return SONIX_FORMAT_OGG;
-      case AudioFormat.opus:
-        return SONIX_FORMAT_OPUS;
       case AudioFormat.unknown:
         return SONIX_FORMAT_UNKNOWN;
     }
@@ -165,8 +163,6 @@ class NativeAudioBindings {
         return AudioFormat.flac;
       case SONIX_FORMAT_OGG:
         return AudioFormat.ogg;
-      case SONIX_FORMAT_OPUS:
-        return AudioFormat.opus;
       case SONIX_FORMAT_UNKNOWN:
       default:
         return AudioFormat.unknown;
@@ -192,8 +188,6 @@ class NativeAudioBindings {
         return fileSize * 2; // FLAC is typically ~2:1 compression
       case AudioFormat.wav:
         return fileSize; // WAV is uncompressed
-      case AudioFormat.opus:
-        return fileSize * 12; // Opus can be very efficient
       case AudioFormat.unknown:
         return fileSize * 10; // Conservative estimate
     }

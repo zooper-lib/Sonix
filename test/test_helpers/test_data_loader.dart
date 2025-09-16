@@ -45,7 +45,7 @@ class TestDataLoader {
   /// Check if a file is an audio file based on extension
   static bool _isAudioFile(String fileName) {
     final extension = fileName.toLowerCase().split('.').last;
-    return ['wav', 'mp3', 'flac', 'ogg', 'opus'].contains(extension);
+    return ['wav', 'mp3', 'flac', 'ogg'].contains(extension);
   }
 
   /// Get a small test file for quick tests

@@ -518,34 +518,6 @@ static SonixAudioData *decode_mp3(const uint8_t *data, size_t size)
     return result;
 }
 
-static SonixAudioData *decode_opus(const uint8_t *data, size_t size)
-{
-    // Opus decoding not yet fully implemented
-    // This is a placeholder for future libopus integration
-    set_error("Opus decoding not yet implemented - libopus integration needed");
-    return NULL;
-
-    // TODO: Implement Opus decoding using libopus
-    // The implementation would follow this pattern:
-    /*
-    if (!data || size < 8) {
-        set_error("Invalid Opus data: null pointer or too small");
-        return NULL;
-    }
-
-    // Check for OggS header (Opus is typically in OGG container)
-    if (!(data[0] == 'O' && data[1] == 'g' && data[2] == 'g' && data[3] == 'S')) {
-        set_error("Invalid Opus container format");
-        return NULL;
-    }
-
-    // Initialize Opus decoder
-    // Decode Opus data
-    // Convert to float samples
-    // Return SonixAudioData structure
-    */
-}
-
 static SonixAudioData *decode_ogg(const uint8_t *data, size_t size)
 {
     if (!data || size < 4)
@@ -669,8 +641,6 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int format)
         return decode_flac(data, size);
     case SONIX_FORMAT_OGG:
         return decode_ogg(data, size);
-    case SONIX_FORMAT_OPUS:
-        return decode_opus(data, size);
     default:
         set_error("Unsupported audio format");
         break;
@@ -703,7 +673,7 @@ const SonixMp3DebugStats *sonix_get_last_mp3_debug_stats(void) { return &last_st
 
 SonixChunkedDecoder *sonix_init_chunked_decoder(int format, const char *file_path)
 {
-    if (!file_path || format < SONIX_FORMAT_MP3 || format > SONIX_FORMAT_OPUS)
+    if (!file_path || format < SONIX_FORMAT_MP3 || format > SONIX_FORMAT_OGG)
     {
         set_error("Invalid format or file path for chunked decoder");
         return NULL;

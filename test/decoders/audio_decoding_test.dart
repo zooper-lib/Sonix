@@ -35,11 +35,6 @@ void main() {
         expect(AudioDecoderFactory.isFormatSupported('test.OGG'), isTrue);
       });
 
-      test('should detect Opus format correctly', () {
-        expect(AudioDecoderFactory.isFormatSupported('test.opus'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('test.OPUS'), isTrue);
-      });
-
       test('should reject unsupported formats', () {
         expect(AudioDecoderFactory.isFormatSupported('test.xyz'), isFalse);
         expect(AudioDecoderFactory.isFormatSupported('test.txt'), isFalse);
@@ -61,9 +56,6 @@ void main() {
 
         final oggDecoder = AudioDecoderFactory.createDecoder('test.ogg');
         expect(oggDecoder.runtimeType.toString(), contains('Vorbis'));
-
-        final opusDecoder = AudioDecoderFactory.createDecoder('test.opus');
-        expect(opusDecoder.runtimeType.toString(), contains('Opus'));
       });
 
       test('should throw UnsupportedFormatException for unsupported formats', () {

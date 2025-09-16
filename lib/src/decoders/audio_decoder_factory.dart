@@ -5,7 +5,6 @@ import 'mp3_decoder.dart';
 import 'wav_decoder.dart';
 import 'flac_decoder.dart';
 import 'vorbis_decoder.dart';
-import 'opus_decoder.dart';
 import '../exceptions/sonix_exceptions.dart';
 
 /// Factory for creating appropriate audio decoders
@@ -23,8 +22,6 @@ class AudioDecoderFactory {
         return FLACDecoder();
       case AudioFormat.ogg:
         return VorbisDecoder();
-      case AudioFormat.opus:
-        return OpusDecoder();
       case AudioFormat.unknown:
         throw UnsupportedFormatException(_getFileExtension(filePath), 'Unable to determine audio format for file: $filePath');
     }
@@ -44,8 +41,6 @@ class AudioDecoderFactory {
         return AudioFormat.flac;
       case 'ogg':
         return AudioFormat.ogg;
-      case 'opus':
-        return AudioFormat.opus;
       default:
         // Try to detect by file content if extension is unknown
         return _detectFormatByContent(filePath);
@@ -167,13 +162,12 @@ class AudioDecoderFactory {
       ...AudioFormat.wav.extensions,
       ...AudioFormat.flac.extensions,
       ...AudioFormat.ogg.extensions,
-      ...AudioFormat.opus.extensions,
     ];
   }
 
   /// Get list of supported formats
   static List<AudioFormat> getSupportedFormats() {
-    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg, AudioFormat.opus];
+    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg];
   }
 
   /// Get human-readable list of supported formats
