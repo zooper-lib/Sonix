@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../utils/lru_cache.dart';
 import 'waveform_type.dart';
 import 'waveform_metadata.dart';
 
@@ -56,7 +55,7 @@ import 'waveform_metadata.dart';
 /// final cached = await File('waveform_cache.json').readAsString();
 /// final waveformData = WaveformData.fromJsonString(cached);
 /// ```
-class WaveformData implements Disposable {
+class WaveformData {
   /// Array of amplitude values representing the waveform visualization.
   ///
   /// Each value represents the amplitude at a specific time position,
@@ -263,7 +262,6 @@ class WaveformData implements Disposable {
   ///
   /// **Best Practice:** Always dispose of waveform data in your widget's
   /// dispose() method or when changing to different audio files.
-  @override
   void dispose() {
     // Clear the amplitudes list to help with garbage collection
     amplitudes.clear();

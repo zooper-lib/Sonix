@@ -87,8 +87,6 @@ export 'src/isolate/isolate_config.dart';
 
 // Utilities (selective exports)
 export 'src/utils/memory_manager.dart' show MemoryManager;
-export 'src/utils/resource_manager.dart' show ResourceManager, ResourceStatistics;
-export 'src/utils/lru_cache.dart' show CacheStatistics;
 export 'src/utils/performance_profiler.dart' show PerformanceProfiler;
 export 'src/utils/profiled_operation.dart';
 export 'src/utils/operation_statistics.dart';

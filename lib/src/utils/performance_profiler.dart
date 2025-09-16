@@ -5,7 +5,7 @@ import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/models/waveform_type.dart';
 import 'package:sonix/src/models/waveform_metadata.dart';
 import 'package:sonix/src/models/audio_data.dart';
-import 'resource_manager.dart';
+
 import 'profiled_operation.dart';
 import 'operation_statistics.dart';
 import 'performance_report.dart';
@@ -288,11 +288,8 @@ class PerformanceProfiler {
   }
 
   int _getCurrentMemoryUsage() {
-    try {
-      return ResourceManager().memoryManager.currentMemoryUsage;
-    } catch (e) {
-      return 0;
-    }
+    // Memory usage tracking removed with caching system
+    return 0;
   }
 
   double _calculateAverage(List<double> values) {

@@ -20,12 +20,6 @@ class SonixConfig implements IsolateConfig {
   @override
   final int maxMemoryUsage;
 
-  /// Whether to enable caching (for future use)
-  final bool enableCaching;
-
-  /// Maximum cache size (for future use)
-  final int maxCacheSize;
-
   /// Whether to enable progress reporting
   final bool enableProgressReporting;
 
@@ -34,8 +28,7 @@ class SonixConfig implements IsolateConfig {
     this.isolatePoolSize = 2,
     this.isolateIdleTimeout = const Duration(minutes: 5),
     this.maxMemoryUsage = 100 * 1024 * 1024, // 100MB
-    this.enableCaching = true,
-    this.maxCacheSize = 50,
+
     this.enableProgressReporting = true,
   });
 

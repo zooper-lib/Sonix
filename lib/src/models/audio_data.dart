@@ -1,7 +1,5 @@
-import '../utils/lru_cache.dart';
-
 /// Raw decoded audio data from audio files
-class AudioData implements Disposable {
+class AudioData {
   /// Audio samples as floating point values (-1.0 to 1.0)
   final List<double> samples;
 
@@ -17,7 +15,6 @@ class AudioData implements Disposable {
   const AudioData({required this.samples, required this.sampleRate, required this.channels, required this.duration});
 
   /// Dispose of resources (for memory management)
-  @override
   void dispose() {
     // Clear the samples list to help with garbage collection
     samples.clear();

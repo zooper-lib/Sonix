@@ -10,8 +10,6 @@ void main() {
       expect(config.maxConcurrentOperations, equals(3));
       expect(config.maxMemoryUsage, equals(100 * 1024 * 1024)); // 100MB
       expect(config.enableProgressReporting, isTrue);
-      expect(config.enableCaching, isTrue);
-      expect(config.maxCacheSize, equals(50));
       expect(config.isolateIdleTimeout, equals(const Duration(minutes: 5)));
     });
 
@@ -21,8 +19,6 @@ void main() {
         maxConcurrentOperations: 10,
         maxMemoryUsage: 200 * 1024 * 1024,
         enableProgressReporting: false,
-        enableCaching: false,
-        maxCacheSize: 100,
         isolateIdleTimeout: Duration(minutes: 10),
       );
 
@@ -30,8 +26,6 @@ void main() {
       expect(config.maxConcurrentOperations, equals(10));
       expect(config.maxMemoryUsage, equals(200 * 1024 * 1024));
       expect(config.enableProgressReporting, isFalse);
-      expect(config.enableCaching, isFalse);
-      expect(config.maxCacheSize, equals(100));
       expect(config.isolateIdleTimeout, equals(const Duration(minutes: 10)));
     });
 
@@ -55,7 +49,7 @@ void main() {
     });
 
     test('should provide string representation', () {
-      const config = SonixConfig(isolatePoolSize: 2, enableCaching: false);
+      const config = SonixConfig(isolatePoolSize: 2);
       final stringRep = config.toString();
 
       expect(stringRep, contains('SonixConfig'));

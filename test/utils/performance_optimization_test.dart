@@ -9,8 +9,7 @@ import 'package:sonix/src/utils/performance_profiler.dart';
 import 'package:sonix/src/utils/performance_report.dart';
 import 'package:sonix/src/utils/platform_validator.dart';
 import 'package:sonix/src/utils/memory_manager.dart';
-import 'package:sonix/src/utils/resource_manager.dart';
-import 'package:sonix/src/utils/lru_cache.dart';
+
 import 'dart:math' as math;
 
 void main() {
@@ -179,31 +178,6 @@ void main() {
         final audioMemory = MemoryManager.estimateAudioMemoryUsage(44100);
         expect(audioMemory, greaterThan(0));
         expect(audioMemory, greaterThan(waveformMemory)); // Audio should use more memory
-      });
-    });
-
-    group('Resource Management Tests', () {
-      test('should manage resources', () {
-        final resourceManager = ResourceManager();
-        resourceManager.initialize();
-
-        final stats = resourceManager.getResourceStatistics();
-        expect(stats, isA<ResourceStatistics>());
-        expect(stats.memoryUsage, greaterThanOrEqualTo(0));
-        expect(stats.memoryLimit, greaterThan(0));
-      });
-
-      test('should provide cache statistics', () {
-        final resourceManager = ResourceManager();
-        resourceManager.initialize();
-
-        final waveformCache = resourceManager.waveformCache;
-        expect(waveformCache, isNotNull);
-
-        final cacheStats = waveformCache.getStatistics();
-        expect(cacheStats, isA<CacheStatistics>());
-        expect(cacheStats.size, greaterThanOrEqualTo(0));
-        expect(cacheStats.maxSize, greaterThan(0));
       });
     });
 

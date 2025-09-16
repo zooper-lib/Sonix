@@ -230,7 +230,7 @@ void main() {
       expect(config.maxConcurrentOperations, equals(3));
       expect(config.isolatePoolSize, equals(2));
       expect(config.maxMemoryUsage, equals(100 * 1024 * 1024));
-      expect(config.enableCaching, isTrue);
+
       expect(config.enableProgressReporting, isTrue);
     });
 

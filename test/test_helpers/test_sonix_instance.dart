@@ -16,8 +16,6 @@ class TestSonixConfig extends SonixConfig {
     super.isolatePoolSize = 1,
     super.isolateIdleTimeout = const Duration(seconds: 5),
     super.maxMemoryUsage = 50 * 1024 * 1024,
-    super.enableCaching = false,
-    super.maxCacheSize = 10,
     super.enableProgressReporting = true,
   });
 }

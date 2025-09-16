@@ -18,7 +18,7 @@ import 'error_serializer.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/utils/memory_manager.dart';
-import 'package:sonix/src/utils/lru_cache.dart';
+
 import 'isolate_config.dart';
 
 /// Statistics about isolate resource usage
@@ -177,7 +177,7 @@ class TaskCancelledException implements Exception {
 }
 
 /// Represents a managed isolate instance
-class _ManagedIsolate implements Disposable {
+class _ManagedIsolate {
   /// Unique identifier for this isolate
   final String id;
 
@@ -249,7 +249,6 @@ class _ManagedIsolate implements Disposable {
   }
 
   /// Dispose of this isolate
-  @override
   void dispose() {
     _messageSubscription.cancel();
     receivePort.close();
