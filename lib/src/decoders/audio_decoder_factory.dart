@@ -5,6 +5,7 @@ import 'mp3_decoder.dart';
 import 'wav_decoder.dart';
 import 'flac_decoder.dart';
 import 'vorbis_decoder.dart';
+import 'mp4_decoder.dart';
 import '../exceptions/sonix_exceptions.dart';
 
 /// Factory for creating appropriate audio decoders
@@ -23,8 +24,7 @@ class AudioDecoderFactory {
       case AudioFormat.ogg:
         return VorbisDecoder();
       case AudioFormat.mp4:
-        // MP4Decoder will be implemented in subsequent tasks
-        throw UnsupportedFormatException('mp4', 'MP4 decoder not yet implemented');
+        return MP4Decoder();
       case AudioFormat.unknown:
         throw UnsupportedFormatException(_getFileExtension(filePath), 'Unable to determine audio format for file: $filePath');
     }

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
+import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import '../../tools/test_data_generator.dart';
 
@@ -35,11 +36,42 @@ void main() {
         expect(AudioDecoderFactory.isFormatSupported('test.OGG'), isTrue);
       });
 
+      test('should detect MP4 format correctly', () {
+        expect(AudioDecoderFactory.isFormatSupported('test.mp4'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('test.MP4'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('test.m4a'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('test.M4A'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.mp4'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.m4a'), isTrue);
+      });
+
       test('should reject unsupported formats', () {
         expect(AudioDecoderFactory.isFormatSupported('test.xyz'), isFalse);
         expect(AudioDecoderFactory.isFormatSupported('test.txt'), isFalse);
         expect(AudioDecoderFactory.isFormatSupported('test.pdf'), isFalse);
         expect(AudioDecoderFactory.isFormatSupported('test'), isFalse);
+      });
+    });
+
+    group('Format Detection by Content', () {
+      test('should detect MP4 format by magic bytes', () {
+        // Test MP4 ftyp box signature detection
+        expect(AudioDecoderFactory.detectFormat('test.mp4'), equals(AudioFormat.mp4));
+        expect(AudioDecoderFactory.detectFormat('test.m4a'), equals(AudioFormat.mp4));
+      });
+
+      test('should include MP4 in supported formats list', () {
+        final supportedFormats = AudioDecoderFactory.getSupportedFormatNames();
+        expect(supportedFormats, contains('MP4/AAC'));
+
+        final supportedExtensions = AudioDecoderFactory.getSupportedExtensions();
+        expect(supportedExtensions, contains('mp4'));
+        expect(supportedExtensions, contains('m4a'));
+      });
+
+      test('should list MP4 format correctly', () {
+        final supportedFormats = AudioDecoderFactory.getSupportedFormats();
+        expect(supportedFormats, contains(AudioFormat.mp4));
       });
     });
 
@@ -56,6 +88,12 @@ void main() {
 
         final oggDecoder = AudioDecoderFactory.createDecoder('test.ogg');
         expect(oggDecoder.runtimeType.toString(), contains('Vorbis'));
+
+        final mp4Decoder = AudioDecoderFactory.createDecoder('test.mp4');
+        expect(mp4Decoder.runtimeType.toString(), contains('MP4'));
+
+        final m4aDecoder = AudioDecoderFactory.createDecoder('test.m4a');
+        expect(m4aDecoder.runtimeType.toString(), contains('MP4'));
       });
 
       test('should throw UnsupportedFormatException for unsupported formats', () {
@@ -144,4 +182,3 @@ void main() {
     });
   });
 }
-

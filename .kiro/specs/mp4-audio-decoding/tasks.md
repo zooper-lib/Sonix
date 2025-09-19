@@ -6,7 +6,7 @@
   - Extend NativeAudioBindings format conversion methods for MP4
   - _Requirements: 1.1, 3.1, 4.1_
 
-- [ ] 2. Update AudioDecoderFactory for MP4 format detection
+- [x] 2. Update AudioDecoderFactory for MP4 format detection
   - Add MP4 file extension detection (.mp4, .m4a) to detectFormat method
   - Implement MP4 magic byte detection (_checkMP4Signature method)
   - Update createDecoder method to return MP4Decoder for MP4 format
