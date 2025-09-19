@@ -147,6 +147,8 @@ class NativeAudioBindings {
         return SONIX_FORMAT_FLAC;
       case AudioFormat.ogg:
         return SONIX_FORMAT_OGG;
+      case AudioFormat.mp4:
+        return SONIX_FORMAT_MP4;
       case AudioFormat.unknown:
         return SONIX_FORMAT_UNKNOWN;
     }
@@ -163,6 +165,8 @@ class NativeAudioBindings {
         return AudioFormat.flac;
       case SONIX_FORMAT_OGG:
         return AudioFormat.ogg;
+      case SONIX_FORMAT_MP4:
+        return AudioFormat.mp4;
       case SONIX_FORMAT_UNKNOWN:
       default:
         return AudioFormat.unknown;
@@ -178,19 +182,9 @@ class NativeAudioBindings {
 
   /// Estimate memory usage for decoded audio
   static int estimateDecodedMemoryUsage(int fileSize, AudioFormat format) {
-    // Rough estimates based on typical compression ratios
-    switch (format) {
-      case AudioFormat.mp3:
-        return fileSize * 10; // MP3 is typically ~10:1 compression
-      case AudioFormat.ogg:
-        return fileSize * 8; // OGG Vorbis is typically ~8:1 compression
-      case AudioFormat.flac:
-        return fileSize * 2; // FLAC is typically ~2:1 compression
-      case AudioFormat.wav:
-        return fileSize; // WAV is uncompressed
-      case AudioFormat.unknown:
-        return fileSize * 10; // Conservative estimate
-    }
+    // Use compression ratios from AudioFormat extension
+    final compressionRatio = format.typicalCompressionRatio;
+    return (fileSize * compressionRatio).round();
   }
 
   /// Check if decoding would exceed memory limits

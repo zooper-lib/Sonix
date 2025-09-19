@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Extend core enums and constants for MP4 support
+- [x] 1. Extend core enums and constants for MP4 support
   - Add MP4 format to AudioFormat enum with extensions and name
   - Update native constants to include SONIX_FORMAT_MP4 and MP4-specific error codes
   - Extend NativeAudioBindings format conversion methods for MP4

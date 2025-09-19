@@ -27,6 +27,7 @@ extern "C" {
 #define SONIX_FORMAT_FLAC    2
 #define SONIX_FORMAT_WAV     3
 #define SONIX_FORMAT_OGG     4
+#define SONIX_FORMAT_MP4     5
 
 // Error codes
 #define SONIX_OK                    0
@@ -34,6 +35,11 @@ extern "C" {
 #define SONIX_ERROR_DECODE_FAILED  -2
 #define SONIX_ERROR_OUT_OF_MEMORY  -3
 #define SONIX_ERROR_INVALID_DATA   -4
+
+// MP4-specific error codes
+#define SONIX_ERROR_MP4_CONTAINER_INVALID -10
+#define SONIX_ERROR_MP4_NO_AUDIO_TRACK    -11
+#define SONIX_ERROR_MP4_UNSUPPORTED_CODEC -12
 
 // Audio data structure
 typedef struct {

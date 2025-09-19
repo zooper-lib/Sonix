@@ -22,6 +22,9 @@ class AudioDecoderFactory {
         return FLACDecoder();
       case AudioFormat.ogg:
         return VorbisDecoder();
+      case AudioFormat.mp4:
+        // MP4Decoder will be implemented in subsequent tasks
+        throw UnsupportedFormatException('mp4', 'MP4 decoder not yet implemented');
       case AudioFormat.unknown:
         throw UnsupportedFormatException(_getFileExtension(filePath), 'Unable to determine audio format for file: $filePath');
     }
@@ -41,6 +44,9 @@ class AudioDecoderFactory {
         return AudioFormat.flac;
       case 'ogg':
         return AudioFormat.ogg;
+      case 'mp4':
+      case 'm4a':
+        return AudioFormat.mp4;
       default:
         // Try to detect by file content if extension is unknown
         return _detectFormatByContent(filePath);
@@ -77,6 +83,10 @@ class AudioDecoderFactory {
 
       if (_checkOggSignature(bytes)) {
         return AudioFormat.ogg; // Could be Vorbis or Opus
+      }
+
+      if (_checkMP4Signature(bytes)) {
+        return AudioFormat.mp4;
       }
 
       return AudioFormat.unknown;
@@ -140,6 +150,16 @@ class AudioDecoderFactory {
     return false;
   }
 
+  /// Check if bytes match MP4 signature
+  static bool _checkMP4Signature(List<int> bytes) {
+    if (bytes.length >= 8) {
+      // Check for MP4 ftyp box signature
+      // Skip first 4 bytes (box size), check for 'ftyp'
+      return bytes[4] == 0x66 && bytes[5] == 0x74 && bytes[6] == 0x79 && bytes[7] == 0x70;
+    }
+    return false;
+  }
+
   /// Get file extension from path
   static String _getFileExtension(String filePath) {
     final lastDot = filePath.lastIndexOf('.');
@@ -162,12 +182,13 @@ class AudioDecoderFactory {
       ...AudioFormat.wav.extensions,
       ...AudioFormat.flac.extensions,
       ...AudioFormat.ogg.extensions,
+      ...AudioFormat.mp4.extensions,
     ];
   }
 
   /// Get list of supported formats
   static List<AudioFormat> getSupportedFormats() {
-    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg];
+    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg, AudioFormat.mp4];
   }
 
   /// Get human-readable list of supported formats

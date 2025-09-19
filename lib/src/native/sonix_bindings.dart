@@ -12,6 +12,7 @@ const int SONIX_FORMAT_MP3 = 1;
 const int SONIX_FORMAT_FLAC = 2;
 const int SONIX_FORMAT_WAV = 3;
 const int SONIX_FORMAT_OGG = 4;
+const int SONIX_FORMAT_MP4 = 5;
 
 /// Error codes
 const int SONIX_OK = 0;
@@ -19,6 +20,11 @@ const int SONIX_ERROR_INVALID_FORMAT = -1;
 const int SONIX_ERROR_DECODE_FAILED = -2;
 const int SONIX_ERROR_OUT_OF_MEMORY = -3;
 const int SONIX_ERROR_INVALID_DATA = -4;
+
+/// MP4-specific error codes
+const int SONIX_ERROR_MP4_CONTAINER_INVALID = -10;
+const int SONIX_ERROR_MP4_NO_AUDIO_TRACK = -11;
+const int SONIX_ERROR_MP4_UNSUPPORTED_CODEC = -12;
 
 /// Native audio data structure
 final class SonixAudioData extends ffi.Struct {

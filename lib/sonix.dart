@@ -42,9 +42,10 @@ export 'src/config/sonix_config.dart';
 export 'src/models/waveform_data.dart';
 export 'src/models/waveform_type.dart';
 export 'src/models/waveform_metadata.dart';
-
-
 export 'src/models/audio_data.dart';
+
+// Audio format enum (from decoders)
+export 'src/decoders/audio_decoder.dart' show AudioFormat, AudioFormatExtension;
 
 // Processing and generation
 export 'src/processing/waveform_generator.dart' show WaveformGenerator;
