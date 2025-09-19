@@ -10,7 +10,7 @@ abstract class AudioDecoder {
 }
 
 /// Supported audio formats
-enum AudioFormat { mp3, wav, flac, ogg, unknown }
+enum AudioFormat { mp3, wav, flac, ogg, mp4, aac, unknown }
 
 /// Extension methods for AudioFormat
 extension AudioFormatExtension on AudioFormat {
@@ -25,6 +25,10 @@ extension AudioFormatExtension on AudioFormat {
         return ['flac'];
       case AudioFormat.ogg:
         return ['ogg'];
+      case AudioFormat.mp4:
+        return ['mp4', 'm4a'];
+      case AudioFormat.aac:
+        return ['aac'];
       case AudioFormat.unknown:
         return [];
     }
@@ -41,6 +45,10 @@ extension AudioFormatExtension on AudioFormat {
         return 'FLAC';
       case AudioFormat.ogg:
         return 'OGG Vorbis';
+      case AudioFormat.mp4:
+        return 'MP4';
+      case AudioFormat.aac:
+        return 'AAC';
       case AudioFormat.unknown:
         return 'Unknown';
     }

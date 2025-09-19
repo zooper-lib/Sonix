@@ -27,6 +27,8 @@ extern "C" {
 #define SONIX_FORMAT_FLAC    2
 #define SONIX_FORMAT_WAV     3
 #define SONIX_FORMAT_OGG     4
+#define SONIX_FORMAT_MP4     5
+#define SONIX_FORMAT_AAC     6
 
 // Error codes
 #define SONIX_OK                    0

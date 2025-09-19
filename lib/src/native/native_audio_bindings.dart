@@ -147,6 +147,10 @@ class NativeAudioBindings {
         return SONIX_FORMAT_FLAC;
       case AudioFormat.ogg:
         return SONIX_FORMAT_OGG;
+      case AudioFormat.mp4:
+        return SONIX_FORMAT_MP4;
+      case AudioFormat.aac:
+        return SONIX_FORMAT_AAC;
       case AudioFormat.unknown:
         return SONIX_FORMAT_UNKNOWN;
     }
@@ -163,6 +167,10 @@ class NativeAudioBindings {
         return AudioFormat.flac;
       case SONIX_FORMAT_OGG:
         return AudioFormat.ogg;
+      case SONIX_FORMAT_MP4:
+        return AudioFormat.mp4;
+      case SONIX_FORMAT_AAC:
+        return AudioFormat.aac;
       case SONIX_FORMAT_UNKNOWN:
       default:
         return AudioFormat.unknown;
@@ -188,6 +196,10 @@ class NativeAudioBindings {
         return fileSize * 2; // FLAC is typically ~2:1 compression
       case AudioFormat.wav:
         return fileSize; // WAV is uncompressed
+      case AudioFormat.mp4:
+        return fileSize * 10; // MP4/AAC is typically ~10:1 compression
+      case AudioFormat.aac:
+        return fileSize * 10; // AAC is typically ~10:1 compression
       case AudioFormat.unknown:
         return fileSize * 10; // Conservative estimate
     }

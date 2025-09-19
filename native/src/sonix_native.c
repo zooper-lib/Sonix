@@ -17,6 +17,13 @@
 #define MINIMP3_NO_SIMD
 #include "minimp3/minimp3.h"
 
+// MP4 support temporarily disabled - minimp4 requires more complex integration
+// #define MINIMP4_IMPLEMENTATION
+// #include "minimp4/minimp4.h"
+
+// Include AAC decoder
+#include "aac/aac_decoder.h"
+
 // Forward declaration for stb_vorbis function
 extern int stb_vorbis_decode_memory(const unsigned char *mem, int len, int *channels, int *sample_rate, short **output);
 
@@ -98,6 +105,28 @@ int sonix_detect_format(const uint8_t *data, size_t size)
         data[0] == 0x4F && data[1] == 0x67 && data[2] == 0x67 && data[3] == 0x53)
     {
         return SONIX_FORMAT_OGG;
+    }
+
+    // Check MP4 signature (ftyp box)
+    if (size >= 8 &&
+        data[4] == 0x66 && data[5] == 0x74 && data[6] == 0x79 && data[7] == 0x70)
+    {
+        return SONIX_FORMAT_MP4;
+    }
+
+    // Check AAC ADTS signature (0xFFF sync word)
+    if (size >= 7)
+    {
+        // ADTS sync word: 12 bits of 1s (0xFFF)
+        if (data[0] == 0xFF && (data[1] & 0xF0) == 0xF0)
+        {
+            // Additional validation - check if it looks like a valid ADTS header
+            ADTS_Info adts_info;
+            if (aac_parse_adts_header(data, size, &adts_info))
+            {
+                return SONIX_FORMAT_AAC;
+            }
+        }
     }
 
     set_error("Unknown audio format");
@@ -623,6 +652,168 @@ static SonixAudioData *decode_ogg(const uint8_t *data, size_t size)
     return result;
 }
 
+// Memory read callback for minimp4
+static int mp4_read_callback(int64_t offset, void *buffer, size_t size, void *token)
+{
+    struct
+    {
+        const uint8_t *data;
+        size_t data_size;
+    } *context = (void *)token;
+
+    if (!context || !buffer || offset < 0)
+        return 1; // Error
+
+    if ((size_t)offset >= context->data_size)
+        return 1; // EOF/Error
+
+    size_t available = context->data_size - (size_t)offset;
+    size_t to_copy = size < available ? size : available;
+
+    if (to_copy > 0)
+    {
+        memcpy(buffer, context->data + offset, to_copy);
+    }
+
+    return (to_copy == size) ? 0 : 1; // 0 = success, 1 = error/EOF
+}
+
+static SonixAudioData *decode_mp4(const uint8_t *data, size_t size)
+{
+    if (!data || size < 8)
+    {
+        set_error("Invalid MP4 data: null pointer or too small");
+        return NULL;
+    }
+
+    // Check MP4 signature (ftyp box)
+    if (!(data[4] == 0x66 && data[5] == 0x74 && data[6] == 0x79 && data[7] == 0x70))
+    {
+        set_error("Invalid MP4 signature");
+        return NULL;
+    }
+
+    // MP4/AAC decoding is complex and requires proper MP4 demuxing
+    // For now, return an informative error message
+    set_error("MP4 container detected but full MP4/AAC decoding not yet implemented. Use standalone AAC files instead.");
+    return NULL;
+}
+
+static SonixAudioData *decode_aac(const uint8_t *data, size_t size)
+{
+    if (!data || size < 7)
+    {
+        set_error("Invalid AAC data: null pointer or too small");
+        return NULL;
+    }
+
+    // Initialize AAC decoder
+    AAC_Decoder aac_decoder = {0};
+    if (!aac_decoder_init(&aac_decoder)) {
+        set_error("Failed to initialize AAC decoder");
+        return NULL;
+    }
+
+    // Parse first ADTS header to get stream info
+    ADTS_Info adts_info;
+    if (!aac_parse_adts_header(data, size, &adts_info)) {
+        aac_decoder_free(&aac_decoder);
+        set_error("Invalid AAC ADTS header");
+        return NULL;
+    }
+
+    // Allocate result structure
+    SonixAudioData *result = malloc(sizeof(SonixAudioData));
+    if (!result) {
+        aac_decoder_free(&aac_decoder);
+        set_error("Memory allocation failed");
+        return NULL;
+    }
+
+    // Set basic audio properties
+    result->channels = adts_info.channels;
+    result->sample_rate = adts_info.sample_rate;
+    result->sample_count = 0;
+
+    // Estimate total samples (rough calculation)
+    int estimated_frames = size / 400;  // Rough estimate: ~400 bytes per AAC frame
+    int estimated_samples = estimated_frames * 1024;  // 1024 samples per AAC frame
+
+    // Allocate sample buffer
+    result->samples = malloc(estimated_samples * result->channels * sizeof(float));
+    if (!result->samples) {
+        free(result);
+        aac_decoder_free(&aac_decoder);
+        set_error("Memory allocation failed for sample buffer");
+        return NULL;
+    }
+
+    // Decode ADTS frames
+    float *output_ptr = result->samples;
+    int total_decoded_samples = 0;
+    size_t data_offset = 0;
+
+    while (data_offset < size) {
+        // Find next ADTS sync word
+        int sync_offset = aac_find_adts_sync(data + data_offset, size - data_offset);
+        if (sync_offset < 0) break;
+
+        data_offset += sync_offset;
+        if (data_offset >= size) break;
+
+        // Parse ADTS header
+        ADTS_Info frame_info;
+        if (!aac_parse_adts_header(data + data_offset, size - data_offset, &frame_info)) {
+            data_offset++;
+            continue;
+        }
+
+        // Check if we have enough data for the complete frame
+        if (data_offset + frame_info.frame_length > size) {
+            break;
+        }
+
+        // Decode AAC frame
+        AAC_Frame frame = {0};
+        int decoded_samples = aac_decode_adts_frame(&aac_decoder, 
+                                                   data + data_offset, 
+                                                   frame_info.frame_length, 
+                                                   &frame);
+
+        if (decoded_samples > 0 && frame.valid) {
+            // Copy decoded samples to output buffer
+            int samples_to_copy = decoded_samples * frame.channels;
+
+            // Check if we have enough space
+            if (total_decoded_samples + decoded_samples <= estimated_samples) {
+                memcpy(output_ptr, frame.samples, samples_to_copy * sizeof(float));
+                output_ptr += samples_to_copy;
+                total_decoded_samples += decoded_samples;
+            } else {
+                break; // Not enough space in buffer
+            }
+        }
+
+        // Move to next frame
+        data_offset += frame_info.frame_length;
+    }
+
+    // Update actual sample count
+    result->sample_count = total_decoded_samples;
+
+    // Cleanup
+    aac_decoder_free(&aac_decoder);
+
+    if (total_decoded_samples == 0) {
+        free(result->samples);
+        free(result);
+        set_error("No AAC frames could be decoded");
+        return NULL;
+    }
+
+    return result;
+}
+
 SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int format)
 {
     if (!data || size == 0)
@@ -641,6 +832,10 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int format)
         return decode_flac(data, size);
     case SONIX_FORMAT_OGG:
         return decode_ogg(data, size);
+    case SONIX_FORMAT_MP4:
+        return decode_mp4(data, size);
+    case SONIX_FORMAT_AAC:
+        return decode_aac(data, size);
     default:
         set_error("Unsupported audio format");
         break;
@@ -673,7 +868,7 @@ const SonixMp3DebugStats *sonix_get_last_mp3_debug_stats(void) { return &last_st
 
 SonixChunkedDecoder *sonix_init_chunked_decoder(int format, const char *file_path)
 {
-    if (!file_path || format < SONIX_FORMAT_MP3 || format > SONIX_FORMAT_OGG)
+    if (!file_path || format < SONIX_FORMAT_MP3 || format > SONIX_FORMAT_MP4)
     {
         set_error("Invalid format or file path for chunked decoder");
         return NULL;
@@ -737,6 +932,18 @@ SonixChunkedDecoder *sonix_init_chunked_decoder(int format, const char *file_pat
         free(decoder->file_path);
         free(decoder);
         set_error("OGG format requires separate compilation to avoid symbol conflicts");
+        return NULL;
+    case SONIX_FORMAT_MP4:
+        fclose(decoder->file_handle);
+        free(decoder->file_path);
+        free(decoder);
+        set_error("MP4 format not yet supported for chunked processing");
+        return NULL;
+    case SONIX_FORMAT_AAC:
+        fclose(decoder->file_handle);
+        free(decoder->file_path);
+        free(decoder);
+        set_error("AAC format not yet supported for chunked processing");
         return NULL;
     default:
         fclose(decoder->file_handle);
@@ -1143,6 +1350,12 @@ SonixChunkResult *sonix_process_file_chunk(SonixChunkedDecoder *decoder, SonixFi
     case SONIX_FORMAT_OGG:
         set_error("OGG format requires separate compilation to avoid symbol conflicts");
         return NULL;
+    case SONIX_FORMAT_MP4:
+        set_error("MP4 format not yet supported for chunked processing");
+        return NULL;
+    case SONIX_FORMAT_AAC:
+        set_error("AAC format not yet supported for chunked processing");
+        return NULL;
     default:
         set_error("Unsupported format for chunked processing");
         return NULL;
@@ -1236,6 +1449,12 @@ int sonix_seek_to_time(SonixChunkedDecoder *decoder, uint32_t time_ms)
     case SONIX_FORMAT_OGG:
         set_error("OGG seeking not implemented - requires separate compilation");
         return SONIX_ERROR_DECODE_FAILED;
+    case SONIX_FORMAT_MP4:
+        set_error("MP4 seeking not yet implemented");
+        return SONIX_ERROR_DECODE_FAILED;
+    case SONIX_FORMAT_AAC:
+        set_error("AAC seeking not yet implemented");
+        return SONIX_ERROR_DECODE_FAILED;
 
     default:
         set_error("Unsupported format for seeking");
@@ -1265,6 +1484,14 @@ uint32_t sonix_get_optimal_chunk_size(int format, uint64_t file_size)
     case SONIX_FORMAT_OGG:
         // OGG pages are variable, use medium chunks
         base_chunk_size = 1024 * 1024; // 1MB
+        break;
+    case SONIX_FORMAT_MP4:
+        // MP4 samples are variable, use larger chunks for efficiency
+        base_chunk_size = 1024 * 1024; // 1MB
+        break;
+    case SONIX_FORMAT_AAC:
+        // AAC frames are small, use medium chunks
+        base_chunk_size = 512 * 1024; // 512KB
         break;
     default:
         base_chunk_size = 1024 * 1024; // 1MB default
@@ -1305,6 +1532,12 @@ void sonix_cleanup_chunked_decoder(SonixChunkedDecoder *decoder)
             break;
         case SONIX_FORMAT_OGG:
             // OGG cleanup not implemented
+            break;
+        case SONIX_FORMAT_MP4:
+            // MP4 cleanup not implemented yet
+            break;
+        case SONIX_FORMAT_AAC:
+            // AAC cleanup not implemented yet
             break;
         case SONIX_FORMAT_MP3:
         default:

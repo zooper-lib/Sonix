@@ -9,16 +9,19 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(SOURCES
     src/sonix_native.c
     src/stb_vorbis_wrapper.c
+    src/aac/aac_decoder.c
 )
 
 # Define header directories
 set(INCLUDE_DIRS
     src
     src/minimp3
+    src/minimp4
     src/dr_flac
     src/dr_wav
     src/stb_vorbis
     src/opus
+    src/aac
 )
 
 # Create shared library
