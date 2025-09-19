@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG -arch arm64 -dynamiclib -Wl,-headerpad_max_install_names -o libsonix_native.dylib -install_name @rpath/libsonix_native.dylib CMakeFiles/sonix_native.dir/src/sonix_native.c.o CMakeFiles/sonix_native.dir/src/stb_vorbis_wrapper.c.o CMakeFiles/sonix_native.dir/src/aac/aac_decoder.c.o
