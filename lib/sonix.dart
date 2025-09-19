@@ -43,6 +43,7 @@ export 'src/models/waveform_data.dart';
 export 'src/models/waveform_type.dart';
 export 'src/models/waveform_metadata.dart';
 export 'src/models/audio_data.dart';
+export 'src/models/mp4_models.dart';
 
 // Audio format enum (from decoders)
 export 'src/decoders/audio_decoder.dart' show AudioFormat, AudioFormatExtension;
@@ -60,6 +61,7 @@ export 'src/processing/upsample_method.dart';
 
 // Exceptions
 export 'src/exceptions/sonix_exceptions.dart';
+export 'src/exceptions/mp4_exceptions.dart';
 
 // UI widgets
 export 'src/widgets/waveform_painter.dart';

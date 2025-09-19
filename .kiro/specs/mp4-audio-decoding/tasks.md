@@ -13,7 +13,7 @@
   - Update supported formats and extensions lists to include MP4
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 3. Create MP4-specific data models and exceptions
+- [x] 3. Create MP4-specific data models and exceptions
   - Create MP4ContainerInfo class with duration, bitrate, codec info, and sample table
   - Create MP4SampleInfo class for sample offset, size, timestamp, and keyframe data
   - Implement MP4ContainerException, MP4CodecException, and MP4TrackException classes
