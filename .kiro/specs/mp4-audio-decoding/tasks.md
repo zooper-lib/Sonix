@@ -20,7 +20,7 @@
   - Write unit tests for MP4 data models and exception classes
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 7.5_
 
-- [ ] 4. Implement basic MP4Decoder class structure
+- [x] 4. Implement basic MP4Decoder class structure
   - Create MP4Decoder class implementing AudioDecoder and ChunkedAudioDecoder interfaces
   - Implement constructor, dispose method, and basic state management
   - Add MP4-specific instance variables for metadata and chunked processing state
