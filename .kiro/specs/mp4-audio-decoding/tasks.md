@@ -90,7 +90,6 @@
 
 - [x] 11. Create comprehensive MP4 decoder unit tests
 
-
   - Create mp4_decoder_test.dart with tests for all MP4Decoder public methods
   - Test decode method with various MP4 file types and error conditions
   - Test chunked processing methods with different scenarios
@@ -98,7 +97,8 @@
   - Test resource cleanup and memory management
   - _Requirements: 5.1, 5.4, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 12. Create MP4 chunked processing tests
+- [x] 12. Create MP4 chunked processing tests
+
 
   - Create mp4_chunked_decoder_test.dart for chunked processing functionality
   - Test initializeChunkedDecoding with various file sizes and seek positions
