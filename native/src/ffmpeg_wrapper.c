@@ -158,15 +158,31 @@ int sonix_detect_format(const uint8_t* data, size_t size) {
     AVProbeData probe_data = {0};
     probe_data.buf = (unsigned char*)data;
     probe_data.buf_size = (int)size;
-    probe_data.filename = "";
+    probe_data.filename = ""; // Could try ".mp4" for MP4 files, but we don't know the format yet
     
+    // Try different probe methods
     const AVInputFormat* fmt = av_probe_input_format(&probe_data, 1);
+    if (!fmt) {
+        // Try with score-based probing
+        fmt = av_probe_input_format2(&probe_data, 1, NULL);
+    }
+    if (!fmt) {
+        // Try with lower threshold
+        fmt = av_probe_input_format(&probe_data, 0);
+    }
     if (!fmt) {
         set_error_message("Could not probe input format");
         return SONIX_FORMAT_UNKNOWN;
     }
     
-    return map_ffmpeg_format_to_sonix(fmt);
+    // Debug: Store the detected format name
+    char debug_msg[256];
+    int mapped_format = map_ffmpeg_format_to_sonix(fmt);
+    snprintf(debug_msg, sizeof(debug_msg), "FFMPEG detected: %s -> mapped to: %d", 
+             fmt->name ? fmt->name : "NULL", mapped_format);
+    set_error_message(debug_msg);
+    
+    return mapped_format;
 }
 
 // Audio decoding using FFMPEG
