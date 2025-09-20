@@ -73,6 +73,27 @@ void main() {
         final supportedFormats = AudioDecoderFactory.getSupportedFormats();
         expect(supportedFormats, contains(AudioFormat.mp4));
       });
+
+      test('should detect MP4 format with case variations', () {
+        final testCases = ['test.mp4', 'test.MP4', 'test.Mp4', 'test.mP4'];
+        for (final testCase in testCases) {
+          expect(AudioDecoderFactory.detectFormat(testCase), equals(AudioFormat.mp4), reason: 'Failed for case: $testCase');
+        }
+      });
+
+      test('should detect M4A format with case variations', () {
+        final testCases = ['test.m4a', 'test.M4A', 'test.M4a', 'test.m4A'];
+        for (final testCase in testCases) {
+          expect(AudioDecoderFactory.detectFormat(testCase), equals(AudioFormat.mp4), reason: 'Failed for case: $testCase');
+        }
+      });
+
+      test('should detect MP4 format with full paths', () {
+        final pathCases = ['/home/user/music/song.mp4', 'C:\\Users\\Music\\song.mp4', './relative/path/song.m4a', '../parent/song.MP4', 'song.with.dots.mp4'];
+        for (final pathCase in pathCases) {
+          expect(AudioDecoderFactory.detectFormat(pathCase), equals(AudioFormat.mp4), reason: 'Failed for path: $pathCase');
+        }
+      });
     });
 
     group('Decoder Creation', () {

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sonix/src/decoders/mp4_decoder.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
+import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/decoders/chunked_audio_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/exceptions/mp4_exceptions.dart';
@@ -84,6 +85,65 @@ void main() {
         expect(() => decoder.initializeChunkedDecoding('test.mp4'), throwsStateError);
         expect(() => decoder.seekToTime(Duration(seconds: 1)), throwsStateError);
         expect(() => decoder.resetDecoderState(), throwsStateError);
+      });
+    });
+
+    group('Factory Integration', () {
+      test('should be created by AudioDecoderFactory for MP4 files', () {
+        final decoder1 = AudioDecoderFactory.createDecoder('test.mp4');
+        final decoder2 = AudioDecoderFactory.createDecoder('test.MP4');
+        final decoder3 = AudioDecoderFactory.createDecoder('/path/to/audio.mp4');
+
+        expect(decoder1, isA<MP4Decoder>());
+        expect(decoder2, isA<MP4Decoder>());
+        expect(decoder3, isA<MP4Decoder>());
+
+        decoder1.dispose();
+        decoder2.dispose();
+        decoder3.dispose();
+      });
+
+      test('should be created by AudioDecoderFactory for M4A files', () {
+        final decoder1 = AudioDecoderFactory.createDecoder('test.m4a');
+        final decoder2 = AudioDecoderFactory.createDecoder('test.M4A');
+        final decoder3 = AudioDecoderFactory.createDecoder('/path/to/audio.m4a');
+
+        expect(decoder1, isA<MP4Decoder>());
+        expect(decoder2, isA<MP4Decoder>());
+        expect(decoder3, isA<MP4Decoder>());
+
+        decoder1.dispose();
+        decoder2.dispose();
+        decoder3.dispose();
+      });
+
+      test('should be detected by AudioDecoderFactory format detection', () {
+        expect(AudioDecoderFactory.detectFormat('test.mp4'), equals(AudioFormat.mp4));
+        expect(AudioDecoderFactory.detectFormat('test.MP4'), equals(AudioFormat.mp4));
+        expect(AudioDecoderFactory.detectFormat('test.m4a'), equals(AudioFormat.mp4));
+        expect(AudioDecoderFactory.detectFormat('test.M4A'), equals(AudioFormat.mp4));
+        expect(AudioDecoderFactory.detectFormat('/path/to/audio.mp4'), equals(AudioFormat.mp4));
+        expect(AudioDecoderFactory.detectFormat('/path/to/audio.m4a'), equals(AudioFormat.mp4));
+      });
+
+      test('should be reported as supported by AudioDecoderFactory', () {
+        expect(AudioDecoderFactory.isFormatSupported('test.mp4'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('test.MP4'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('test.m4a'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('test.M4A'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.mp4'), isTrue);
+        expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.m4a'), isTrue);
+      });
+
+      test('should be included in AudioDecoderFactory supported formats', () {
+        final supportedFormats = AudioDecoderFactory.getSupportedFormats();
+        final supportedExtensions = AudioDecoderFactory.getSupportedExtensions();
+        final supportedNames = AudioDecoderFactory.getSupportedFormatNames();
+
+        expect(supportedFormats, contains(AudioFormat.mp4));
+        expect(supportedExtensions, contains('mp4'));
+        expect(supportedExtensions, contains('m4a'));
+        expect(supportedNames, contains('MP4/AAC'));
       });
     });
 

@@ -99,7 +99,6 @@
 
 - [x] 12. Create MP4 chunked processing tests
 
-
   - Create mp4_chunked_decoder_test.dart for chunked processing functionality
   - Test initializeChunkedDecoding with various file sizes and seek positions
   - Test processFileChunk with different chunk sizes and boundary conditions
@@ -107,7 +106,8 @@
   - Test memory management during chunked processing
   - _Requirements: 5.3, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 13. Create MP4 format detection and factory tests
+- [x] 13. Create MP4 format detection and factory tests
+
 
   - Add MP4 format detection tests to existing factory test files
   - Test file extension detection for .mp4 and .m4a files
