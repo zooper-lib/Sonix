@@ -64,7 +64,6 @@
 
 - [x] 3. Update Dart FFI bindings for FFMPEG backend
 
-
   - Modify sonix_bindings.dart to maintain existing function signatures
   - Add FFMPEG-specific error codes and constants
   - Update documentation to reflect FFMPEG backend usage
@@ -87,7 +86,8 @@
   - Test isolate stability with FFMPEG integration
   - _Requirements: 1.1, 1.2, 5.3, 5.4, 5.5_
 
-- [ ] 4. Create comprehensive test suite for FFMPEG integration
+- [x] 4. Create comprehensive test suite for FFMPEG integration
+
 
   - Write unit tests for FFMPEG wrapper functions
   - Create integration tests comparing FFMPEG output with reference data
@@ -95,7 +95,7 @@
   - Add memory leak detection tests for FFMPEG integration
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 4.1 Implement cross-platform validation tests
+- [x] 4.1 Implement cross-platform validation tests
 
   - Create tests that validate FFMPEG integration on all supported platforms
   - Write tests for platform-specific binary loading and compatibility
@@ -103,7 +103,7 @@
   - Add regression tests to ensure API compatibility is maintained
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 4.2 Create build system validation tests
+- [x] 4.2 Create build system validation tests
 
   - Write tests for FFMPEG download and verification process
   - Create tests for platform detection and build tool validation
