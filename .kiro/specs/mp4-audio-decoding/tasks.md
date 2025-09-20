@@ -117,7 +117,6 @@
 
 - [x] 14. Generate MP4 test assets and data
 
-
   - Create MP4TestDataGenerator tool for generating synthetic test files
   - Generate mp4_tiny_44100_2ch.mp4, mp4_small_44100_2ch.mp4, mp4_medium_44100_2ch.mp4
   - Create corrupted MP4 files for error handling tests
@@ -134,7 +133,8 @@
   - Test cross-platform compatibility for MP4 decoding
   - _Requirements: 5.2, 5.7_
 
-- [ ] 16. Update native library with MP4 support foundation
+- [x] 16. Update native library with MP4 support foundation
+
 
   - Add SONIX_FORMAT_MP4 constant and MP4-specific error codes to sonix_native.h
   - Create SonixMp4Metadata structure for MP4-specific metadata

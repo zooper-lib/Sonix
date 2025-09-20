@@ -40,6 +40,7 @@ struct SonixChunkedDecoder
         mp3dec_t mp3_decoder;
         drflac *flac_decoder;
         drwav wav_decoder;
+        void *mp4_decoder;  // Placeholder for MP4 decoder context
     } decoder_state;
 
     // Audio properties (set after first successful decode)
@@ -98,6 +99,17 @@ int sonix_detect_format(const uint8_t *data, size_t size)
         data[0] == 0x4F && data[1] == 0x67 && data[2] == 0x67 && data[3] == 0x53)
     {
         return SONIX_FORMAT_OGG;
+    }
+
+    // Check MP4 signature (ftyp box)
+    if (size >= 8)
+    {
+        // MP4 files start with a box size (4 bytes) followed by 'ftyp' (4 bytes)
+        // Skip first 4 bytes (box size), check for 'ftyp'
+        if (data[4] == 0x66 && data[5] == 0x74 && data[6] == 0x79 && data[7] == 0x70)
+        {
+            return SONIX_FORMAT_MP4;
+        }
     }
 
     set_error("Unknown audio format");
@@ -623,6 +635,26 @@ static SonixAudioData *decode_ogg(const uint8_t *data, size_t size)
     return result;
 }
 
+static SonixAudioData *decode_mp4(const uint8_t *data, size_t size)
+{
+    if (!data || size < 8)
+    {
+        set_error("Invalid MP4 data: null pointer or too small");
+        return NULL;
+    }
+
+    // Check for MP4 ftyp box signature
+    if (!(data[4] == 0x66 && data[5] == 0x74 && data[6] == 0x79 && data[7] == 0x70))
+    {
+        set_error("Invalid MP4 signature");
+        return NULL;
+    }
+
+    // Placeholder implementation - MP4 decoding not yet implemented
+    set_error("MP4 decoding not yet implemented in native layer");
+    return NULL;
+}
+
 SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int format)
 {
     if (!data || size == 0)
@@ -641,6 +673,8 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int format)
         return decode_flac(data, size);
     case SONIX_FORMAT_OGG:
         return decode_ogg(data, size);
+    case SONIX_FORMAT_MP4:
+        return decode_mp4(data, size);
     default:
         set_error("Unsupported audio format");
         break;
@@ -673,7 +707,7 @@ const SonixMp3DebugStats *sonix_get_last_mp3_debug_stats(void) { return &last_st
 
 SonixChunkedDecoder *sonix_init_chunked_decoder(int format, const char *file_path)
 {
-    if (!file_path || format < SONIX_FORMAT_MP3 || format > SONIX_FORMAT_OGG)
+    if (!file_path || format < SONIX_FORMAT_MP3 || format > SONIX_FORMAT_MP4)
     {
         set_error("Invalid format or file path for chunked decoder");
         return NULL;
@@ -731,6 +765,10 @@ SonixChunkedDecoder *sonix_init_chunked_decoder(int format, const char *file_pat
     case SONIX_FORMAT_WAV:
         // WAV decoder will be initialized per chunk
         memset(&decoder->decoder_state.wav_decoder, 0, sizeof(drwav));
+        break;
+    case SONIX_FORMAT_MP4:
+        // MP4 decoder will be initialized per chunk
+        decoder->decoder_state.mp4_decoder = NULL;
         break;
     case SONIX_FORMAT_OGG:
         fclose(decoder->file_handle);
@@ -1124,6 +1162,32 @@ static SonixChunkResult *process_mp3_chunk(SonixChunkedDecoder *decoder, SonixFi
     return result;
 }
 
+static SonixChunkResult *process_mp4_chunk(SonixChunkedDecoder *decoder, SonixFileChunk *file_chunk)
+{
+    if (!decoder || !file_chunk || !file_chunk->data)
+    {
+        set_error("Invalid parameters for MP4 chunk processing");
+        return NULL;
+    }
+
+    // Allocate result structure
+    SonixChunkResult *result = (SonixChunkResult *)malloc(sizeof(SonixChunkResult));
+    if (!result)
+    {
+        set_error("Failed to allocate memory for MP4 chunk result");
+        return NULL;
+    }
+    memset(result, 0, sizeof(SonixChunkResult));
+
+    // Placeholder implementation - MP4 chunked processing not yet implemented
+    result->chunks = NULL;
+    result->chunk_count = 0;
+    result->error_code = SONIX_ERROR_MP4_CONTAINER_INVALID;
+    result->error_message = strdup("MP4 chunked processing not yet implemented in native layer");
+
+    return result;
+}
+
 SonixChunkResult *sonix_process_file_chunk(SonixChunkedDecoder *decoder, SonixFileChunk *file_chunk)
 {
     if (!decoder || !file_chunk)
@@ -1140,6 +1204,8 @@ SonixChunkResult *sonix_process_file_chunk(SonixChunkedDecoder *decoder, SonixFi
         return process_flac_chunk(decoder, file_chunk);
     case SONIX_FORMAT_WAV:
         return process_wav_chunk(decoder, file_chunk);
+    case SONIX_FORMAT_MP4:
+        return process_mp4_chunk(decoder, file_chunk);
     case SONIX_FORMAT_OGG:
         set_error("OGG format requires separate compilation to avoid symbol conflicts");
         return NULL;
@@ -1233,6 +1299,29 @@ int sonix_seek_to_time(SonixChunkedDecoder *decoder, uint32_t time_ms)
             return SONIX_ERROR_INVALID_DATA;
         }
 
+    case SONIX_FORMAT_MP4:
+        // MP4 seeking requires sample table parsing for accurate positioning
+        // For now, implement basic file position estimation
+        if (decoder->properties_initialized && decoder->sample_rate > 0)
+        {
+            double time_ratio = (double)time_ms / 1000.0;
+            uint64_t estimated_position = (uint64_t)(time_ratio * decoder->file_size);
+
+            if (fseek(decoder->file_handle, estimated_position, SEEK_SET) != 0)
+            {
+                set_error("Failed to seek in MP4 file");
+                return SONIX_ERROR_DECODE_FAILED;
+            }
+
+            decoder->current_position = estimated_position;
+            return SONIX_OK;
+        }
+        else
+        {
+            set_error("Cannot seek in MP4 file - decoder not initialized");
+            return SONIX_ERROR_INVALID_DATA;
+        }
+
     case SONIX_FORMAT_OGG:
         set_error("OGG seeking not implemented - requires separate compilation");
         return SONIX_ERROR_DECODE_FAILED;
@@ -1261,6 +1350,10 @@ uint32_t sonix_get_optimal_chunk_size(int format, uint64_t file_size)
     case SONIX_FORMAT_WAV:
         // WAV is uncompressed, smaller chunks are fine
         base_chunk_size = 512 * 1024; // 512KB
+        break;
+    case SONIX_FORMAT_MP4:
+        // MP4/AAC frames are typically larger than MP3, use larger chunks
+        base_chunk_size = 4 * 1024 * 1024; // 4MB
         break;
     case SONIX_FORMAT_OGG:
         // OGG pages are variable, use medium chunks
@@ -1302,6 +1395,14 @@ void sonix_cleanup_chunked_decoder(SonixChunkedDecoder *decoder)
         case SONIX_FORMAT_WAV:
             // WAV decoder cleanup if needed
             drwav_uninit(&decoder->decoder_state.wav_decoder);
+            break;
+        case SONIX_FORMAT_MP4:
+            // MP4 decoder cleanup - placeholder for future implementation
+            if (decoder->decoder_state.mp4_decoder)
+            {
+                // Future: cleanup MP4 decoder context
+                decoder->decoder_state.mp4_decoder = NULL;
+            }
             break;
         case SONIX_FORMAT_OGG:
             // OGG cleanup not implemented

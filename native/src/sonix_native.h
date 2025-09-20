@@ -85,6 +85,15 @@ typedef struct {
     uint64_t file_size;        // Input buffer size
 } SonixMp3DebugStats;
 
+// MP4-specific metadata structure
+typedef struct {
+    uint32_t bitrate;           // Average bitrate
+    uint32_t max_bitrate;       // Maximum bitrate
+    uint64_t total_samples;     // Total samples in file
+    uint32_t audio_track_id;    // Audio track identifier
+    char codec_name[16];        // Codec name (e.g., "AAC")
+} SonixMp4Metadata;
+
 // Obtain last MP3 debug stats (NULL if no decode yet or different format)
 SONIX_EXPORT const SonixMp3DebugStats* sonix_get_last_mp3_debug_stats(void);
 
