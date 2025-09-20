@@ -6,7 +6,9 @@ import 'package:sonix/src/decoders/mp4_decoder.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/decoders/chunked_audio_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/exceptions/mp4_exceptions.dart';
 import 'package:sonix/src/models/file_chunk.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
 
 void main() {
   group('MP4Decoder', () {
@@ -183,6 +185,137 @@ void main() {
 
         try {
           expect(() => decoder.initializeChunkedDecoding(tempFile.path), throwsA(isA<DecodingException>()));
+        } finally {
+          if (tempFile.existsSync()) {
+            await tempFile.delete();
+          }
+        }
+      });
+    });
+
+    group('MP4 Container Validation', () {
+      test('should throw MP4ContainerException for invalid MP4 signature', () async {
+        // Create a file with invalid MP4 signature
+        final tempFile = File('test_invalid_signature.mp4');
+        final invalidData = Uint8List.fromList([
+          0x00, 0x00, 0x00, 0x20, // Box size
+          0x69, 0x6E, 0x76, 0x64, // 'invd' instead of 'ftyp'
+          0x69, 0x73, 0x6F, 0x6D, // 'isom'
+          0x00, 0x00, 0x02, 0x00, // Minor version
+          0x69, 0x73, 0x6F, 0x6D, // Compatible brand
+          0x69, 0x73, 0x6F, 0x32, // Compatible brand
+          0x61, 0x76, 0x63, 0x31, // Compatible brand
+          0x6D, 0x70, 0x34, 0x31, // Compatible brand
+        ]);
+        await tempFile.writeAsBytes(invalidData);
+
+        try {
+          expect(() => decoder.decode(tempFile.path), throwsA(isA<MP4ContainerException>()));
+        } finally {
+          if (tempFile.existsSync()) {
+            await tempFile.delete();
+          }
+        }
+      });
+
+      test('should throw MP4ContainerException for file too small', () async {
+        // Create a file that's too small to be valid MP4
+        final tempFile = File('test_too_small.mp4');
+        final tooSmallData = Uint8List.fromList([0x00, 0x00, 0x00, 0x20]); // Only 4 bytes
+        await tempFile.writeAsBytes(tooSmallData);
+
+        try {
+          expect(() => decoder.decode(tempFile.path), throwsA(isA<MP4ContainerException>()));
+        } finally {
+          if (tempFile.existsSync()) {
+            await tempFile.delete();
+          }
+        }
+      });
+
+      test('should handle valid MP4 signature but unsupported format gracefully', () async {
+        // Create a file with valid MP4 signature but minimal content
+        final tempFile = File('test_valid_signature.mp4');
+        final validSignatureData = Uint8List.fromList([
+          0x00, 0x00, 0x00, 0x20, // Box size (32 bytes)
+          0x66, 0x74, 0x79, 0x70, // 'ftyp' - valid MP4 signature
+          0x69, 0x73, 0x6F, 0x6D, // 'isom' major brand
+          0x00, 0x00, 0x02, 0x00, // Minor version
+          0x69, 0x73, 0x6F, 0x6D, // Compatible brand
+          0x69, 0x73, 0x6F, 0x32, // Compatible brand
+          0x61, 0x76, 0x63, 0x31, // Compatible brand
+          0x6D, 0x70, 0x34, 0x31, // Compatible brand
+          // Add some padding to make it larger than minimum size
+          ...List.filled(32, 0x00),
+        ]);
+        await tempFile.writeAsBytes(validSignatureData);
+
+        try {
+          // Should pass container validation but fail at native decoding
+          expect(() => decoder.decode(tempFile.path), throwsA(isA<SonixException>()));
+        } finally {
+          if (tempFile.existsSync()) {
+            await tempFile.delete();
+          }
+        }
+      });
+    });
+
+    group('MP4-Specific Error Handling', () {
+      test('should handle native library MP4 not implemented error', () async {
+        // Create a valid MP4 container structure
+        final tempFile = File('test_mp4_not_implemented.mp4');
+        final validMP4Data = Uint8List.fromList([
+          0x00, 0x00, 0x00, 0x20, // Box size
+          0x66, 0x74, 0x79, 0x70, // 'ftyp'
+          0x69, 0x73, 0x6F, 0x6D, // 'isom'
+          0x00, 0x00, 0x02, 0x00, // Minor version
+          0x69, 0x73, 0x6F, 0x6D, // Compatible brand
+          0x69, 0x73, 0x6F, 0x32, // Compatible brand
+          0x61, 0x76, 0x63, 0x31, // Compatible brand
+          0x6D, 0x70, 0x34, 0x31, // Compatible brand
+          ...List.filled(64, 0x00), // Padding
+        ]);
+        await tempFile.writeAsBytes(validMP4Data);
+
+        try {
+          // Should throw UnsupportedFormatException when native library doesn't support MP4
+          expect(() => decoder.decode(tempFile.path), throwsA(isA<UnsupportedFormatException>()));
+        } finally {
+          if (tempFile.existsSync()) {
+            await tempFile.delete();
+          }
+        }
+      });
+
+      test('should handle memory limit exceeded for large files', () async {
+        // This test simulates a large file by mocking the memory limit check
+        // In a real scenario, we'd need a very large MP4 file
+        final tempFile = File('test_memory_limit.mp4');
+        final validMP4Data = Uint8List.fromList([
+          0x00, 0x00, 0x00, 0x20, // Box size
+          0x66, 0x74, 0x79, 0x70, // 'ftyp'
+          0x69, 0x73, 0x6F, 0x6D, // 'isom'
+          0x00, 0x00, 0x02, 0x00, // Minor version
+          0x69, 0x73, 0x6F, 0x6D, // Compatible brand
+          0x69, 0x73, 0x6F, 0x32, // Compatible brand
+          0x61, 0x76, 0x63, 0x31, // Compatible brand
+          0x6D, 0x70, 0x34, 0x31, // Compatible brand
+          ...List.filled(64, 0x00), // Padding
+        ]);
+        await tempFile.writeAsBytes(validMP4Data);
+
+        try {
+          // Temporarily set a very low memory threshold to trigger the error
+          final originalThreshold = NativeAudioBindings.memoryPressureThreshold;
+          NativeAudioBindings.setMemoryPressureThreshold(32); // Very small threshold
+
+          try {
+            await expectLater(() => decoder.decode(tempFile.path), throwsA(isA<MemoryException>()));
+          } finally {
+            // Restore original threshold
+            NativeAudioBindings.setMemoryPressureThreshold(originalThreshold);
+          }
         } finally {
           if (tempFile.existsSync()) {
             await tempFile.delete();

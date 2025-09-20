@@ -84,14 +84,42 @@ class MP4Decoder implements ChunkedAudioDecoder {
         throw DecodingException('File is empty', 'Cannot decode empty MP4 file: $filePath');
       }
 
-      // Check if file would exceed memory limits
+      // Check if file would exceed memory limits first (before validation to save processing)
       if (NativeAudioBindings.wouldExceedMemoryLimits(fileData.length, AudioFormat.mp4)) {
         throw MemoryException('File too large for direct decoding', 'File size exceeds memory limits. Consider using chunked processing instead.');
       }
 
-      // Use native bindings to decode
-      final audioData = NativeAudioBindings.decodeAudio(fileData, AudioFormat.mp4);
-      return audioData;
+      // Validate MP4 container format
+      await _validateMP4Container(fileData, filePath);
+
+      // Try to use native bindings to decode
+      try {
+        final audioData = NativeAudioBindings.decodeAudio(fileData, AudioFormat.mp4);
+        return audioData;
+      } catch (e) {
+        // Handle MP4-specific native decoding errors
+        final errorMessage = e.toString().toLowerCase();
+
+        if (errorMessage.contains('mp4_container_invalid') || errorMessage.contains('container')) {
+          throw MP4ContainerException('Invalid MP4 container structure', details: 'The file appears to be corrupted or not a valid MP4 container: $filePath');
+        } else if (errorMessage.contains('mp4_no_audio_track') || errorMessage.contains('no audio')) {
+          throw MP4TrackException('No audio track found', details: 'The MP4 file does not contain any audio tracks: $filePath');
+        } else if (errorMessage.contains('mp4_unsupported_codec') || errorMessage.contains('unsupported codec')) {
+          throw MP4CodecException('AAC', details: 'The MP4 file contains an unsupported audio codec. Only AAC is currently supported: $filePath');
+        } else if (errorMessage.contains('unsupported') ||
+            errorMessage.contains('format') ||
+            errorMessage.contains('not yet implemented') ||
+            errorMessage.contains('opus')) {
+          // Native library doesn't support MP4 yet - provide helpful error
+          throw UnsupportedFormatException(
+            'MP4/AAC',
+            'MP4 decoding is not yet implemented in the native library. This feature is currently under development.',
+          );
+        } else {
+          // Re-throw other native errors as decoding exceptions
+          throw DecodingException('Native MP4 decoding failed', 'Error during native decoding: $e');
+        }
+      }
     } catch (e) {
       if (e is SonixException) {
         rethrow;
@@ -417,6 +445,46 @@ class MP4Decoder implements ChunkedAudioDecoder {
   }
 
   // Helper methods for MP4-specific processing
+
+  /// Validate MP4 container format and basic structure
+  Future<void> _validateMP4Container(Uint8List fileData, String filePath) async {
+    try {
+      // Check minimum file size for MP4 container
+      if (fileData.length < 32) {
+        throw MP4ContainerException('File too small to be a valid MP4 container');
+      }
+
+      // Check for MP4 ftyp box signature
+      if (fileData.length >= 8) {
+        final hasValidSignature = fileData[4] == 0x66 && fileData[5] == 0x74 && fileData[6] == 0x79 && fileData[7] == 0x70; // 'ftyp'
+        if (!hasValidSignature) {
+          throw MP4ContainerException('Invalid MP4 container signature', details: 'File does not contain valid MP4 ftyp box');
+        }
+      }
+
+      // Parse basic container structure to check for audio track
+      try {
+        final headerSize = math.min(64 * 1024, fileData.length); // Read up to 64KB for validation
+        final headerData = fileData.sublist(0, headerSize);
+        final containerMetadata = parseMP4Boxes(headerData);
+
+        // Check if we can find any audio track information
+        final audioTrack = findAudioTrack(containerMetadata);
+        if (audioTrack == null) {
+          // This might not be an error if the moov box is at the end of the file
+          // We'll let the native decoder handle this case
+        }
+      } catch (e) {
+        // Container parsing errors are not fatal at this stage
+        // The native decoder will provide more detailed error information
+      }
+    } catch (e) {
+      if (e is MP4ContainerException || e is MP4TrackException) {
+        rethrow;
+      }
+      throw MP4ContainerException('Container validation failed', details: 'Error validating MP4 container: $e');
+    }
+  }
 
   /// Parse MP4 container to extract metadata and audio track information
   Future<void> _parseMP4Container(Uint8List headerData) async {

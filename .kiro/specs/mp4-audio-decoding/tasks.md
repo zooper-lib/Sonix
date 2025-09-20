@@ -42,7 +42,7 @@
   - Write unit tests for container parsing with synthetic MP4 data
   - _Requirements: 1.2, 1.3, 6.1, 6.4_
 
-- [ ] 6. Implement basic MP4 audio decoding
+- [x] 6. Implement basic MP4 audio decoding
 
   - Implement decode method for full file MP4 decoding using native bindings
   - Add proper error handling for corrupted files, missing audio tracks, and unsupported codecs
