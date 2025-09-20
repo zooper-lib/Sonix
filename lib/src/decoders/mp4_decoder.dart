@@ -1,14 +1,15 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:math' as math;
+import 'package:meta/meta.dart';
 
-import '../models/audio_data.dart';
-import '../models/file_chunk.dart';
-import '../models/chunked_processing_models.dart';
-import '../models/mp4_models.dart';
-import '../exceptions/sonix_exceptions.dart';
-import '../exceptions/mp4_exceptions.dart';
-import '../native/native_audio_bindings.dart';
+import 'package:sonix/src/models/audio_data.dart';
+import 'package:sonix/src/models/file_chunk.dart';
+import 'package:sonix/src/models/chunked_processing_models.dart';
+import 'package:sonix/src/models/mp4_models.dart';
+import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/exceptions/mp4_exceptions.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
 import 'audio_decoder.dart';
 import 'chunked_audio_decoder.dart';
 
@@ -375,7 +376,8 @@ class MP4Decoder implements ChunkedAudioDecoder {
         await _parseMP4Container(Uint8List.fromList(headerData));
         return _totalDuration;
       } catch (e) {
-        return null;
+        // Fall back to file size estimation
+        return _estimateDurationFromFileSize();
       }
     }
 
@@ -384,6 +386,18 @@ class MP4Decoder implements ChunkedAudioDecoder {
 
   @override
   bool get isInitialized => _initialized;
+
+  /// Get sample offsets for testing
+  @visibleForTesting
+  List<int> get sampleOffsets => List.unmodifiable(_sampleOffsets);
+
+  /// Get sample timestamps for testing
+  @visibleForTesting
+  List<Duration> get sampleTimestamps => List.unmodifiable(_sampleTimestamps);
+
+  /// Set sample rate for testing
+  @visibleForTesting
+  set sampleRate(int value) => _sampleRate = value;
 
   @override
   Future<void> cleanupChunkedProcessing() async {
@@ -407,45 +421,38 @@ class MP4Decoder implements ChunkedAudioDecoder {
   /// Parse MP4 container to extract metadata and audio track information
   Future<void> _parseMP4Container(Uint8List headerData) async {
     try {
-      // This is a placeholder implementation
-      // In a real implementation, this would parse MP4 boxes (ftyp, moov, trak, mdia, etc.)
-      // For now, we'll use conservative defaults and try to extract basic info
+      // Parse MP4 boxes to extract container metadata
+      final containerMetadata = parseMP4Boxes(headerData);
 
-      // Try to decode a small portion to get basic audio parameters
-      try {
-        final audioData = NativeAudioBindings.decodeAudio(headerData, AudioFormat.mp4);
-        _sampleRate = audioData.sampleRate;
-        _channels = audioData.channels;
-
-        // Create basic container info with estimated values
-        _containerInfo = MP4ContainerInfo(
-          duration: audioData.duration ?? Duration.zero,
-          bitrate: 128000, // Default AAC bitrate estimate
-          maxBitrate: 160000, // Conservative max bitrate
-          codecName: 'AAC',
-          audioTrackId: 1,
-          sampleTable: [], // Will be populated by _buildSampleIndex
-        );
-
-        _totalDuration = _containerInfo!.duration;
-        _bitrate = _containerInfo!.bitrate;
-      } catch (e) {
-        // If header decoding fails, use conservative defaults
-        _sampleRate = 44100;
-        _channels = 2;
-        _bitrate = 128000;
-        _totalDuration = _estimateDurationFromFileSize();
-
-        _containerInfo = MP4ContainerInfo(
-          duration: _totalDuration ?? Duration.zero,
-          bitrate: _bitrate,
-          maxBitrate: _bitrate,
-          codecName: 'AAC',
-          audioTrackId: 1,
-          sampleTable: [],
-        );
+      // Extract audio track information
+      final audioTrack = findAudioTrack(containerMetadata);
+      if (audioTrack == null) {
+        throw MP4TrackException('No audio track found in MP4 container');
       }
+
+      // Extract basic audio parameters
+      _sampleRate = audioTrack['sampleRate'] as int? ?? 44100;
+      _channels = audioTrack['channels'] as int? ?? 2;
+      _bitrate = audioTrack['bitrate'] as int? ?? 128000;
+
+      // Calculate duration from track metadata
+      final trackDuration = audioTrack['duration'] as int? ?? 0;
+      final timeScale = audioTrack['timeScale'] as int? ?? 1000;
+      _totalDuration = Duration(milliseconds: (trackDuration * 1000 / timeScale).round());
+
+      // Create container info
+      _containerInfo = MP4ContainerInfo(
+        duration: _totalDuration ?? Duration.zero,
+        bitrate: _bitrate,
+        maxBitrate: audioTrack['maxBitrate'] as int? ?? _bitrate,
+        codecName: audioTrack['codecName'] as String? ?? 'AAC',
+        audioTrackId: audioTrack['trackId'] as int? ?? 1,
+        sampleTable: [], // Will be populated by _buildSampleIndex
+      );
     } catch (e) {
+      if (e is MP4ContainerException || e is MP4TrackException) {
+        rethrow;
+      }
       throw MP4ContainerException('Failed to parse MP4 container', details: e.toString());
     }
   }
@@ -456,31 +463,24 @@ class MP4Decoder implements ChunkedAudioDecoder {
     _sampleTimestamps.clear();
 
     try {
-      // This is a simplified implementation
-      // In a real implementation, this would parse the sample table (stts, stsc, stco, stsz boxes)
-      // For now, we'll create an estimated sample index based on typical AAC frame characteristics
-
+      // Read more header data to get complete sample table information
       final file = File(filePath);
       final fileSize = await file.length();
 
-      const avgFrameSize = 768; // Typical AAC frame size
-      const samplesPerFrame = 1024; // AAC frame contains 1024 samples
+      // Read larger portion for complete moov box
+      final headerSize = math.min(1024 * 1024, fileSize); // Read up to 1MB for moov box
+      final headerData = await file.openRead(0, headerSize).expand((chunk) => chunk).toList();
 
-      int offset = 0;
-      int frameIndex = 0;
+      // Parse container to get sample table information
+      final containerMetadata = parseMP4Boxes(Uint8List.fromList(headerData));
+      final audioTrack = findAudioTrack(containerMetadata);
 
-      // Skip container header (estimated)
-      offset = math.min(32 * 1024, fileSize ~/ 10); // Skip first 32KB or 10% of file
-
-      while (offset < fileSize - avgFrameSize) {
-        _sampleOffsets.add(offset);
-
-        // Calculate timestamp for this frame
-        final timestamp = Duration(milliseconds: (frameIndex * samplesPerFrame * 1000 / _sampleRate).round());
-        _sampleTimestamps.add(timestamp);
-
-        offset += avgFrameSize;
-        frameIndex++;
+      if (audioTrack != null && audioTrack.containsKey('sampleSizes') && audioTrack.containsKey('chunkOffsets')) {
+        // Use actual sample table data
+        buildSampleIndexFromTables(audioTrack);
+      } else {
+        // Fall back to estimated sample index
+        buildEstimatedSampleIndex(fileSize);
       }
 
       // Update container info with sample table
@@ -490,7 +490,7 @@ class MP4Decoder implements ChunkedAudioDecoder {
           sampleTable.add(
             MP4SampleInfo(
               offset: _sampleOffsets[i],
-              size: avgFrameSize,
+              size: i + 1 < _sampleOffsets.length ? _sampleOffsets[i + 1] - _sampleOffsets[i] : 768,
               timestamp: _sampleTimestamps[i],
               isKeyframe: true, // Most AAC frames are keyframes
             ),
@@ -511,6 +511,88 @@ class MP4Decoder implements ChunkedAudioDecoder {
     }
   }
 
+  /// Build sample index from parsed MP4 sample tables
+  @visibleForTesting
+  void buildSampleIndexFromTables(Map<String, dynamic> audioTrack) {
+    final sampleSizes = audioTrack['sampleSizes'] as List<int>? ?? [];
+    final chunkOffsets = audioTrack['chunkOffsets'] as List<int>? ?? [];
+    final sampleToChunk = audioTrack['sampleToChunk'] as List<Map<String, int>>? ?? [];
+    final sampleTimes = audioTrack['sampleTimes'] as List<Map<String, int>>? ?? [];
+
+    if (sampleSizes.isEmpty || chunkOffsets.isEmpty) {
+      throw MP4TrackException('Invalid sample table data');
+    }
+
+    // Build sample offsets from chunk offsets and sample-to-chunk mapping
+    int sampleIndex = 0;
+    int currentTime = 0;
+    final timeScale = audioTrack['timeScale'] as int? ?? 1000;
+
+    // Process sample timing information
+    final sampleDurations = <int>[];
+    for (final timeEntry in sampleTimes) {
+      final sampleCount = timeEntry['sampleCount'] ?? 0;
+      final sampleDelta = timeEntry['sampleDelta'] ?? 0;
+
+      for (int i = 0; i < sampleCount; i++) {
+        sampleDurations.add(sampleDelta);
+      }
+    }
+
+    // Process chunks and samples
+    for (int chunkIndex = 0; chunkIndex < chunkOffsets.length; chunkIndex++) {
+      int samplesInChunk = 1; // Default to 1 sample per chunk
+
+      // Find samples per chunk for this chunk
+      for (final stscEntry in sampleToChunk) {
+        final firstChunk = (stscEntry['firstChunk'] ?? 1) - 1; // Convert to 0-based
+        if (chunkIndex >= firstChunk) {
+          samplesInChunk = stscEntry['samplesPerChunk'] ?? 1;
+        }
+      }
+
+      int chunkOffset = chunkOffsets[chunkIndex];
+
+      // Add samples for this chunk
+      for (int sampleInChunk = 0; sampleInChunk < samplesInChunk && sampleIndex < sampleSizes.length; sampleInChunk++) {
+        _sampleOffsets.add(chunkOffset);
+
+        // Calculate timestamp
+        final duration = sampleIndex < sampleDurations.length ? sampleDurations[sampleIndex] : 1024;
+        final timestamp = Duration(milliseconds: (currentTime * 1000 / timeScale).round());
+        _sampleTimestamps.add(timestamp);
+
+        chunkOffset += sampleSizes[sampleIndex];
+        currentTime += duration;
+        sampleIndex++;
+      }
+    }
+  }
+
+  /// Build estimated sample index when sample table parsing fails
+  @visibleForTesting
+  void buildEstimatedSampleIndex(int fileSize) {
+    const avgFrameSize = 768; // Typical AAC frame size
+    const samplesPerFrame = 1024; // AAC frame contains 1024 samples
+
+    int offset = 0;
+    int frameIndex = 0;
+
+    // Skip container header (estimated)
+    offset = math.min(32 * 1024, fileSize ~/ 10); // Skip first 32KB or 10% of file
+
+    while (offset < fileSize - avgFrameSize) {
+      _sampleOffsets.add(offset);
+
+      // Calculate timestamp for this frame
+      final timestamp = Duration(milliseconds: (frameIndex * samplesPerFrame * 1000 / _sampleRate).round());
+      _sampleTimestamps.add(timestamp);
+
+      offset += avgFrameSize;
+      frameIndex++;
+    }
+  }
+
   /// Estimate duration from file size and audio format parameters
   Duration _estimateDurationFromFileSize() {
     if (_currentFilePath == null) return Duration.zero;
@@ -526,5 +608,652 @@ class MP4Decoder implements ChunkedAudioDecoder {
     } catch (e) {
       return Duration.zero;
     }
+  }
+
+  /// Parse MP4 boxes from header data to extract container metadata
+  @visibleForTesting
+  Map<String, dynamic> parseMP4Boxes(Uint8List data) {
+    final metadata = <String, dynamic>{};
+    int offset = 0;
+
+    try {
+      while (offset < data.length - 8) {
+        final box = _parseMP4Box(data, offset);
+        if (box == null) break;
+
+        final boxType = box['type'] as String;
+        final boxSize = box['size'] as int;
+        final boxData = box['data'] as Uint8List?;
+
+        switch (boxType) {
+          case 'ftyp':
+            metadata['fileType'] = parseFtypBox(boxData);
+            break;
+          case 'moov':
+            if (boxData != null) {
+              metadata.addAll(_parseMoovBox(boxData));
+            }
+            break;
+          case 'mdat':
+            metadata['mdatOffset'] = offset + 8;
+            metadata['mdatSize'] = boxSize - 8;
+            break;
+        }
+
+        offset += boxSize;
+        if (boxSize <= 8) break; // Prevent infinite loop
+      }
+    } catch (e) {
+      throw MP4ContainerException('Error parsing MP4 boxes', details: e.toString());
+    }
+
+    return metadata;
+  }
+
+  /// Parse a single MP4 box header and data
+  Map<String, dynamic>? _parseMP4Box(Uint8List data, int offset) {
+    if (offset + 8 > data.length) return null;
+
+    try {
+      // Read box size (4 bytes, big-endian)
+      final size = readUint32BE(data, offset);
+      if (size < 8 || offset + size > data.length) return null;
+
+      // Read box type (4 bytes ASCII)
+      final typeBytes = data.sublist(offset + 4, offset + 8);
+      final type = String.fromCharCodes(typeBytes);
+
+      // Extract box data (excluding header)
+      Uint8List? boxData;
+      if (size > 8) {
+        boxData = data.sublist(offset + 8, offset + size);
+      }
+
+      return {'type': type, 'size': size, 'data': boxData};
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Parse ftyp box to get file type information
+  @visibleForTesting
+  Map<String, dynamic> parseFtypBox(Uint8List? data) {
+    if (data == null || data.length < 8) {
+      return {'majorBrand': 'unknown', 'minorVersion': 0, 'compatibleBrands': <String>[]};
+    }
+
+    try {
+      final majorBrand = String.fromCharCodes(data.sublist(0, 4));
+      final minorVersion = readUint32BE(data, 4);
+
+      final compatibleBrands = <String>[];
+      for (int i = 8; i + 4 <= data.length; i += 4) {
+        final brand = String.fromCharCodes(data.sublist(i, i + 4));
+        compatibleBrands.add(brand);
+      }
+
+      return {'majorBrand': majorBrand, 'minorVersion': minorVersion, 'compatibleBrands': compatibleBrands};
+    } catch (e) {
+      return {'majorBrand': 'unknown', 'minorVersion': 0, 'compatibleBrands': <String>[]};
+    }
+  }
+
+  /// Parse moov box to extract movie metadata
+  Map<String, dynamic> _parseMoovBox(Uint8List data) {
+    final metadata = <String, dynamic>{};
+    int offset = 0;
+
+    try {
+      while (offset < data.length - 8) {
+        final box = _parseMP4Box(data, offset);
+        if (box == null) break;
+
+        final boxType = box['type'] as String;
+        final boxSize = box['size'] as int;
+        final boxData = box['data'] as Uint8List?;
+
+        switch (boxType) {
+          case 'mvhd':
+            if (boxData != null) {
+              metadata.addAll(parseMvhdBox(boxData));
+            }
+            break;
+          case 'trak':
+            if (boxData != null) {
+              final trackInfo = _parseTrakBox(boxData);
+              if (trackInfo['mediaType'] == 'soun') {
+                metadata['audioTrack'] = trackInfo;
+              }
+            }
+            break;
+        }
+
+        offset += boxSize;
+        if (boxSize <= 8) break;
+      }
+    } catch (e) {
+      throw MP4ContainerException('Error parsing moov box', details: e.toString());
+    }
+
+    return metadata;
+  }
+
+  /// Parse mvhd box to get movie header information
+  @visibleForTesting
+  Map<String, dynamic> parseMvhdBox(Uint8List data) {
+    if (data.length < 20) return {};
+
+    try {
+      final version = data[0];
+      int offset = 4; // Skip version and flags
+
+      // Skip creation and modification times
+      if (version == 1) {
+        offset += 16; // 64-bit timestamps
+      } else {
+        offset += 8; // 32-bit timestamps
+      }
+
+      if (offset + 8 > data.length) return {};
+
+      final timeScale = readUint32BE(data, offset);
+      offset += 4;
+
+      int duration;
+      if (version == 1) {
+        if (offset + 8 > data.length) return {};
+        duration = readUint64BE(data, offset);
+      } else {
+        if (offset + 4 > data.length) return {};
+        duration = readUint32BE(data, offset);
+      }
+
+      return {'timeScale': timeScale, 'duration': duration};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /// Parse trak box to extract track information
+  Map<String, dynamic> _parseTrakBox(Uint8List data) {
+    final trackInfo = <String, dynamic>{};
+    int offset = 0;
+
+    try {
+      while (offset < data.length - 8) {
+        final box = _parseMP4Box(data, offset);
+        if (box == null) break;
+
+        final boxType = box['type'] as String;
+        final boxSize = box['size'] as int;
+        final boxData = box['data'] as Uint8List?;
+
+        switch (boxType) {
+          case 'tkhd':
+            if (boxData != null) {
+              trackInfo.addAll(_parseTkhdBox(boxData));
+            }
+            break;
+          case 'mdia':
+            if (boxData != null) {
+              trackInfo.addAll(_parseMdiaBox(boxData));
+            }
+            break;
+        }
+
+        offset += boxSize;
+        if (boxSize <= 8) break;
+      }
+    } catch (e) {
+      // Return partial track info if parsing fails
+    }
+
+    return trackInfo;
+  }
+
+  /// Parse tkhd box to get track header information
+  Map<String, dynamic> _parseTkhdBox(Uint8List data) {
+    if (data.length < 20) return {};
+
+    try {
+      final version = data[0];
+      int offset = 4; // Skip version and flags
+
+      // Skip creation and modification times
+      if (version == 1) {
+        offset += 16; // 64-bit timestamps
+      } else {
+        offset += 8; // 32-bit timestamps
+      }
+
+      if (offset + 4 > data.length) return {};
+
+      final trackId = readUint32BE(data, offset);
+      offset += 4;
+
+      // Skip reserved field
+      offset += 4;
+
+      int duration;
+      if (version == 1) {
+        if (offset + 8 > data.length) return {};
+        duration = readUint64BE(data, offset);
+      } else {
+        if (offset + 4 > data.length) return {};
+        duration = readUint32BE(data, offset);
+      }
+
+      return {'trackId': trackId, 'duration': duration};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /// Parse mdia box to extract media information
+  Map<String, dynamic> _parseMdiaBox(Uint8List data) {
+    final mediaInfo = <String, dynamic>{};
+    int offset = 0;
+
+    try {
+      while (offset < data.length - 8) {
+        final box = _parseMP4Box(data, offset);
+        if (box == null) break;
+
+        final boxType = box['type'] as String;
+        final boxSize = box['size'] as int;
+        final boxData = box['data'] as Uint8List?;
+
+        switch (boxType) {
+          case 'mdhd':
+            if (boxData != null) {
+              mediaInfo.addAll(_parseMdhdBox(boxData));
+            }
+            break;
+          case 'hdlr':
+            if (boxData != null) {
+              mediaInfo.addAll(_parseHdlrBox(boxData));
+            }
+            break;
+          case 'minf':
+            if (boxData != null) {
+              mediaInfo.addAll(_parseMinfBox(boxData));
+            }
+            break;
+        }
+
+        offset += boxSize;
+        if (boxSize <= 8) break;
+      }
+    } catch (e) {
+      // Return partial media info if parsing fails
+    }
+
+    return mediaInfo;
+  }
+
+  /// Parse mdhd box to get media header information
+  Map<String, dynamic> _parseMdhdBox(Uint8List data) {
+    if (data.length < 20) return {};
+
+    try {
+      final version = data[0];
+      int offset = 4; // Skip version and flags
+
+      // Skip creation and modification times
+      if (version == 1) {
+        offset += 16; // 64-bit timestamps
+      } else {
+        offset += 8; // 32-bit timestamps
+      }
+
+      if (offset + 8 > data.length) return {};
+
+      final timeScale = readUint32BE(data, offset);
+      offset += 4;
+
+      int duration;
+      if (version == 1) {
+        if (offset + 8 > data.length) return {};
+        duration = readUint64BE(data, offset);
+      } else {
+        if (offset + 4 > data.length) return {};
+        duration = readUint32BE(data, offset);
+      }
+
+      return {'timeScale': timeScale, 'duration': duration};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /// Parse hdlr box to get handler information
+  Map<String, dynamic> _parseHdlrBox(Uint8List data) {
+    if (data.length < 20) return {};
+
+    try {
+      int offset = 4; // Skip version and flags
+      offset += 4; // Skip pre_defined
+
+      if (offset + 4 > data.length) return {};
+
+      final handlerType = String.fromCharCodes(data.sublist(offset, offset + 4));
+
+      return {'mediaType': handlerType};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /// Parse minf box to extract media information
+  Map<String, dynamic> _parseMinfBox(Uint8List data) {
+    final minfInfo = <String, dynamic>{};
+    int offset = 0;
+
+    try {
+      while (offset < data.length - 8) {
+        final box = _parseMP4Box(data, offset);
+        if (box == null) break;
+
+        final boxType = box['type'] as String;
+        final boxSize = box['size'] as int;
+        final boxData = box['data'] as Uint8List?;
+
+        switch (boxType) {
+          case 'stbl':
+            if (boxData != null) {
+              minfInfo.addAll(_parseStblBox(boxData));
+            }
+            break;
+        }
+
+        offset += boxSize;
+        if (boxSize <= 8) break;
+      }
+    } catch (e) {
+      // Return partial minf info if parsing fails
+    }
+
+    return minfInfo;
+  }
+
+  /// Parse stbl box to extract sample table information
+  Map<String, dynamic> _parseStblBox(Uint8List data) {
+    final stblInfo = <String, dynamic>{};
+    int offset = 0;
+
+    try {
+      while (offset < data.length - 8) {
+        final box = _parseMP4Box(data, offset);
+        if (box == null) break;
+
+        final boxType = box['type'] as String;
+        final boxSize = box['size'] as int;
+        final boxData = box['data'] as Uint8List?;
+
+        switch (boxType) {
+          case 'stsd':
+            if (boxData != null) {
+              stblInfo.addAll(parseStsdBox(boxData));
+            }
+            break;
+          case 'stts':
+            if (boxData != null) {
+              stblInfo['sampleTimes'] = parseSttsBox(boxData);
+            }
+            break;
+          case 'stsc':
+            if (boxData != null) {
+              stblInfo['sampleToChunk'] = _parseStscBox(boxData);
+            }
+            break;
+          case 'stsz':
+            if (boxData != null) {
+              stblInfo['sampleSizes'] = parseStszBox(boxData);
+            }
+            break;
+          case 'stco':
+            if (boxData != null) {
+              stblInfo['chunkOffsets'] = parseStcoBox(boxData);
+            }
+            break;
+        }
+
+        offset += boxSize;
+        if (boxSize <= 8) break;
+      }
+    } catch (e) {
+      // Return partial stbl info if parsing fails
+    }
+
+    return stblInfo;
+  }
+
+  /// Parse stsd box to get sample description
+  @visibleForTesting
+  Map<String, dynamic> parseStsdBox(Uint8List data) {
+    if (data.length < 8) return {};
+
+    try {
+      int offset = 4; // Skip version and flags
+
+      if (offset + 4 > data.length) return {};
+      final entryCount = readUint32BE(data, offset);
+      offset += 4;
+
+      if (entryCount > 0 && offset + 8 <= data.length) {
+        // Read first sample description
+        readUint32BE(data, offset); // Sample description size (not used)
+        offset += 4;
+
+        if (offset + 4 <= data.length) {
+          final format = String.fromCharCodes(data.sublist(offset, offset + 4));
+          offset += 4;
+
+          // For audio samples, extract additional info
+          if (format == 'mp4a' && offset + 18 <= data.length) {
+            offset += 6; // Skip reserved
+            final channelCount = readUint16BE(data, offset);
+            offset += 2;
+            final sampleSize = readUint16BE(data, offset);
+            offset += 2;
+            offset += 4; // Skip pre_defined and reserved
+            final sampleRate = readUint32BE(data, offset) >> 16; // Fixed-point 16.16
+
+            return {'codecName': 'AAC', 'channels': channelCount, 'sampleSize': sampleSize, 'sampleRate': sampleRate};
+          }
+
+          return {'codecName': format};
+        }
+      }
+    } catch (e) {
+      // Return empty if parsing fails
+    }
+
+    return {};
+  }
+
+  /// Parse stts box to get sample timing information
+  @visibleForTesting
+  List<Map<String, int>> parseSttsBox(Uint8List data) {
+    final entries = <Map<String, int>>[];
+
+    if (data.length < 8) return entries;
+
+    try {
+      int offset = 4; // Skip version and flags
+
+      if (offset + 4 > data.length) return entries;
+      final entryCount = readUint32BE(data, offset);
+      offset += 4;
+
+      for (int i = 0; i < entryCount && offset + 8 <= data.length; i++) {
+        final sampleCount = readUint32BE(data, offset);
+        offset += 4;
+        final sampleDelta = readUint32BE(data, offset);
+        offset += 4;
+
+        entries.add({'sampleCount': sampleCount, 'sampleDelta': sampleDelta});
+      }
+    } catch (e) {
+      // Return partial entries if parsing fails
+    }
+
+    return entries;
+  }
+
+  /// Parse stsc box to get sample-to-chunk mapping
+  List<Map<String, int>> _parseStscBox(Uint8List data) {
+    final entries = <Map<String, int>>[];
+
+    if (data.length < 8) return entries;
+
+    try {
+      int offset = 4; // Skip version and flags
+
+      if (offset + 4 > data.length) return entries;
+      final entryCount = readUint32BE(data, offset);
+      offset += 4;
+
+      for (int i = 0; i < entryCount && offset + 12 <= data.length; i++) {
+        final firstChunk = readUint32BE(data, offset);
+        offset += 4;
+        final samplesPerChunk = readUint32BE(data, offset);
+        offset += 4;
+        final sampleDescriptionIndex = readUint32BE(data, offset);
+        offset += 4;
+
+        entries.add({'firstChunk': firstChunk, 'samplesPerChunk': samplesPerChunk, 'sampleDescriptionIndex': sampleDescriptionIndex});
+      }
+    } catch (e) {
+      // Return partial entries if parsing fails
+    }
+
+    return entries;
+  }
+
+  /// Parse stsz box to get sample sizes
+  @visibleForTesting
+  List<int> parseStszBox(Uint8List data) {
+    final sizes = <int>[];
+
+    if (data.length < 12) return sizes;
+
+    try {
+      int offset = 4; // Skip version and flags
+
+      final sampleSize = readUint32BE(data, offset);
+      offset += 4;
+      final sampleCount = readUint32BE(data, offset);
+      offset += 4;
+
+      if (sampleSize != 0) {
+        // All samples have the same size
+        for (int i = 0; i < sampleCount; i++) {
+          sizes.add(sampleSize);
+        }
+      } else {
+        // Individual sample sizes
+        for (int i = 0; i < sampleCount && offset + 4 <= data.length; i++) {
+          final size = readUint32BE(data, offset);
+          offset += 4;
+          sizes.add(size);
+        }
+      }
+    } catch (e) {
+      // Return partial sizes if parsing fails
+    }
+
+    return sizes;
+  }
+
+  /// Parse stco box to get chunk offsets
+  @visibleForTesting
+  List<int> parseStcoBox(Uint8List data) {
+    final offsets = <int>[];
+
+    if (data.length < 8) return offsets;
+
+    try {
+      int offset = 4; // Skip version and flags
+
+      if (offset + 4 > data.length) return offsets;
+      final entryCount = readUint32BE(data, offset);
+      offset += 4;
+
+      for (int i = 0; i < entryCount && offset + 4 <= data.length; i++) {
+        final chunkOffset = readUint32BE(data, offset);
+        offset += 4;
+        offsets.add(chunkOffset);
+      }
+    } catch (e) {
+      // Return partial offsets if parsing fails
+    }
+
+    return offsets;
+  }
+
+  /// Find audio track from parsed container metadata
+  @visibleForTesting
+  Map<String, dynamic>? findAudioTrack(Map<String, dynamic> metadata) {
+    final audioTrack = metadata['audioTrack'] as Map<String, dynamic>?;
+    if (audioTrack == null) return null;
+
+    // Merge movie-level and track-level information
+    final movieTimeScale = metadata['timeScale'] as int? ?? 1000;
+    final movieDuration = metadata['duration'] as int? ?? 0;
+
+    final result = Map<String, dynamic>.from(audioTrack);
+
+    // Use track duration if available, otherwise use movie duration
+    if (!result.containsKey('duration') || result['duration'] == 0) {
+      result['duration'] = movieDuration;
+      result['timeScale'] = movieTimeScale;
+    }
+
+    // Estimate bitrate if not available
+    if (!result.containsKey('bitrate')) {
+      final sampleRate = result['sampleRate'] as int? ?? 44100;
+      final channels = result['channels'] as int? ?? 2;
+      result['bitrate'] = estimateBitrate(sampleRate, channels);
+      result['maxBitrate'] = result['bitrate'];
+    }
+
+    return result;
+  }
+
+  /// Estimate bitrate based on sample rate and channels
+  @visibleForTesting
+  int estimateBitrate(int sampleRate, int channels) {
+    // Conservative AAC bitrate estimation
+    if (sampleRate >= 44100) {
+      return channels == 1 ? 96000 : 128000; // 96kbps mono, 128kbps stereo
+    } else if (sampleRate >= 22050) {
+      return channels == 1 ? 64000 : 96000; // 64kbps mono, 96kbps stereo
+    } else {
+      return channels == 1 ? 32000 : 64000; // 32kbps mono, 64kbps stereo
+    }
+  }
+
+  /// Read 32-bit big-endian unsigned integer
+  @visibleForTesting
+  int readUint32BE(Uint8List data, int offset) {
+    if (offset + 4 > data.length) throw RangeError('Offset out of bounds');
+    return (data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3];
+  }
+
+  /// Read 64-bit big-endian unsigned integer
+  @visibleForTesting
+  int readUint64BE(Uint8List data, int offset) {
+    if (offset + 8 > data.length) throw RangeError('Offset out of bounds');
+    final high = readUint32BE(data, offset);
+    final low = readUint32BE(data, offset + 4);
+    return (high << 32) | low;
+  }
+
+  /// Read 16-bit big-endian unsigned integer
+  @visibleForTesting
+  int readUint16BE(Uint8List data, int offset) {
+    if (offset + 2 > data.length) throw RangeError('Offset out of bounds');
+    return (data[offset] << 8) | data[offset + 1];
   }
 }

@@ -2,13 +2,11 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../lib/src/decoders/mp4_decoder.dart';
-import '../../lib/src/decoders/audio_decoder.dart';
-import '../../lib/src/decoders/chunked_audio_decoder.dart';
-import '../../lib/src/exceptions/sonix_exceptions.dart';
-import '../../lib/src/exceptions/mp4_exceptions.dart';
-import '../../lib/src/models/file_chunk.dart';
-import '../../lib/src/models/chunked_processing_models.dart';
+import 'package:sonix/src/decoders/mp4_decoder.dart';
+import 'package:sonix/src/decoders/audio_decoder.dart';
+import 'package:sonix/src/decoders/chunked_audio_decoder.dart';
+import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/models/file_chunk.dart';
 
 void main() {
   group('MP4Decoder', () {
