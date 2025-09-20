@@ -26,6 +26,13 @@ const int SONIX_ERROR_MP4_CONTAINER_INVALID = -10;
 const int SONIX_ERROR_MP4_NO_AUDIO_TRACK = -11;
 const int SONIX_ERROR_MP4_UNSUPPORTED_CODEC = -12;
 
+/// FFMPEG-specific error codes
+const int SONIX_ERROR_FFMPEG_INIT_FAILED = -20;
+const int SONIX_ERROR_FFMPEG_PROBE_FAILED = -21;
+const int SONIX_ERROR_FFMPEG_CODEC_NOT_FOUND = -22;
+const int SONIX_ERROR_FFMPEG_DECODE_FAILED = -23;
+const int SONIX_ERROR_FFMPEG_NOT_AVAILABLE = -100;
+
 /// Native audio data structure
 final class SonixAudioData extends ffi.Struct {
   external ffi.Pointer<ffi.Float> samples;

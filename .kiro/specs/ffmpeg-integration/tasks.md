@@ -2,7 +2,6 @@
 
 - [x] 1. Create FFMPEG build automation infrastructure
 
-
   - Create main setup script that orchestrates the entire FFMPEG build process
   - Implement platform detection and validation utilities
   - Create base classes for platform-specific builders
@@ -32,14 +31,15 @@
   - Create build verification and testing functions
   - _Requirements: 2.1, 2.2, 2.3, 3.4, 3.5_
 
-- [ ] 2. Create FFMPEG native wrapper layer
+- [x] 2. Create FFMPEG native wrapper layer
+
 
   - Write new C wrapper that integrates FFMPEG libraries
   - Implement FFMPEG initialization and cleanup functions
   - Create format detection using FFMPEG's probing capabilities
   - _Requirements: 1.1, 1.2, 1.3, 5.1, 5.2_
 
-- [ ] 2.1 Implement core FFMPEG audio decoding functions
+- [x] 2.1 Implement core FFMPEG audio decoding functions
 
   - Write FFMPEG-based audio decoding that replaces current decoders
   - Implement memory management for FFMPEG contexts and buffers
@@ -47,7 +47,7 @@
   - Add comprehensive error handling and FFMPEG error translation
   - _Requirements: 1.1, 1.2, 1.3, 5.3, 5.4_
 
-- [ ] 2.2 Implement FFMPEG chunked processing
+- [x] 2.2 Implement FFMPEG chunked processing
 
   - Create chunked decoder initialization using FFMPEG
   - Implement file chunk processing with FFMPEG demuxing
@@ -55,7 +55,7 @@
   - Add proper resource cleanup for chunked processing
   - _Requirements: 1.1, 1.2, 1.3, 5.3, 5.4_
 
-- [ ] 2.3 Update native build system for FFMPEG integration
+- [x] 2.3 Update native build system for FFMPEG integration
 
   - Modify CMakeLists.txt to link FFMPEG libraries instead of current decoders
   - Remove old decoder library includes and dependencies

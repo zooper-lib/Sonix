@@ -122,6 +122,24 @@ class NativeAudioBindings {
     }
   }
 
+  /// Get formatted error message for FFMPEG-specific error codes
+  static String getFFMPEGErrorMessage(int errorCode) {
+    switch (errorCode) {
+      case SONIX_ERROR_FFMPEG_INIT_FAILED:
+        return 'Failed to initialize FFMPEG libraries. Please check FFMPEG installation.';
+      case SONIX_ERROR_FFMPEG_PROBE_FAILED:
+        return 'FFMPEG failed to probe the audio format. The file may be corrupted or unsupported.';
+      case SONIX_ERROR_FFMPEG_CODEC_NOT_FOUND:
+        return 'FFMPEG codec not found for this audio format. The codec may not be available in this build.';
+      case SONIX_ERROR_FFMPEG_DECODE_FAILED:
+        return 'FFMPEG failed to decode the audio data. The file may be corrupted or use an unsupported variant.';
+      case SONIX_ERROR_FFMPEG_NOT_AVAILABLE:
+        return 'FFMPEG libraries are not available. Please run the setup script to build FFMPEG libraries.';
+      default:
+        return _getLastErrorMessage();
+    }
+  }
+
   /// Convert native audio data to Dart AudioData
   static AudioData _convertNativeAudioData(SonixAudioData nativeData) {
     if (nativeData.samples == ffi.nullptr || nativeData.sample_count == 0) {
