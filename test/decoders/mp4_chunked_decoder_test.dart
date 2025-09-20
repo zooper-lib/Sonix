@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/mp4_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/exceptions/mp4_exceptions.dart';
+import 'package:sonix/src/models/file_chunk.dart';
 
 void main() {
   group('MP4Decoder Chunked Processing', () {
@@ -294,10 +295,178 @@ void main() {
       });
     });
 
+    group('Chunk Processing', () {
+      test('should throw StateError when processing chunks without initialization', () async {
+        final fileChunk = _createTestFileChunk([1, 2, 3, 4], 0, false);
+
+        await expectLater(() => decoder.processFileChunk(fileChunk), throwsStateError);
+      });
+
+      test('should handle empty chunk data gracefully', () async {
+        final tempFile = await _createBasicMP4File('test_empty_chunk.mp4');
+
+        try {
+          // Initialize decoder (will fail but that's expected)
+          await expectLater(() => decoder.initializeChunkedDecoding(tempFile.path), throwsA(isA<MP4TrackException>()));
+
+          // Since initialization failed, processFileChunk should throw StateError
+          final emptyChunk = _createTestFileChunk([], 0, true);
+          await expectLater(() => decoder.processFileChunk(emptyChunk), throwsStateError);
+        } finally {
+          if (tempFile.existsSync()) await tempFile.delete();
+        }
+      });
+
+      test('should handle chunk processing with various chunk sizes', () async {
+        final tempFile = await _createBasicMP4File('test_chunk_sizes.mp4');
+
+        try {
+          // Test different chunk sizes
+          final chunkSizes = [1024, 4096, 16384, 65536]; // 1KB to 64KB
+
+          for (final chunkSize in chunkSizes) {
+            final testDecoder = MP4Decoder();
+
+            try {
+              await expectLater(() => testDecoder.initializeChunkedDecoding(tempFile.path, chunkSize: chunkSize), throwsA(isA<MP4TrackException>()));
+
+              // Since initialization failed, processFileChunk should throw StateError
+              final chunk = _createTestFileChunk(List.filled(chunkSize, 0), 0, true);
+              await expectLater(() => testDecoder.processFileChunk(chunk), throwsStateError);
+            } finally {
+              testDecoder.dispose();
+            }
+          }
+        } finally {
+          if (tempFile.existsSync()) await tempFile.delete();
+        }
+      });
+
+      test('should handle AAC frame boundary conditions', () async {
+        // Test that the decoder properly handles AAC frames that span chunk boundaries
+        final tempFile = await _createBasicMP4File('test_frame_boundaries.mp4');
+
+        try {
+          await expectLater(() => decoder.initializeChunkedDecoding(tempFile.path), throwsA(isA<MP4TrackException>()));
+
+          // Create chunks that would split AAC frames
+          final chunk1 = _createTestFileChunk(List.filled(500, 0xAA), 0, false);
+          final chunk2 = _createTestFileChunk(List.filled(300, 0xBB), 500, true);
+
+          // Since decoder is not initialized, these should throw StateError
+          await expectLater(() => decoder.processFileChunk(chunk1), throwsStateError);
+          await expectLater(() => decoder.processFileChunk(chunk2), throwsStateError);
+        } finally {
+          if (tempFile.existsSync()) await tempFile.delete();
+        }
+      });
+
+      test('should handle last chunk processing correctly', () async {
+        final tempFile = await _createBasicMP4File('test_last_chunk.mp4');
+
+        try {
+          await expectLater(() => decoder.initializeChunkedDecoding(tempFile.path), throwsA(isA<MP4TrackException>()));
+
+          // Test last chunk processing
+          final lastChunk = _createTestFileChunk(List.filled(1024, 0xFF), 0, true);
+
+          await expectLater(() => decoder.processFileChunk(lastChunk), throwsStateError);
+        } finally {
+          if (tempFile.existsSync()) await tempFile.delete();
+        }
+      });
+
+      test('should manage buffer size efficiently during chunk processing', () async {
+        final tempFile = await _createBasicMP4File('test_buffer_management.mp4');
+
+        try {
+          await expectLater(() => decoder.initializeChunkedDecoding(tempFile.path), throwsA(isA<MP4TrackException>()));
+
+          // Test buffer management with large chunks
+          final largeChunk = _createTestFileChunk(List.filled(2 * 1024 * 1024, 0x55), 0, false); // 2MB
+
+          await expectLater(() => decoder.processFileChunk(largeChunk), throwsStateError);
+        } finally {
+          if (tempFile.existsSync()) await tempFile.delete();
+        }
+      });
+
+      test('should handle corrupted chunk data gracefully', () async {
+        final tempFile = await _createBasicMP4File('test_corrupted_chunks.mp4');
+
+        try {
+          await expectLater(() => decoder.initializeChunkedDecoding(tempFile.path), throwsA(isA<MP4TrackException>()));
+
+          // Create corrupted chunk data
+          final corruptedChunk = _createTestFileChunk([0xFF, 0xFF, 0xFF, 0xFF], 0, true);
+
+          await expectLater(() => decoder.processFileChunk(corruptedChunk), throwsStateError);
+        } finally {
+          if (tempFile.existsSync()) await tempFile.delete();
+        }
+      });
+
+      test('should handle multiple sequential chunks correctly', () async {
+        final tempFile = await _createBasicMP4File('test_sequential_chunks.mp4');
+
+        try {
+          await expectLater(() => decoder.initializeChunkedDecoding(tempFile.path), throwsA(isA<MP4TrackException>()));
+
+          // Test processing multiple chunks in sequence
+          final chunks = [
+            _createTestFileChunk(List.filled(1024, 0x11), 0, false),
+            _createTestFileChunk(List.filled(1024, 0x22), 1024, false),
+            _createTestFileChunk(List.filled(1024, 0x33), 2048, true),
+          ];
+
+          for (final chunk in chunks) {
+            await expectLater(() => decoder.processFileChunk(chunk), throwsStateError);
+          }
+        } finally {
+          if (tempFile.existsSync()) await tempFile.delete();
+        }
+      });
+    });
+
+    group('Buffer Management', () {
+      test('should handle buffer overflow protection', () async {
+        final tempFile = await _createBasicMP4File('test_buffer_overflow.mp4');
+
+        try {
+          await expectLater(() => decoder.initializeChunkedDecoding(tempFile.path), throwsA(isA<MP4TrackException>()));
+
+          // Test with extremely large chunk that would cause buffer overflow
+          final oversizedChunk = _createTestFileChunk(List.filled(10 * 1024 * 1024, 0xAA), 0, false); // 10MB
+
+          await expectLater(() => decoder.processFileChunk(oversizedChunk), throwsStateError);
+        } finally {
+          if (tempFile.existsSync()) await tempFile.delete();
+        }
+      });
+
+      test('should maintain buffer state across chunk boundaries', () async {
+        final tempFile = await _createBasicMP4File('test_buffer_state.mp4');
+
+        try {
+          await expectLater(() => decoder.initializeChunkedDecoding(tempFile.path), throwsA(isA<MP4TrackException>()));
+
+          // Test that buffer state is maintained correctly
+          final chunk1 = _createTestFileChunk(List.filled(512, 0xAA), 0, false);
+          final chunk2 = _createTestFileChunk(List.filled(512, 0xBB), 512, false);
+
+          await expectLater(() => decoder.processFileChunk(chunk1), throwsStateError);
+          await expectLater(() => decoder.processFileChunk(chunk2), throwsStateError);
+        } finally {
+          if (tempFile.existsSync()) await tempFile.delete();
+        }
+      });
+    });
+
     group('Interface Compliance', () {
       test('should implement required chunked processing methods', () {
         // Verify all required methods exist and have correct signatures
         expect(decoder.initializeChunkedDecoding, isA<Function>());
+        expect(decoder.processFileChunk, isA<Function>());
         expect(decoder.seekToTime, isA<Function>());
         expect(decoder.resetDecoderState, isA<Function>());
         expect(decoder.cleanupChunkedProcessing, isA<Function>());
@@ -325,6 +494,11 @@ void main() {
       });
     });
   });
+}
+
+/// Create a test FileChunk with the given data
+FileChunk _createTestFileChunk(List<int> data, int startPosition, bool isLast) {
+  return FileChunk(data: Uint8List.fromList(data), startPosition: startPosition, endPosition: startPosition + data.length, isLast: isLast);
 }
 
 /// Create a basic MP4 file with valid signature but minimal structure

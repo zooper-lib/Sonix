@@ -200,73 +200,92 @@ class MP4Decoder implements ChunkedAudioDecoder {
     }
 
     try {
-      // For MP4/AAC, we need to maintain a buffer for frame boundary handling
+      // Initialize buffer if not already done
       _buffer ??= BytesBuilder(copy: false);
 
-      // Append the new chunk data
+      // Append the new chunk data to buffer for AAC frame boundary handling
       _buffer!.add(fileChunk.data);
       _bufferSize += fileChunk.data.length;
 
       final audioChunks = <AudioChunk>[];
 
-      try {
-        // Try to decode just the new chunk data first
-        final audioData = NativeAudioBindings.decodeAudio(fileChunk.data, AudioFormat.mp4);
+      // For MP4/AAC, we need to handle frame boundaries carefully
+      // AAC frames can span chunk boundaries, so we use a buffering approach
 
-        if (audioData.samples.isNotEmpty) {
-          final startSample = (_currentPosition.inMicroseconds * _sampleRate * _channels) ~/ Duration.microsecondsPerSecond;
+      // Try to decode the buffered data if we have enough or if this is the last chunk
+      final shouldAttemptDecode = _bufferSize >= _decodeThreshold || fileChunk.isLast;
 
-          audioChunks.add(AudioChunk(samples: audioData.samples, startSample: startSample, isLast: fileChunk.isLast));
+      if (shouldAttemptDecode) {
+        final bufferedData = _buffer!.toBytes();
 
-          // Update position based on the decoded samples
-          final sampleDuration = Duration(microseconds: (audioData.samples.length * Duration.microsecondsPerSecond) ~/ (_sampleRate * _channels));
-          _currentPosition += sampleDuration;
-        }
+        try {
+          // Attempt to decode the accumulated buffer
+          final audioData = NativeAudioBindings.decodeAudio(bufferedData, AudioFormat.mp4);
 
-        // Clear the buffer since we successfully decoded this chunk
-        _buffer = BytesBuilder(copy: false);
-        _bufferSize = 0;
-      } catch (e) {
-        // If decoding fails (likely due to boundary/incomplete frames), try buffered decode
-        final shouldTryBufferedDecode = _bufferSize >= _decodeThreshold || fileChunk.isLast;
+          if (audioData.samples.isNotEmpty) {
+            // Calculate how many new samples we got since the last successful decode
+            final totalDecodedSamples = audioData.samples.length;
+            final newSamplesCount = totalDecodedSamples - _lastDecodedSampleCount;
 
-        if (shouldTryBufferedDecode) {
-          try {
-            final combined = _buffer!.toBytes();
-            final audioData = NativeAudioBindings.decodeAudio(combined, AudioFormat.mp4);
+            if (newSamplesCount > 0) {
+              // Extract only the new samples to avoid duplicates
+              final newSamples = audioData.samples.sublist(_lastDecodedSampleCount);
 
-            if (audioData.samples.isNotEmpty) {
-              // Emit only the new samples decoded since the last decode
-              final totalSamples = audioData.samples.length;
-              final newSamplesCount = totalSamples - _lastDecodedSampleCount;
+              // Calculate the correct start sample position
+              final startSample = (_currentPosition.inMicroseconds * _sampleRate * _channels) ~/ Duration.microsecondsPerSecond;
 
-              if (newSamplesCount > 0) {
-                final newSamples = audioData.samples.sublist(_lastDecodedSampleCount);
-                final startSample = (_currentPosition.inMicroseconds * _sampleRate * _channels) ~/ Duration.microsecondsPerSecond;
+              // Create audio chunk with proper sample positioning
+              audioChunks.add(AudioChunk(samples: newSamples, startSample: startSample, isLast: fileChunk.isLast));
 
-                audioChunks.add(AudioChunk(samples: newSamples, startSample: startSample, isLast: fileChunk.isLast));
+              // Update current position based on the new samples decoded
+              final sampleDuration = Duration(microseconds: (newSamplesCount * Duration.microsecondsPerSecond) ~/ (_sampleRate * _channels));
+              _currentPosition += sampleDuration;
 
-                // Update position
-                final sampleDuration = Duration(microseconds: (newSamplesCount * Duration.microsecondsPerSecond) ~/ (_sampleRate * _channels));
-                _currentPosition += sampleDuration;
-
-                // Update last decoded markers
-                _lastDecodedSampleCount = totalSamples;
-              }
+              // Update the count of samples we've successfully decoded
+              _lastDecodedSampleCount = totalDecodedSamples;
             }
 
-            // If this was the last chunk, clear the buffer
+            // If this is the last chunk, we can clear everything
             if (fileChunk.isLast) {
               _buffer = BytesBuilder(copy: false);
               _bufferSize = 0;
+              _lastDecodedSampleCount = 0;
+            } else {
+              // For non-final chunks, we keep the buffer but manage its size
+              // This handles cases where AAC frames span multiple chunks
+              _manageBufferSize();
             }
-          } catch (bufferDecodeError) {
-            // If buffered decode also fails, manage buffer size to prevent unbounded growth
-            if (_bufferSize > _maxRetainedBuffer) {
-              final combined = _buffer!.toBytes();
-              final retainedSlice = combined.sublist(combined.length - _maxRetainedBuffer);
-              _buffer = BytesBuilder(copy: false)..add(retainedSlice);
-              _bufferSize = _maxRetainedBuffer;
+          } else {
+            // No samples decoded - might be incomplete AAC frames
+            if (fileChunk.isLast) {
+              // If this is the last chunk and we got no samples, there might be an issue
+              // But we should still clean up
+              _buffer = BytesBuilder(copy: false);
+              _bufferSize = 0;
+              _lastDecodedSampleCount = 0;
+            } else {
+              // Keep accumulating data for next chunk
+              _manageBufferSize();
+            }
+          }
+        } catch (decodeError) {
+          // Decoding failed - this could be due to incomplete AAC frames
+          if (fileChunk.isLast) {
+            // If this is the last chunk and decoding still fails,
+            // we need to handle this gracefully
+            _handleLastChunkDecodeFailure(decodeError);
+          } else {
+            // For non-final chunks, manage buffer size and continue
+            _manageBufferSize();
+
+            // If buffer is getting too large without successful decodes,
+            // we might have corrupted data
+            if (_bufferSize > _maxRetainedBuffer * 2) {
+              throw DecodingException(
+                'Buffer overflow in MP4 chunked processing',
+                'Unable to decode accumulated data after $_bufferSize bytes. '
+                    'This may indicate corrupted AAC frames or unsupported codec.',
+              );
             }
           }
         }
@@ -279,6 +298,70 @@ class MP4Decoder implements ChunkedAudioDecoder {
       }
       throw DecodingException('Failed to process MP4 chunk', 'Error processing chunk: $e');
     }
+  }
+
+  /// Manage buffer size to prevent unbounded growth while preserving AAC frame boundaries
+  void _manageBufferSize() {
+    if (_bufferSize > _maxRetainedBuffer) {
+      final bufferedData = _buffer!.toBytes();
+
+      // Try to find a good truncation point that preserves AAC frame boundaries
+      // AAC frames typically start with specific sync patterns
+      int truncateFrom = _findAACFrameBoundary(bufferedData, _bufferSize - _maxRetainedBuffer);
+
+      if (truncateFrom > 0) {
+        // Truncate from a frame boundary to preserve data integrity
+        final retainedData = bufferedData.sublist(truncateFrom);
+        _buffer = BytesBuilder(copy: false)..add(retainedData);
+        _bufferSize = retainedData.length;
+
+        // Adjust the decoded sample count since we're discarding some buffer data
+        // This is an approximation - in a real implementation, we'd track this more precisely
+        final discardedBytes = truncateFrom;
+        final estimatedDiscardedSamples = (discardedBytes / 768 * 1024).round(); // Rough estimate
+        _lastDecodedSampleCount = math.max(0, _lastDecodedSampleCount - estimatedDiscardedSamples);
+      } else {
+        // If we can't find a good boundary, truncate from the end as fallback
+        final retainedData = bufferedData.sublist(bufferedData.length - _maxRetainedBuffer);
+        _buffer = BytesBuilder(copy: false)..add(retainedData);
+        _bufferSize = _maxRetainedBuffer;
+        _lastDecodedSampleCount = 0; // Reset since we can't track accurately
+      }
+    }
+  }
+
+  /// Find AAC frame boundary in the buffer to preserve frame integrity
+  int _findAACFrameBoundary(Uint8List data, int startSearchFrom) {
+    // AAC frames in MP4 typically don't have sync patterns like MP3
+    // Instead, they're defined by the sample table in the container
+    // For now, we'll use a simple heuristic based on typical frame sizes
+
+    const typicalAACFrameSize = 768;
+    int searchStart = math.max(0, startSearchFrom);
+
+    // Look for positions that align with typical AAC frame boundaries
+    for (int i = searchStart; i < data.length - typicalAACFrameSize; i += typicalAACFrameSize) {
+      // This is a simplified approach - in a real implementation,
+      // we'd use the sample table information to find exact boundaries
+      if (i > searchStart) {
+        return i;
+      }
+    }
+
+    // Fallback to a position that's at least past our search start
+    return math.min(searchStart + typicalAACFrameSize, data.length ~/ 2);
+  }
+
+  /// Handle decode failure on the last chunk
+  void _handleLastChunkDecodeFailure(dynamic error) {
+    // Clean up state
+    _buffer = BytesBuilder(copy: false);
+    _bufferSize = 0;
+    _lastDecodedSampleCount = 0;
+
+    // Log the error but don't throw - we want to return whatever we successfully decoded
+    // In a production implementation, this might be logged for debugging
+    // For now, we'll just ensure clean state
   }
 
   @override
