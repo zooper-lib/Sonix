@@ -95,7 +95,7 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                    SelectableText(_error!, style: const TextStyle(color: Colors.red)),
                   ],
                 ),
               ),

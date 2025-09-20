@@ -194,14 +194,7 @@ class ExampleHomePage extends StatelessWidget {
                     style: TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildFeatureChip('MP3'),
-                      _buildFeatureChip('WAV'),
-                      _buildFeatureChip('FLAC'),
-                      _buildFeatureChip('OGG'),
-                    ],
-                  ),
+                  Row(children: [_buildFeatureChip('MP3'), _buildFeatureChip('WAV'), _buildFeatureChip('FLAC'), _buildFeatureChip('OGG')]),
                 ],
               ),
             ),
