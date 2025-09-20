@@ -77,6 +77,9 @@ typedef struct {
 #define SONIX_ERROR_FFMPEG_CODEC_NOT_FOUND -22
 #define SONIX_ERROR_FFMPEG_DECODE_FAILED -23
 
+// Forward declarations
+void sonix_cleanup_chunked_decoder(SonixChunkedDecoder* decoder);
+
 // Global error message buffer
 static char g_error_message[512] = {0};
 static int g_ffmpeg_initialized = 0;
@@ -415,8 +418,9 @@ void sonix_free_audio_data(SonixAudioData* audio_data) {
 // Get error message for the last error
 char* sonix_get_error_message() {
     return g_error_message;
-}/
-/ Chunked processing functions
+}
+
+// Chunked processing functions
 
 // Initialize chunked decoder for a specific format
 SonixChunkedDecoder* sonix_init_chunked_decoder(int format, const char* file_path) {

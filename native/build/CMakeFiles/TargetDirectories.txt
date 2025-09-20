@@ -1,0 +1,7 @@
+/Users/daniel/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/sonix_native.dir
+/Users/daniel/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/edit_cache.dir
+/Users/daniel/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/rebuild_cache.dir
+/Users/daniel/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/list_install_components.dir
+/Users/daniel/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/install.dir
+/Users/daniel/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/install/local.dir
+/Users/daniel/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/install/strip.dir

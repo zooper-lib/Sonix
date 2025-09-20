@@ -1460,6 +1460,9 @@ Future<String> _createTestMP4File(String filename, int targetSize) async {
   final basicData = await _createBasicMP4File(filename);
   final basicSize = await basicData.length();
 
+  // Copy basic data to our target file
+  await file.writeAsBytes(await basicData.readAsBytes());
+
   if (targetSize > basicSize) {
     // Pad with additional data to reach target size
     final paddingSize = targetSize - basicSize;
@@ -1468,7 +1471,7 @@ Future<String> _createTestMP4File(String filename, int targetSize) async {
     await file.writeAsBytes([...await file.readAsBytes(), ...padding], mode: FileMode.write);
   }
 
-  return filename;
+  return file.path;
 }
 
 /// Create a large MP4 file for testing memory management
