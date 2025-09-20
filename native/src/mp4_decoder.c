@@ -1,6 +1,6 @@
+#include "sonix_native.h"
 #include "mp4_decoder.h"
 #include "mp4_container.h"
-#include "sonix_native.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -297,4 +297,404 @@ SonixAudioData* mp4_decode_file(const uint8_t* data, size_t size) {
 
     mp4_decoder_cleanup(decoder);
     return result;
+}
+
+// Chunked processing implementation
+
+void* mp4_init_chunked_context(const char* file_path) {
+    if (!file_path) {
+        set_mp4_error("Invalid file path for MP4 chunked context");
+        return NULL;
+    }
+
+    // Allocate context - use the struct definition from sonix_native.h
+    SonixMp4Context* context = (SonixMp4Context*)calloc(1, sizeof(SonixMp4Context));
+    if (!context) {
+        set_mp4_error("Failed to allocate MP4 chunked context");
+        return NULL;
+    }
+
+    // Open file for reading
+    FILE* file = fopen(file_path, "rb");
+    if (!file) {
+        set_mp4_error("Failed to open MP4 file for chunked processing");
+        free(context);
+        return NULL;
+    }
+
+    // Read file header to validate and get track information
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    if (file_size < 32) {
+        set_mp4_error("MP4 file too small for chunked processing");
+        fclose(file);
+        free(context);
+        return NULL;
+    }
+
+    // Read initial portion to parse container structure
+    size_t header_size = file_size < 8192 ? file_size : 8192;
+    uint8_t* header_data = (uint8_t*)malloc(header_size);
+    if (!header_data) {
+        set_mp4_error("Failed to allocate memory for MP4 header");
+        fclose(file);
+        free(context);
+        return NULL;
+    }
+
+    size_t read_bytes = fread(header_data, 1, header_size, file);
+    if (read_bytes < 32) {
+        set_mp4_error("Failed to read MP4 header");
+        free(header_data);
+        fclose(file);
+        free(context);
+        return NULL;
+    }
+
+    // Validate container and find audio track
+    int validation_result = mp4_validate_container(header_data, read_bytes);
+    if (validation_result != SONIX_OK) {
+        set_mp4_error("Invalid MP4 container for chunked processing");
+        free(header_data);
+        fclose(file);
+        free(context);
+        return NULL;
+    }
+
+    // Find moov box in header data
+    size_t moov_size;
+    const uint8_t* moov_box = mp4_find_box(header_data, read_bytes, 0x6D6F6F76, &moov_size);
+    if (!moov_box) {
+        // moov box might be at the end of file, try reading more
+        fseek(file, 0, SEEK_SET);
+        free(header_data);
+        
+        // For chunked processing, we need the moov box upfront
+        set_mp4_error("MP4 moov box not found in file header - chunked processing requires moov at beginning");
+        fclose(file);
+        free(context);
+        return NULL;
+    }
+
+    // Parse audio track information
+    Mp4AudioTrack audio_track;
+    int track_result = mp4_find_audio_track(moov_box, moov_size, &audio_track);
+    if (track_result != SONIX_OK || !audio_track.is_valid) {
+        set_mp4_error("Failed to find valid audio track for chunked processing");
+        free(header_data);
+        fclose(file);
+        free(context);
+        return NULL;
+    }
+
+    // Initialize FAAD2 decoder
+#if defined(HAVE_FAAD2) && HAVE_FAAD2
+    context->faad_decoder = (void*)NeAACDecOpen();
+    if (!context->faad_decoder) {
+        set_mp4_error("Failed to initialize FAAD2 decoder for chunked processing");
+        free(header_data);
+        fclose(file);
+        free(context);
+        return NULL;
+    }
+
+    // Configure FAAD2
+    NeAACDecConfigurationPtr config = NeAACDecGetCurrentConfiguration((NeAACDecHandle)context->faad_decoder);
+    if (config) {
+        config->outputFormat = FAAD_FMT_FLOAT;
+        config->downMatrix = 0;
+        config->useOldADTSFormat = 0;
+        config->dontUpSampleImplicitSBR = 1;
+        NeAACDecSetConfiguration((NeAACDecHandle)context->faad_decoder, config);
+    }
+
+    // Initialize decoder with AAC configuration
+    if (audio_track.sample_description.decoder_config_size > 0 && 
+        audio_track.sample_description.decoder_config) {
+        
+        unsigned long sample_rate;
+        unsigned char channels;
+        
+        long result = NeAACDecInit2((NeAACDecHandle)context->faad_decoder, 
+                                   audio_track.sample_description.decoder_config,
+                                   audio_track.sample_description.decoder_config_size, 
+                                   &sample_rate, &channels);
+        
+        if (result < 0) {
+            set_mp4_error("Failed to initialize FAAD2 with AAC configuration");
+            NeAACDecClose((NeAACDecHandle)context->faad_decoder);
+            free(header_data);
+            fclose(file);
+            free(context);
+            return NULL;
+        }
+        
+        context->sample_rate = (uint32_t)sample_rate;
+        context->channels = (uint32_t)channels;
+    } else {
+        set_mp4_error("MP4 file missing AAC decoder configuration");
+        NeAACDecClose((NeAACDecHandle)context->faad_decoder);
+        free(header_data);
+        fclose(file);
+        free(context);
+        return NULL;
+    }
+#else
+    set_mp4_error("FAAD2 library not available for chunked processing");
+    free(header_data);
+    fclose(file);
+    free(context);
+    return NULL;
+#endif
+
+    // Set up context
+    context->mp4_file = (void*)file;
+    context->track_id = audio_track.track_id;
+    context->current_sample = 0;
+    
+    // Calculate total samples from duration and sample rate
+    if (audio_track.media_header.timescale > 0 && context->sample_rate > 0) {
+        uint64_t duration_samples = (audio_track.media_header.duration * context->sample_rate) / 
+                                   audio_track.media_header.timescale;
+        context->total_samples = duration_samples * context->channels;
+    } else {
+        context->total_samples = 0; // Will be updated as we decode
+    }
+
+    // Allocate frame buffer for incomplete AAC frames
+    context->frame_buffer_size = 8192; // 8KB buffer for AAC frames
+    context->frame_buffer = (uint8_t*)malloc(context->frame_buffer_size);
+    if (!context->frame_buffer) {
+        set_mp4_error("Failed to allocate frame buffer");
+#if defined(HAVE_FAAD2) && HAVE_FAAD2
+        NeAACDecClose((NeAACDecHandle)context->faad_decoder);
+#endif
+        fclose(file);
+        free(header_data);
+        free(context);
+        return NULL;
+    }
+    context->frame_buffer_used = 0;
+
+    context->initialized = 1;
+    
+    free(header_data);
+    return context;
+}
+
+int mp4_process_chunk_data(void* context, const uint8_t* chunk_data, size_t chunk_size,
+                          SonixAudioChunk** output_chunks, uint32_t* chunk_count) {
+    if (!context || !chunk_data || chunk_size == 0 || !output_chunks || !chunk_count) {
+        set_mp4_error("Invalid parameters for MP4 chunk processing");
+        return SONIX_ERROR_INVALID_DATA;
+    }
+
+    SonixMp4Context* mp4_ctx = (SonixMp4Context*)context;
+    if (!mp4_ctx->initialized) {
+        set_mp4_error("MP4 context not initialized");
+        return SONIX_ERROR_DECODE_FAILED;
+    }
+
+    *output_chunks = NULL;
+    *chunk_count = 0;
+
+#if defined(HAVE_FAAD2) && HAVE_FAAD2
+    // Combine any buffered data with new chunk data
+    size_t total_data_size = mp4_ctx->frame_buffer_used + chunk_size;
+    uint8_t* combined_data = (uint8_t*)malloc(total_data_size);
+    if (!combined_data) {
+        set_mp4_error("Failed to allocate memory for combined chunk data");
+        return SONIX_ERROR_OUT_OF_MEMORY;
+    }
+
+    // Copy buffered data first, then new chunk data
+    if (mp4_ctx->frame_buffer_used > 0) {
+        memcpy(combined_data, mp4_ctx->frame_buffer, mp4_ctx->frame_buffer_used);
+    }
+    memcpy(combined_data + mp4_ctx->frame_buffer_used, chunk_data, chunk_size);
+
+    // Process AAC frames from combined data
+    size_t processed_bytes = 0;
+    SonixAudioChunk* chunks = NULL;
+    uint32_t num_chunks = 0;
+    uint32_t chunks_capacity = 0;
+
+    while (processed_bytes < total_data_size) {
+        // Try to decode AAC frame
+        NeAACDecFrameInfo frame_info;
+        void* decoded_data = NeAACDecDecode((NeAACDecHandle)mp4_ctx->faad_decoder, &frame_info,
+                                           combined_data + processed_bytes, 
+                                           total_data_size - processed_bytes);
+
+        if (frame_info.error != 0) {
+            // If we get an error and haven't processed any bytes, it might be incomplete frame
+            if (frame_info.bytesconsumed == 0) {
+                // Save remaining data for next chunk
+                size_t remaining = total_data_size - processed_bytes;
+                if (remaining > 0 && remaining < mp4_ctx->frame_buffer_size) {
+                    memcpy(mp4_ctx->frame_buffer, combined_data + processed_bytes, remaining);
+                    mp4_ctx->frame_buffer_used = remaining;
+                } else {
+                    mp4_ctx->frame_buffer_used = 0;
+                }
+                break;
+            } else {
+                // Skip this frame and continue
+                processed_bytes += frame_info.bytesconsumed > 0 ? frame_info.bytesconsumed : 1;
+                continue;
+            }
+        }
+
+        if (decoded_data && frame_info.samples > 0) {
+            // Allocate or expand chunks array
+            if (num_chunks >= chunks_capacity) {
+                chunks_capacity = chunks_capacity == 0 ? 4 : chunks_capacity * 2;
+                SonixAudioChunk* new_chunks = (SonixAudioChunk*)realloc(chunks, 
+                    chunks_capacity * sizeof(SonixAudioChunk));
+                if (!new_chunks) {
+                    set_mp4_error("Failed to allocate memory for audio chunks");
+                    free(combined_data);
+                    if (chunks) free(chunks);
+                    return SONIX_ERROR_OUT_OF_MEMORY;
+                }
+                chunks = new_chunks;
+            }
+
+            // Allocate memory for decoded samples
+            float* samples = (float*)malloc(frame_info.samples * sizeof(float));
+            if (!samples) {
+                set_mp4_error("Failed to allocate memory for decoded samples");
+                free(combined_data);
+                if (chunks) free(chunks);
+                return SONIX_ERROR_OUT_OF_MEMORY;
+            }
+
+            // Copy decoded samples
+            memcpy(samples, decoded_data, frame_info.samples * sizeof(float));
+
+            // Fill chunk structure
+            chunks[num_chunks].samples = samples;
+            chunks[num_chunks].sample_count = frame_info.samples;
+            chunks[num_chunks].start_sample = mp4_ctx->current_sample;
+            chunks[num_chunks].is_last = 0; // Will be set by caller if needed
+
+            mp4_ctx->current_sample += frame_info.samples;
+            num_chunks++;
+        }
+
+        // Advance processed bytes
+        if (frame_info.bytesconsumed > 0) {
+            processed_bytes += frame_info.bytesconsumed;
+        } else {
+            processed_bytes++; // Avoid infinite loop
+        }
+    }
+
+    // Clear frame buffer if all data was processed
+    if (processed_bytes >= total_data_size) {
+        mp4_ctx->frame_buffer_used = 0;
+    }
+
+    free(combined_data);
+
+    *output_chunks = chunks;
+    *chunk_count = num_chunks;
+
+    return SONIX_OK;
+#else
+    set_mp4_error("FAAD2 library not available");
+    return SONIX_ERROR_DECODE_FAILED;
+#endif
+}
+
+int mp4_seek_to_time(void* context, uint32_t time_ms) {
+    if (!context) {
+        set_mp4_error("Invalid MP4 context for seeking");
+        return SONIX_ERROR_INVALID_DATA;
+    }
+
+    SonixMp4Context* mp4_ctx = (SonixMp4Context*)context;
+    if (!mp4_ctx->initialized) {
+        set_mp4_error("MP4 context not initialized for seeking");
+        return SONIX_ERROR_INVALID_DATA;
+    }
+
+    if (!mp4_ctx->mp4_file) {
+        set_mp4_error("MP4 file not open for seeking");
+        return SONIX_ERROR_DECODE_FAILED;
+    }
+
+    // For basic seeking, estimate file position based on time
+    // This is a simplified implementation - full seeking would require sample table parsing
+    FILE* file = (FILE*)mp4_ctx->mp4_file;
+    
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    
+    // Estimate position (very rough approximation)
+    if (mp4_ctx->sample_rate > 0) {
+        // Calculate target sample position
+        uint64_t target_sample = ((uint64_t)time_ms * mp4_ctx->sample_rate) / 1000;
+        
+        // Estimate file position (assuming constant bitrate)
+        // This is very approximate and should be improved with sample table parsing
+        double time_ratio = (double)time_ms / 1000.0;
+        long estimated_position = (long)(file_size * time_ratio * 0.8); // 80% to account for headers
+        
+        // Ensure we don't seek past end of file
+        if (estimated_position >= file_size) {
+            estimated_position = file_size - 1024; // Leave some buffer
+        }
+        
+        // Seek to estimated position
+        if (fseek(file, estimated_position, SEEK_SET) != 0) {
+            set_mp4_error("Failed to seek in MP4 file");
+            return SONIX_ERROR_DECODE_FAILED;
+        }
+        
+        // Update current sample position
+        mp4_ctx->current_sample = target_sample * mp4_ctx->channels;
+        
+        // Clear frame buffer after seeking
+        mp4_ctx->frame_buffer_used = 0;
+        
+        return SONIX_OK;
+    } else {
+        set_mp4_error("Cannot seek - sample rate not available");
+        return SONIX_ERROR_DECODE_FAILED;
+    }
+}
+
+void mp4_cleanup_chunked_context(void* context) {
+    if (!context) {
+        return;
+    }
+
+    SonixMp4Context* mp4_ctx = (SonixMp4Context*)context;
+
+#if defined(HAVE_FAAD2) && HAVE_FAAD2
+    if (mp4_ctx->faad_decoder) {
+        NeAACDecClose((NeAACDecHandle)mp4_ctx->faad_decoder);
+        mp4_ctx->faad_decoder = NULL;
+    }
+#endif
+
+    if (mp4_ctx->mp4_file) {
+        fclose((FILE*)mp4_ctx->mp4_file);
+        mp4_ctx->mp4_file = NULL;
+    }
+
+    if (mp4_ctx->decode_buffer) {
+        free(mp4_ctx->decode_buffer);
+        mp4_ctx->decode_buffer = NULL;
+    }
+
+    if (mp4_ctx->frame_buffer) {
+        free(mp4_ctx->frame_buffer);
+        mp4_ctx->frame_buffer = NULL;
+    }
+
+    free(mp4_ctx);
 }

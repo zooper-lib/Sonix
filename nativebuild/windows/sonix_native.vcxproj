@@ -87,7 +87,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) -g -O0</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -105,16 +105,16 @@
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR="Debug";sonix_native_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;HAVE_FAAD2=0;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR="Debug";sonix_native_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR=\"Debug\";sonix_native_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;HAVE_FAAD2=0;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR=\"Debug\";sonix_native_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -141,7 +141,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) -g -O0</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -158,18 +158,18 @@
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR="Release";sonix_native_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HAVE_FAAD2=0;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR="Release";sonix_native_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <DebugInformationFormat>
       </DebugInformationFormat>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR=\"Release\";sonix_native_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HAVE_FAAD2=0;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR=\"Release\";sonix_native_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -196,7 +196,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) -g -O0</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -213,18 +213,18 @@
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR="MinSizeRel";sonix_native_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HAVE_FAAD2=0;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR="MinSizeRel";sonix_native_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <DebugInformationFormat>
       </DebugInformationFormat>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR=\"MinSizeRel\";sonix_native_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HAVE_FAAD2=0;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR=\"MinSizeRel\";sonix_native_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -251,7 +251,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) -g -O0</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -269,16 +269,16 @@
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR="RelWithDebInfo";sonix_native_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HAVE_FAAD2=0;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR="RelWithDebInfo";sonix_native_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR=\"RelWithDebInfo\";sonix_native_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HAVE_FAAD2=0;WIN32_LEAN_AND_MEAN;SONIX_EXPORT=__declspec(dllexport);CMAKE_INTDIR=\"RelWithDebInfo\";sonix_native_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Development\Projects\Zooper\Sonix\native\src;D:\Development\Projects\Zooper\Sonix\native\src\minimp3;D:\Development\Projects\Zooper\Sonix\native\src\dr_flac;D:\Development\Projects\Zooper\Sonix\native\src\dr_wav;D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis;D:\Development\Projects\Zooper\Sonix\native\src\opus;D:\Development\Projects\Zooper\Sonix\native\src\faad2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -363,6 +363,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   <ItemGroup>
     <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\sonix_native.c" />
     <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis_wrapper.c" />
+    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\mp4_container.c" />
+    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\mp4_decoder.c" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

@@ -767,13 +767,13 @@ SonixChunkedDecoder *sonix_init_chunked_decoder(int format, const char *file_pat
         memset(&decoder->decoder_state.wav_decoder, 0, sizeof(drwav));
         break;
     case SONIX_FORMAT_MP4:
-        // Initialize MP4 decoder context
-        decoder->decoder_state.mp4_decoder = mp4_decoder_init();
+        // Initialize MP4 chunked decoder context
+        decoder->decoder_state.mp4_decoder = (Mp4DecoderContext*)mp4_init_chunked_context(file_path);
         if (!decoder->decoder_state.mp4_decoder) {
             fclose(decoder->file_handle);
             free(decoder->file_path);
             free(decoder);
-            set_error("Failed to initialize MP4 decoder");
+            set_error("Failed to initialize MP4 chunked decoder");
             return NULL;
         }
         break;
@@ -1177,6 +1177,12 @@ static SonixChunkResult *process_mp4_chunk(SonixChunkedDecoder *decoder, SonixFi
         return NULL;
     }
 
+    if (!decoder->decoder_state.mp4_decoder)
+    {
+        set_error("MP4 decoder not initialized");
+        return NULL;
+    }
+
     // Allocate result structure
     SonixChunkResult *result = (SonixChunkResult *)malloc(sizeof(SonixChunkResult));
     if (!result)
@@ -1186,11 +1192,46 @@ static SonixChunkResult *process_mp4_chunk(SonixChunkedDecoder *decoder, SonixFi
     }
     memset(result, 0, sizeof(SonixChunkResult));
 
-    // Placeholder implementation - MP4 chunked processing not yet implemented
-    result->chunks = NULL;
-    result->chunk_count = 0;
-    result->error_code = SONIX_ERROR_MP4_CONTAINER_INVALID;
-    result->error_message = strdup("MP4 chunked processing not yet implemented in native layer");
+    // Process chunk using MP4 decoder
+    SonixAudioChunk* audio_chunks = NULL;
+    uint32_t chunk_count = 0;
+    
+    int process_result = mp4_process_chunk_data(
+        decoder->decoder_state.mp4_decoder,
+        file_chunk->data, 
+        file_chunk->size,
+        &audio_chunks, 
+        &chunk_count
+    );
+
+    if (process_result != SONIX_OK)
+    {
+        result->error_code = process_result;
+        result->error_message = strdup(mp4_get_error_message());
+        result->chunks = NULL;
+        result->chunk_count = 0;
+        return result;
+    }
+
+    // Set decoder properties from first successful decode
+    if (!decoder->properties_initialized && chunk_count > 0)
+    {
+        SonixMp4Context* mp4_ctx = (SonixMp4Context*)decoder->decoder_state.mp4_decoder;
+        decoder->sample_rate = mp4_ctx->sample_rate;
+        decoder->channels = mp4_ctx->channels;
+        decoder->properties_initialized = 1;
+    }
+
+    // Mark last chunk if this is the last file chunk
+    if (audio_chunks && chunk_count > 0 && file_chunk->is_last)
+    {
+        audio_chunks[chunk_count - 1].is_last = 1;
+    }
+
+    result->chunks = audio_chunks;
+    result->chunk_count = chunk_count;
+    result->error_code = SONIX_OK;
+    result->error_message = NULL;
 
     return result;
 }
@@ -1307,25 +1348,26 @@ int sonix_seek_to_time(SonixChunkedDecoder *decoder, uint32_t time_ms)
         }
 
     case SONIX_FORMAT_MP4:
-        // MP4 seeking requires sample table parsing for accurate positioning
-        // For now, implement basic file position estimation
-        if (decoder->properties_initialized && decoder->sample_rate > 0)
+        // Use MP4-specific seeking
+        if (decoder->decoder_state.mp4_decoder)
         {
-            double time_ratio = (double)time_ms / 1000.0;
-            uint64_t estimated_position = (uint64_t)(time_ratio * decoder->file_size);
-
-            if (fseek(decoder->file_handle, estimated_position, SEEK_SET) != 0)
+            int seek_result = mp4_seek_to_time(decoder->decoder_state.mp4_decoder, time_ms);
+            if (seek_result == SONIX_OK)
             {
-                set_error("Failed to seek in MP4 file");
-                return SONIX_ERROR_DECODE_FAILED;
+                // Update file handle position to match MP4 context
+                // The MP4 context manages its own file handle, so we sync our position
+                decoder->current_position = ftell(decoder->file_handle);
+                return SONIX_OK;
             }
-
-            decoder->current_position = estimated_position;
-            return SONIX_OK;
+            else
+            {
+                set_error(mp4_get_error_message());
+                return seek_result;
+            }
         }
         else
         {
-            set_error("Cannot seek in MP4 file - decoder not initialized");
+            set_error("MP4 decoder not initialized for seeking");
             return SONIX_ERROR_INVALID_DATA;
         }
 
@@ -1404,10 +1446,10 @@ void sonix_cleanup_chunked_decoder(SonixChunkedDecoder *decoder)
             drwav_uninit(&decoder->decoder_state.wav_decoder);
             break;
         case SONIX_FORMAT_MP4:
-            // MP4 decoder cleanup
+            // MP4 chunked decoder cleanup
             if (decoder->decoder_state.mp4_decoder)
             {
-                mp4_decoder_cleanup(decoder->decoder_state.mp4_decoder);
+                mp4_cleanup_chunked_context(decoder->decoder_state.mp4_decoder);
                 decoder->decoder_state.mp4_decoder = NULL;
             }
             break;
@@ -1454,4 +1496,68 @@ void sonix_free_chunk_result(SonixChunkResult *result)
         }
         free(result);
     }
+}
+
+// MP4-specific chunked processing API functions
+
+void* sonix_init_mp4_chunked_decoder(const char* file_path)
+{
+    return mp4_init_chunked_context(file_path);
+}
+
+SonixChunkResult* sonix_process_mp4_chunk(void* context, SonixFileChunk* file_chunk)
+{
+    if (!context || !file_chunk)
+    {
+        set_error("Invalid parameters for MP4 chunk processing");
+        return NULL;
+    }
+
+    // Allocate result structure
+    SonixChunkResult* result = (SonixChunkResult*)malloc(sizeof(SonixChunkResult));
+    if (!result)
+    {
+        set_error("Failed to allocate memory for MP4 chunk result");
+        return NULL;
+    }
+    memset(result, 0, sizeof(SonixChunkResult));
+
+    // Process chunk using MP4 decoder
+    SonixAudioChunk* audio_chunks = NULL;
+    uint32_t chunk_count = 0;
+    
+    int process_result = mp4_process_chunk_data(context, file_chunk->data, file_chunk->size,
+                                               &audio_chunks, &chunk_count);
+
+    if (process_result != SONIX_OK)
+    {
+        result->error_code = process_result;
+        result->error_message = strdup(mp4_get_error_message());
+        result->chunks = NULL;
+        result->chunk_count = 0;
+        return result;
+    }
+
+    // Mark last chunk if this is the last file chunk
+    if (audio_chunks && chunk_count > 0 && file_chunk->is_last)
+    {
+        audio_chunks[chunk_count - 1].is_last = 1;
+    }
+
+    result->chunks = audio_chunks;
+    result->chunk_count = chunk_count;
+    result->error_code = SONIX_OK;
+    result->error_message = NULL;
+
+    return result;
+}
+
+int sonix_seek_mp4_to_time(void* context, uint32_t time_ms)
+{
+    return mp4_seek_to_time(context, time_ms);
+}
+
+void sonix_cleanup_mp4_decoder(void* context)
+{
+    mp4_cleanup_chunked_context(context);
 }

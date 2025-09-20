@@ -7,6 +7,12 @@
     <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\stb_vorbis_wrapper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\mp4_container.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Development\Projects\Zooper\Sonix\native\src\mp4_decoder.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="D:\Development\Projects\Zooper\Sonix\native\CMakeLists.txt" />

@@ -160,7 +160,8 @@
   - Test FAAD2 integration with sample AAC data
   - _Requirements: 1.2, 1.3, 4.2, 4.3_
 
-- [ ] 19. Implement native MP4 chunked processing
+- [x] 19. Implement native MP4 chunked processing
+
 
   - Create SonixMp4Context structure for maintaining decoder state
   - Implement sonix_init_mp4_chunked_decoder function

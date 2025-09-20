@@ -19,6 +19,9 @@ typedef struct {
     int initialized;                // Decoder initialization flag
 } Mp4DecoderContext;
 
+// SonixMp4Context is defined in sonix_native.h
+struct SonixMp4Context;
+
 /**
  * Initialize MP4 decoder with FAAD2
  * @return Pointer to decoder context or NULL on error
@@ -73,6 +76,41 @@ SonixAudioData* mp4_decode_file(const uint8_t* data, size_t size);
  * @return Pointer to error message string
  */
 const char* mp4_get_error_message(void);
+
+// Chunked processing functions
+
+/**
+ * Initialize MP4 chunked processing context
+ * @param file_path Path to MP4 file
+ * @return Pointer to MP4 context or NULL on error
+ */
+void* mp4_init_chunked_context(const char* file_path);
+
+/**
+ * Process MP4 chunk data and decode AAC frames
+ * @param context MP4 chunked context
+ * @param chunk_data Chunk data to process
+ * @param chunk_size Size of chunk data
+ * @param output_chunks Pointer to store decoded audio chunks
+ * @param chunk_count Pointer to store number of chunks
+ * @return SONIX_OK on success, error code on failure
+ */
+int mp4_process_chunk_data(void* context, const uint8_t* chunk_data, size_t chunk_size,
+                          SonixAudioChunk** output_chunks, uint32_t* chunk_count);
+
+/**
+ * Seek to time position in MP4 file
+ * @param context MP4 chunked context
+ * @param time_ms Time in milliseconds
+ * @return SONIX_OK on success, error code on failure
+ */
+int mp4_seek_to_time(void* context, uint32_t time_ms);
+
+/**
+ * Cleanup MP4 chunked processing context
+ * @param context MP4 chunked context
+ */
+void mp4_cleanup_chunked_context(void* context);
 
 #ifdef __cplusplus
 }

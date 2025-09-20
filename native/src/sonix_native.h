@@ -94,6 +94,23 @@ typedef struct {
     char codec_name[16];        // Codec name (e.g., "AAC")
 } SonixMp4Metadata;
 
+// MP4 chunked processing context
+typedef struct {
+    void* faad_decoder;         // FAAD2 decoder handle
+    void* mp4_file;            // MP4 file handle for seeking
+    uint32_t track_id;         // Audio track ID
+    uint64_t current_sample;   // Current sample position
+    uint64_t total_samples;    // Total samples in track
+    uint32_t sample_rate;      // Sample rate
+    uint32_t channels;         // Channel count
+    uint8_t* decode_buffer;    // Temporary decode buffer
+    size_t buffer_size;        // Buffer size
+    uint8_t* frame_buffer;     // Buffer for incomplete AAC frames
+    size_t frame_buffer_size;  // Size of frame buffer
+    size_t frame_buffer_used;  // Used bytes in frame buffer
+    int initialized;           // Initialization flag
+} SonixMp4Context;
+
 // Obtain last MP3 debug stats (NULL if no decode yet or different format)
 SONIX_EXPORT const SonixMp3DebugStats* sonix_get_last_mp3_debug_stats(void);
 
@@ -171,6 +188,37 @@ SONIX_EXPORT void sonix_cleanup_chunked_decoder(SonixChunkedDecoder* decoder);
  * @param result Pointer to chunk result to free
  */
 SONIX_EXPORT void sonix_free_chunk_result(SonixChunkResult* result);
+
+// MP4-specific chunked processing functions
+
+/**
+ * Initialize MP4 chunked decoder
+ * @param file_path Path to the MP4 file
+ * @return Pointer to MP4 context or NULL on error
+ */
+SONIX_EXPORT void* sonix_init_mp4_chunked_decoder(const char* file_path);
+
+/**
+ * Process MP4 file chunk and return decoded audio chunks
+ * @param context MP4 decoder context
+ * @param file_chunk File chunk to process
+ * @return Pointer to chunk result or NULL on error
+ */
+SONIX_EXPORT SonixChunkResult* sonix_process_mp4_chunk(void* context, SonixFileChunk* file_chunk);
+
+/**
+ * Seek to specific time position in MP4 file
+ * @param context MP4 decoder context
+ * @param time_ms Time position in milliseconds
+ * @return SONIX_OK on success, error code on failure
+ */
+SONIX_EXPORT int sonix_seek_mp4_to_time(void* context, uint32_t time_ms);
+
+/**
+ * Cleanup MP4 decoder and free resources
+ * @param context MP4 decoder context
+ */
+SONIX_EXPORT void sonix_cleanup_mp4_decoder(void* context);
 
 
 #ifdef __cplusplus
