@@ -1,5 +1,0 @@
-D:/Development/Projects/Zooper/Sonix/native/build_test/CMakeFiles/sonix_native.dir
-D:/Development/Projects/Zooper/Sonix/native/build_test/CMakeFiles/mp4_container_test.dir
-D:/Development/Projects/Zooper/Sonix/native/build_test/CMakeFiles/mp4_integration_test.dir
-D:/Development/Projects/Zooper/Sonix/native/build_test/CMakeFiles/ALL_BUILD.dir
-D:/Development/Projects/Zooper/Sonix/native/build_test/CMakeFiles/ZERO_CHECK.dir

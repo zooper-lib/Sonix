@@ -1,7 +1,0 @@
-D:/Development/Projects/Zooper/Sonix/native/build_faad2/CMakeFiles/sonix_native.dir
-D:/Development/Projects/Zooper/Sonix/native/build_faad2/CMakeFiles/mp4_container_test.dir
-D:/Development/Projects/Zooper/Sonix/native/build_faad2/CMakeFiles/mp4_integration_test.dir
-D:/Development/Projects/Zooper/Sonix/native/build_faad2/CMakeFiles/mp4_faad2_test.dir
-D:/Development/Projects/Zooper/Sonix/native/build_faad2/CMakeFiles/mp4_real_file_test.dir
-D:/Development/Projects/Zooper/Sonix/native/build_faad2/CMakeFiles/ALL_BUILD.dir
-D:/Development/Projects/Zooper/Sonix/native/build_faad2/CMakeFiles/ZERO_CHECK.dir

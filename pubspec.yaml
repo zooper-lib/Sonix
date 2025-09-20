@@ -16,6 +16,7 @@ dependencies:
   ffi: ^2.1.0
   path: ^1.8.3
   meta: ^1.15.0
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
