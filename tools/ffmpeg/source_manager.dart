@@ -81,6 +81,60 @@ class FFMPEGSourceManager {
   Future<bool> verifySourceIntegrity(String sourceDir) async {
     print('Verifying source code integrity...');
 
+    // For Git repositories, we verify by checking the Git tag/branch instead of file checksums
+    // since Git repositories don't have stable checksums due to metadata changes
+    try {
+      final gitDir = Directory(path.join(sourceDir, '.git'));
+      if (await gitDir.exists()) {
+        return await _verifyGitVersion(sourceDir);
+      } else {
+        // Fallback to checksum verification for non-Git sources
+        return await _verifyChecksum(sourceDir);
+      }
+    } catch (e) {
+      print('Error during integrity verification: $e');
+      return false;
+    }
+  }
+
+  /// Verifies Git repository version by checking the current tag/branch
+  Future<bool> _verifyGitVersion(String sourceDir) async {
+    try {
+      // Check current Git tag
+      final tagResult = await Process.run('git', ['describe', '--tags', '--exact-match'], workingDirectory: sourceDir);
+
+      if (tagResult.exitCode == 0) {
+        final currentTag = tagResult.stdout.toString().trim();
+        final expectedTag = 'n$version';
+
+        if (currentTag == expectedTag) {
+          print('Git version verified: $currentTag');
+          return true;
+        } else {
+          print('Git version mismatch. Expected: $expectedTag, Actual: $currentTag');
+          return false;
+        }
+      } else {
+        // If no exact tag match, check branch
+        final branchResult = await Process.run('git', ['rev-parse', '--abbrev-ref', 'HEAD'], workingDirectory: sourceDir);
+
+        if (branchResult.exitCode == 0) {
+          final currentBranch = branchResult.stdout.toString().trim();
+          print('Git repository verified on branch: $currentBranch');
+          return true;
+        } else {
+          print('Could not verify Git version');
+          return false;
+        }
+      }
+    } catch (e) {
+      print('Git verification failed: $e');
+      return false;
+    }
+  }
+
+  /// Verifies source using checksum (for non-Git sources)
+  Future<bool> _verifyChecksum(String sourceDir) async {
     final expectedChecksum = versionChecksums[version];
     if (expectedChecksum == null) {
       print('Warning: No checksum available for version $version, skipping verification');

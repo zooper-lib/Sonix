@@ -86,14 +86,14 @@ class MacOSBuilder extends PlatformBuilder {
 
       // Run configure
       print('Configuring FFMPEG for macOS...');
-      final configureResult = await runConfigure();
+      final configureResult = await runConfigureMacOS();
       if (configureResult.exitCode != 0) {
         return BuildResult.failure(errorMessage: 'Configure failed: ${configureResult.stderr}', buildTime: stopwatch.elapsed);
       }
 
       // Run make
       print('Compiling FFMPEG...');
-      final makeResult = await runMake(jobs: Platform.numberOfProcessors);
+      final makeResult = await runMakeMacOS(jobs: Platform.numberOfProcessors);
       if (makeResult.exitCode != 0) {
         return BuildResult.failure(errorMessage: 'Make failed: ${makeResult.stderr}', buildTime: stopwatch.elapsed);
       }
@@ -140,18 +140,33 @@ class MacOSBuilder extends PlatformBuilder {
 
   /// Sets up build environment variables
   Future<void> _setupBuildEnvironment() async {
+    // Note: Platform.environment is unmodifiable, so we'll pass environment
+    // variables directly to Process.run calls instead of modifying the global environment
+    print('Build environment setup completed (environment variables will be passed to processes)');
+  }
+
+  /// Gets the build environment variables
+  Map<String, String> _getBuildEnvironment() {
+    final env = Map<String, String>.from(Platform.environment);
+
     // Set up PKG_CONFIG_PATH for Homebrew if available
-    final brewPrefixResult = await Process.run('brew', ['--prefix']);
-    if (brewPrefixResult.exitCode == 0) {
-      final brewPrefix = brewPrefixResult.stdout.toString().trim();
-      final pkgConfigPath = '$brewPrefix/lib/pkgconfig:$brewPrefix/share/pkgconfig';
-      Platform.environment['PKG_CONFIG_PATH'] = pkgConfigPath;
-      print('Set PKG_CONFIG_PATH to: $pkgConfigPath');
+    try {
+      final brewPrefixResult = Process.runSync('brew', ['--prefix']);
+      if (brewPrefixResult.exitCode == 0) {
+        final brewPrefix = brewPrefixResult.stdout.toString().trim();
+        final pkgConfigPath = '$brewPrefix/lib/pkgconfig:$brewPrefix/share/pkgconfig';
+        env['PKG_CONFIG_PATH'] = pkgConfigPath;
+        print('Set PKG_CONFIG_PATH to: $pkgConfigPath');
+      }
+    } catch (e) {
+      // Homebrew not available, continue without it
     }
 
     // Ensure we use the system clang
-    Platform.environment['CC'] = 'clang';
-    Platform.environment['CXX'] = 'clang++';
+    env['CC'] = 'clang';
+    env['CXX'] = 'clang++';
+
+    return env;
   }
 
   /// Fixes library install names for proper dynamic linking on macOS
@@ -272,5 +287,36 @@ class MacOSBuilder extends PlatformBuilder {
     } catch (e) {
       return BuildResult.failure(errorMessage: 'Universal binary creation failed: $e', buildTime: stopwatch.elapsed);
     }
+  }
+
+  /// Runs the configure script with macOS-specific environment
+  Future<ProcessResult> runConfigureMacOS() async {
+    final configureScript = path.join(sourceDirectory, 'configure');
+    final args = generateConfigureArgs();
+    final env = _getBuildEnvironment();
+
+    print('Running configure with args: ${args.join(' ')}');
+    print('Configure script path: $configureScript');
+    print('Working directory: $sourceDirectory');
+
+    // Use absolute paths to avoid path resolution issues
+    final absoluteConfigureScript = path.isAbsolute(configureScript) ? configureScript : path.join(Directory.current.path, configureScript);
+    final absoluteSourceDirectory = path.isAbsolute(sourceDirectory) ? sourceDirectory : path.join(Directory.current.path, sourceDirectory);
+
+    return await Process.run(absoluteConfigureScript, args, workingDirectory: absoluteSourceDirectory, environment: env);
+  }
+
+  /// Runs make with macOS-specific environment
+  Future<ProcessResult> runMakeMacOS({int? jobs}) async {
+    final makeArgs = <String>[];
+
+    if (jobs != null) {
+      makeArgs.addAll(['-j', jobs.toString()]);
+    }
+
+    final env = _getBuildEnvironment();
+    print('Running make with ${jobs ?? 'default'} jobs...');
+
+    return await Process.run('make', makeArgs, workingDirectory: sourceDirectory, environment: env);
   }
 }
