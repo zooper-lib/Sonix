@@ -11,35 +11,98 @@ class TestDataLoader {
   /// Base path for test assets
   static const String _assetBasePath = 'test/assets';
 
+  /// Path for generated test assets
+  static const String _generatedBasePath = 'test/assets/generated';
+
+  /// Path for large generated test assets
+  static const String _largeFilesBasePath = 'test/assets/generated/large_files';
+
   /// Get the full path to a test asset
+  /// Checks generated directories first, then falls back to main assets directory
   static String getAssetPath(String assetName) {
-    return '$_assetBasePath/$assetName';
+    final largeFilesPath = '$_largeFilesBasePath/$assetName';
+    final generatedPath = '$_generatedBasePath/$assetName';
+    final mainPath = '$_assetBasePath/$assetName';
+
+    // Check if file exists in large files directory first
+    if (File(largeFilesPath).existsSync()) {
+      return largeFilesPath;
+    }
+
+    // Check if file exists in generated directory
+    if (File(generatedPath).existsSync()) {
+      return generatedPath;
+    }
+
+    // Fall back to main assets directory
+    return mainPath;
   }
 
   /// Check if a test asset exists
+  /// Checks large files, generated, and main assets directories
   static Future<bool> assetExists(String assetName) async {
-    final file = File(getAssetPath(assetName));
-    return await file.exists();
+    // Check large files directory first
+    final largeFile = File('$_largeFilesBasePath/$assetName');
+    if (await largeFile.exists()) {
+      return true;
+    }
+
+    // Check generated directory
+    final generatedFile = File('$_generatedBasePath/$assetName');
+    if (await generatedFile.exists()) {
+      return true;
+    }
+
+    // Check main assets directory
+    final mainFile = File('$_assetBasePath/$assetName');
+    return await mainFile.exists();
   }
 
   /// Get a list of available test audio files
+  /// Scans large files, generated, and main assets directories
   static Future<List<String>> getAvailableAudioFiles() async {
-    final directory = Directory(_assetBasePath);
-    if (!await directory.exists()) {
-      return [];
-    }
+    final files = <String>{}; // Use Set to avoid duplicates
 
-    final files = <String>[];
-    await for (final entity in directory.list()) {
-      if (entity is File) {
-        final name = entity.path.split(Platform.pathSeparator).last;
-        if (_isAudioFile(name)) {
-          files.add(name);
+    // Check large files directory first
+    final largeFilesDirectory = Directory(_largeFilesBasePath);
+    if (await largeFilesDirectory.exists()) {
+      await for (final entity in largeFilesDirectory.list()) {
+        if (entity is File) {
+          final name = entity.path.split(Platform.pathSeparator).last;
+          if (_isAudioFile(name)) {
+            files.add(name);
+          }
         }
       }
     }
 
-    return files;
+    // Check generated directory
+    final generatedDirectory = Directory(_generatedBasePath);
+    if (await generatedDirectory.exists()) {
+      await for (final entity in generatedDirectory.list()) {
+        if (entity is File) {
+          final name = entity.path.split(Platform.pathSeparator).last;
+          if (_isAudioFile(name)) {
+            files.add(name);
+          }
+        }
+      }
+    }
+
+    // Check main assets directory
+    final mainDirectory = Directory(_assetBasePath);
+    if (await mainDirectory.exists()) {
+      await for (final entity in mainDirectory.list()) {
+        if (entity is File) {
+          final name = entity.path.split(Platform.pathSeparator).last;
+          if (_isAudioFile(name)) {
+            files.add(name);
+          }
+        }
+      }
+    }
+
+    return files.toList();
   }
 
   /// Check if a file is an audio file based on extension
@@ -74,4 +137,3 @@ class TestDataLoader {
     return null;
   }
 }
-

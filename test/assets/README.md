@@ -1,75 +1,96 @@
-# Test Assets Directory
+# Test Assets Directory Structure
 
-This directory contains test files for the Sonix audio processing library.
+This directory contains test audio files and related assets for the Sonix package testing suite.
 
 ## Directory Structure
 
 ```
 test/assets/
-├── README.md                    # This file
-├── generated/                   # Generated test files (excluded from git)
-│   ├── *.wav                   # Generated WAV test files
-│   ├── *.mp3                   # Generated MP3 test files  
-│   ├── *.flac                  # Generated FLAC test files
-│   ├── *.ogg                   # Generated OGG test files
-│   ├── corrupted_*             # Corrupted files for error testing
-│   ├── invalid_*               # Invalid files for error testing
-│   └── large_files/            # Large test files (>50MB)
-├── reference_waveforms.json    # Reference waveform data
-├── test_configurations.json    # Test configuration data
-└── [existing test files]       # Pre-existing small test files
+├── generated/              # Auto-generated test files (primary location)
+│   ├── large_files/       # Large test files (>50MB)
+│   └── [various formats]  # Generated test files in multiple formats and sizes
+├── reference_waveforms.json    # Reference waveform data for validation
+├── test_configurations.json   # Test configuration settings
+├── test_file_inventory.json   # Inventory of generated test files
+└── [legacy files]             # Legacy test files for backward compatibility
 ```
 
-## Generated Files
+## File Categories
 
-The `generated/` directory contains test files that are automatically created by the test suite:
+### Generated Files (`generated/`)
+- **Synthetic audio files**: WAV, MP3, FLAC, OGG, MP4 in various sizes (tiny, small, medium, large, xlarge)
+- **Corrupted files**: Files with intentional corruption for error testing
+- **Edge case files**: Empty files, invalid formats, truncated files, etc.
 
-- **Size Categories**: tiny (100KB), small (1MB), medium (10MB), large (100MB), xlarge (500MB)
-- **Audio Formats**: WAV, MP3, FLAC, OGG
-- **Audio Characteristics**: Various sample rates (8kHz-96kHz), channel counts (1-6), bit depths (16-24)
-- **Corrupted Files**: Files with various types of corruption for error handling tests
-- **Large Files**: Files >50MB are stored in the `large_files/` subdirectory
+### Large Files (`generated/large_files/`)
+- Files larger than 50MB for performance and memory testing
+- Includes xlarge (500MB) files for stress testing
 
-## Git Exclusion
+### Configuration Files (root level)
+- `reference_waveforms.json`: Expected waveform data for validation
+- `test_configurations.json`: Test configuration parameters
+- `test_file_inventory.json`: Complete inventory of generated files
 
-Generated test files are excluded from version control via `.gitignore` because:
+### Legacy Files (root level)
+- Manually created test files for backward compatibility
+- Real audio samples (e.g., "Double-F the King - Your Blessing" series)
 
-1. **Size**: Generated files can total several GB
-2. **Reproducibility**: Files are generated deterministically by the test suite
-3. **CI/CD**: Generated on-demand during testing
+## File Generation
 
-## Generating Test Files
-
-Test files are automatically generated when running comprehensive tests:
+Test files are automatically generated using the test data generator:
 
 ```bash
-# Generate and run comprehensive tests
-flutter test test/practical_comprehensive_test_suite.dart
+# Generate all test files (comprehensive suite)
+dart run tools/test_data_generator.dart
 
-# Or generate files manually
-dart test/run_comprehensive_tests.dart --generate-only
+# Generate only essential files (faster)
+dart run tools/test_data_generator.dart --essential
 ```
+
+## File Access
+
+Use the `TestDataLoader` class to access test files:
+
+```dart
+import 'package:sonix/test/test_helpers/test_data_loader.dart';
+
+// Get path to a test file (checks all directories)
+final path = TestDataLoader.getAssetPath('mono_44100.wav');
+
+// Check if a test file exists
+final exists = await TestDataLoader.assetExists('sample_audio.flac');
+
+// Get list of all available audio files
+final files = await TestDataLoader.getAvailableAudioFiles();
+```
+
+The `TestDataLoader` automatically searches in this priority order:
+1. `test/assets/generated/large_files/` (for large files)
+2. `test/assets/generated/` (for regular generated files)
+3. `test/assets/` (for legacy/configuration files)
 
 ## File Naming Convention
 
-Generated files follow this naming pattern:
-```
-{format}_{size}_{sampleRate}_{channels}ch.{extension}
-```
+Generated files follow this pattern:
+- `{format}_{size}_{sampleRate}_{channels}ch.{ext}`
+- Examples: `wav_small_44100_2ch.wav`, `mp3_tiny_22050_1ch.mp3`
 
-Examples:
-- `wav_small_44100_2ch.wav` - Small WAV file, 44.1kHz, stereo
-- `mp3_medium_48000_1ch.mp3` - Medium MP3 file, 48kHz, mono
-- `flac_large_96000_2ch.flac` - Large FLAC file, 96kHz, stereo
+Special files:
+- `corrupted_*`: Files with intentional corruption
+- `empty_*`: Empty files for error testing
+- `invalid_*`: Files with invalid formats/headers
 
-## Cleanup
+## Size Categories
 
-To clean up generated files:
+- **tiny**: ~100KB
+- **small**: ~1MB  
+- **medium**: ~10MB
+- **large**: ~100MB (stored in `large_files/`)
+- **xlarge**: ~500MB (stored in `large_files/`)
 
-```bash
-# Remove all generated files
-rm -rf test/assets/generated/
+## Maintenance
 
-# Or use the test runner
-dart test/run_comprehensive_tests.dart --cleanup
-```
+- Files are automatically regenerated when running the test data generator
+- Use `force: true` parameter to regenerate existing files
+- Large files are skipped in CI environments to prevent memory issues
+- The inventory file tracks all generated files for validation

@@ -24,30 +24,32 @@ void main() {
 
       test('should throw appropriate error for empty file', () async {
         // Create a temporary empty file
-        final tempFile = File('temp_empty.ogg');
+        final tempDir = Directory.systemTemp.createTempSync('vorbis_test_');
+        final tempFile = File('${tempDir.path}/empty.ogg');
         await tempFile.writeAsBytes([]);
 
         try {
           expect(() => decoder.decode(tempFile.path), throwsA(isA<DecodingException>()));
         } finally {
           // Clean up
-          if (tempFile.existsSync()) {
-            tempFile.deleteSync();
+          if (tempDir.existsSync()) {
+            tempDir.deleteSync(recursive: true);
           }
         }
       });
 
       test('should throw error for invalid OGG data', () async {
         // Create a temporary file with invalid OGG data
-        final tempFile = File('temp_invalid.ogg');
+        final tempDir = Directory.systemTemp.createTempSync('vorbis_test_');
+        final tempFile = File('${tempDir.path}/invalid.ogg');
         await tempFile.writeAsBytes([1, 2, 3, 4, 5, 6, 7, 8]);
 
         try {
           expect(() => decoder.decode(tempFile.path), throwsA(isA<DecodingException>()));
         } finally {
           // Clean up
-          if (tempFile.existsSync()) {
-            tempFile.deleteSync();
+          if (tempDir.existsSync()) {
+            tempDir.deleteSync(recursive: true);
           }
         }
       });

@@ -32,7 +32,8 @@ void main() {
         ...List.filled(64, 0x00), // Additional padding
       ]);
 
-      final tempFile = File('mp4_integration_test_${DateTime.now().millisecondsSinceEpoch}.mp4');
+      final tempDir = Directory.systemTemp.createTempSync('mp4_integration_test_');
+      final tempFile = File('${tempDir.path}/valid_mp4.mp4');
       await tempFile.writeAsBytes(validMP4Data);
 
       try {
@@ -41,8 +42,8 @@ void main() {
         await expectLater(() => decoder.decode(tempFile.path), throwsA(isA<UnsupportedFormatException>()));
       } finally {
         try {
-          if (tempFile.existsSync()) {
-            await tempFile.delete();
+          if (tempDir.existsSync()) {
+            await tempDir.delete(recursive: true);
           }
         } catch (e) {
           // Ignore cleanup errors
@@ -64,7 +65,8 @@ void main() {
         ...List.filled(64, 0x00),
       ]);
 
-      final tempFile = File('mp4_invalid_test_${DateTime.now().millisecondsSinceEpoch}.mp4');
+      final tempDir = Directory.systemTemp.createTempSync('mp4_invalid_test_');
+      final tempFile = File('${tempDir.path}/invalid_mp4.mp4');
       await tempFile.writeAsBytes(invalidMP4Data);
 
       try {
@@ -72,8 +74,8 @@ void main() {
         await expectLater(() => decoder.decode(tempFile.path), throwsA(isA<MP4ContainerException>()));
       } finally {
         try {
-          if (tempFile.existsSync()) {
-            await tempFile.delete();
+          if (tempDir.existsSync()) {
+            await tempDir.delete(recursive: true);
           }
         } catch (e) {
           // Ignore cleanup errors
@@ -82,15 +84,16 @@ void main() {
     });
 
     test('should handle empty files correctly', () async {
-      final tempFile = File('mp4_empty_test_${DateTime.now().millisecondsSinceEpoch}.mp4');
+      final tempDir = Directory.systemTemp.createTempSync('mp4_empty_test_');
+      final tempFile = File('${tempDir.path}/empty_mp4.mp4');
       await tempFile.writeAsBytes([]);
 
       try {
         await expectLater(() => decoder.decode(tempFile.path), throwsA(isA<DecodingException>()));
       } finally {
         try {
-          if (tempFile.existsSync()) {
-            await tempFile.delete();
+          if (tempDir.existsSync()) {
+            await tempDir.delete(recursive: true);
           }
         } catch (e) {
           // Ignore cleanup errors

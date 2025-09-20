@@ -162,7 +162,8 @@ void main() {
         });
 
         test('should throw DecodingException for empty file', () async {
-          final tempFile = File('test_empty_chunked.mp4');
+          final tempDir = Directory.systemTemp.createTempSync('mp4_chunked_test_');
+          final tempFile = File('${tempDir.path}/empty.mp4');
           await tempFile.writeAsBytes([]);
 
           try {
@@ -173,7 +174,8 @@ void main() {
         });
 
         test('should throw MP4ContainerException for invalid MP4 signature', () async {
-          final tempFile = File('test_invalid_chunked.mp4');
+          final tempDir = Directory.systemTemp.createTempSync('mp4_chunked_test_');
+          final tempFile = File('${tempDir.path}/invalid.mp4');
           final invalidData = Uint8List.fromList([
             0x00, 0x00, 0x00, 0x20, // Box size
             0x69, 0x6E, 0x76, 0x64, // 'invd' instead of 'ftyp'
@@ -529,7 +531,8 @@ void main() {
     group('Error Handling During Chunked Processing', () {
       test('should handle file access errors during initialization', () async {
         // Create file then delete it to simulate access error
-        final tempFile = File('test_access_error.mp4');
+        final tempDir = Directory.systemTemp.createTempSync('mp4_chunked_test_');
+        final tempFile = File('${tempDir.path}/access_error.mp4');
         await tempFile.writeAsBytes([1, 2, 3, 4]);
         await tempFile.delete();
 
@@ -537,7 +540,8 @@ void main() {
       });
 
       test('should handle container parsing errors gracefully', () async {
-        final tempFile = File('test_parsing_error.mp4');
+        final tempDir = Directory.systemTemp.createTempSync('mp4_chunked_test_');
+        final tempFile = File('${tempDir.path}/parsing_error.mp4');
         // Create file with valid signature but corrupted structure
         final corruptedData = Uint8List.fromList([
           0x00, 0x00, 0x00, 0x20, // Box size
@@ -606,7 +610,8 @@ void main() {
     group('MP4 Container Validation', () {
       test('should validate MP4 signature correctly', () async {
         final validFile = await _createBasicMP4File('test_valid_sig.mp4');
-        final invalidFile = File('test_invalid_sig.mp4');
+        final tempDir2 = Directory.systemTemp.createTempSync('mp4_chunked_test_');
+        final invalidFile = File('${tempDir2.path}/invalid_sig.mp4');
 
         // Invalid signature
         await invalidFile.writeAsBytes([
@@ -628,7 +633,8 @@ void main() {
       });
 
       test('should handle file size validation', () async {
-        final tooSmallFile = File('test_too_small.mp4');
+        final tempDir = Directory.systemTemp.createTempSync('mp4_chunked_test_');
+        final tooSmallFile = File('${tempDir.path}/too_small.mp4');
         await tooSmallFile.writeAsBytes([0x00, 0x00]); // Only 2 bytes
 
         try {
@@ -1411,7 +1417,8 @@ FileChunk _createTestFileChunk(List<int> data, int startPosition, bool isLast) {
 
 /// Create a basic MP4 file with valid signature but minimal structure
 Future<File> _createBasicMP4File(String filename) async {
-  final file = File(filename);
+  final tempDir = Directory.systemTemp.createTempSync('mp4_chunked_test_');
+  final file = File('${tempDir.path}/$filename');
 
   // Create minimal MP4 with valid ftyp box but incomplete structure
   final mp4Data = Uint8List.fromList([
@@ -1446,7 +1453,8 @@ Future<File> _createBasicMP4File(String filename) async {
 
 /// Create a test MP4 file of specified size for testing
 Future<String> _createTestMP4File(String filename, int targetSize) async {
-  final file = File(filename);
+  final tempDir = Directory.systemTemp.createTempSync('mp4_chunked_test_');
+  final file = File('${tempDir.path}/$filename');
 
   // Create basic MP4 structure
   final basicData = await _createBasicMP4File(filename);
@@ -1465,7 +1473,8 @@ Future<String> _createTestMP4File(String filename, int targetSize) async {
 
 /// Create a large MP4 file for testing memory management
 Future<File> _createLargeMP4File(String filename, int targetSize) async {
-  final file = File(filename);
+  final tempDir = Directory.systemTemp.createTempSync('mp4_chunked_test_');
+  final file = File('${tempDir.path}/$filename');
 
   // Start with basic MP4 structure
   final basicFile = await _createBasicMP4File(filename);
