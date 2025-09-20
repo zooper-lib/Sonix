@@ -108,7 +108,6 @@
 
 - [x] 13. Create MP4 format detection and factory tests
 
-
   - Add MP4 format detection tests to existing factory test files
   - Test file extension detection for .mp4 and .m4a files
   - Test magic byte detection for MP4 container format
@@ -116,7 +115,8 @@
   - Test supported formats and extensions lists include MP4
   - _Requirements: 5.5, 5.6, 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 14. Generate MP4 test assets and data
+- [x] 14. Generate MP4 test assets and data
+
 
   - Create MP4TestDataGenerator tool for generating synthetic test files
   - Generate mp4_tiny_44100_2ch.mp4, mp4_small_44100_2ch.mp4, mp4_medium_44100_2ch.mp4
