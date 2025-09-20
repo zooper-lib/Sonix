@@ -135,7 +135,6 @@
 
 - [x] 16. Update native library with MP4 support foundation
 
-
   - Add SONIX_FORMAT_MP4 constant and MP4-specific error codes to sonix_native.h
   - Create SonixMp4Metadata structure for MP4-specific metadata
   - Add MP4 format detection to sonix_detect_format function
@@ -143,7 +142,8 @@
   - Add placeholder implementations for MP4 decoding functions
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 17. Implement native MP4 container parsing
+- [x] 17. Implement native MP4 container parsing
+
 
   - Create mp4_container.c with functions for parsing MP4 box structure
   - Implement functions to extract audio track information and sample tables

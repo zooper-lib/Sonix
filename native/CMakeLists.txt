@@ -9,6 +9,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(SOURCES
     src/sonix_native.c
     src/stb_vorbis_wrapper.c
+    src/mp4_container.c
 )
 
 # Define header directories
@@ -68,4 +69,28 @@ if(WIN32)
     target_compile_definitions(sonix_native PRIVATE SONIX_EXPORT=__declspec\(dllexport\))
 else()
     target_compile_definitions(sonix_native PRIVATE SONIX_EXPORT=__attribute__\(\(visibility\(\"default\"\)\)\))
+endif()
+
+# Optional: Build test executable for MP4 container parsing
+option(BUILD_TESTS "Build test executables" OFF)
+if(BUILD_TESTS)
+    add_executable(mp4_container_test
+        src/mp4_container_test.c
+        src/mp4_container.c
+    )
+    target_include_directories(mp4_container_test PRIVATE src)
+    
+    add_executable(mp4_integration_test
+        src/mp4_integration_test.c
+        src/mp4_container.c
+        src/sonix_native.c
+        src/stb_vorbis_wrapper.c
+    )
+    target_include_directories(mp4_integration_test PRIVATE src src/minimp3 src/dr_flac src/dr_wav src/stb_vorbis src/opus)
+    
+    # Platform-specific test configurations
+    if(WIN32)
+        target_compile_definitions(mp4_container_test PRIVATE WIN32_LEAN_AND_MEAN)
+        target_compile_definitions(mp4_integration_test PRIVATE WIN32_LEAN_AND_MEAN)
+    endif()
 endif()

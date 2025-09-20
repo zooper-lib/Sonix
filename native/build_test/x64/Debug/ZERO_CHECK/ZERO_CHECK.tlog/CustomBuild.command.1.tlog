@@ -1,0 +1,10 @@
+^D:\DEVELOPMENT\PROJECTS\ZOOPER\SONIX\NATIVE\BUILD_TEST\CMAKEFILES\F9F7538AD1D3FEFC1951A7ADCC62DC8C\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/Development/Projects/Zooper/Sonix/native -BD:/Development/Projects/Zooper/Sonix/native/build_test --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/Development/Projects/Zooper/Sonix/native/build_test/sonix_native.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
