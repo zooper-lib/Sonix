@@ -133,7 +133,10 @@ static int map_ffmpeg_format_to_sonix(const AVInputFormat* fmt) {
         return SONIX_FORMAT_WAV;
     } else if (strstr(fmt->name, "ogg")) {
         return SONIX_FORMAT_OGG;
-    } else if (strstr(fmt->name, "mp4") || strstr(fmt->name, "m4a")) {
+    } else if (strstr(fmt->name, "mp4") || strstr(fmt->name, "m4a") || 
+               strstr(fmt->name, "mov") || strstr(fmt->name, "3gp") ||
+               strstr(fmt->name, "quicktime") || strstr(fmt->name, "isom") ||
+               strstr(fmt->name, "avc") || strstr(fmt->name, "h264")) {
         return SONIX_FORMAT_MP4;
     }
     
