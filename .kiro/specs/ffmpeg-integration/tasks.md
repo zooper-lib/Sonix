@@ -33,7 +33,6 @@
 
 - [x] 2. Create FFMPEG native wrapper layer
 
-
   - Write new C wrapper that integrates FFMPEG libraries
   - Implement FFMPEG initialization and cleanup functions
   - Create format detection using FFMPEG's probing capabilities
@@ -63,7 +62,8 @@
   - Implement conditional compilation based on FFMPEG availability
   - _Requirements: 2.4, 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 3. Update Dart FFI bindings for FFMPEG backend
+- [x] 3. Update Dart FFI bindings for FFMPEG backend
+
 
   - Modify sonix_bindings.dart to maintain existing function signatures
   - Add FFMPEG-specific error codes and constants
@@ -71,7 +71,7 @@
   - Ensure backward compatibility with existing Dart API
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 3.1 Update audio decoder implementations
+- [x] 3.1 Update audio decoder implementations
 
   - Modify existing decoder classes to use FFMPEG backend
   - Ensure AudioDecoder interface remains unchanged
@@ -79,7 +79,7 @@
   - Maintain support for all current audio formats through FFMPEG
   - _Requirements: 1.1, 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 3.2 Update isolate processing for FFMPEG
+- [x] 3.2 Update isolate processing for FFMPEG
 
   - Modify isolate-based processing to work with FFMPEG backend
   - Ensure proper FFMPEG context management across isolate boundaries

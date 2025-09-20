@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'audio_decoder.dart';
 import 'mp3_decoder.dart';
@@ -7,6 +8,7 @@ import 'flac_decoder.dart';
 import 'vorbis_decoder.dart';
 import 'mp4_decoder.dart';
 import '../exceptions/sonix_exceptions.dart';
+import '../native/native_audio_bindings.dart';
 
 /// Factory for creating appropriate audio decoders
 class AudioDecoderFactory {
@@ -54,6 +56,7 @@ class AudioDecoderFactory {
   }
 
   /// Detect format by examining file content (magic bytes)
+  /// Uses FFMPEG probing when available for more accurate detection
   static AudioFormat _detectFormatByContent(String filePath) {
     try {
       final file = File(filePath);
@@ -61,14 +64,26 @@ class AudioDecoderFactory {
         return AudioFormat.unknown;
       }
 
-      // Read first few bytes to check magic numbers
-      final bytes = file.readAsBytesSync().take(12).toList();
+      // Read first chunk for format detection
+      final bytes = file.readAsBytesSync().take(8192).toList(); // Read more data for FFMPEG probing
 
       if (bytes.length < 4) {
         return AudioFormat.unknown;
       }
 
-      // Check for various format signatures
+      // Try FFMPEG probing first if available (more accurate)
+      try {
+        if (NativeAudioBindings.isFFMPEGAvailable) {
+          final format = NativeAudioBindings.detectFormat(Uint8List.fromList(bytes));
+          if (format != AudioFormat.unknown) {
+            return format;
+          }
+        }
+      } catch (e) {
+        // Fall back to legacy detection if FFMPEG probing fails
+      }
+
+      // Legacy magic byte detection as fallback
       if (_checkMP3Signature(bytes)) {
         return AudioFormat.mp3;
       }

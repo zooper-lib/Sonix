@@ -10,6 +10,7 @@ import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 /// High-level wrapper for native audio bindings
 class NativeAudioBindings {
   static bool _initialized = false;
+  static bool _ffmpegInitialized = false;
   static int _memoryPressureThreshold = 100 * 1024 * 1024; // 100MB threshold
 
   /// Initialize the native bindings
@@ -20,8 +21,50 @@ class NativeAudioBindings {
       // Try to load the library to verify it's available
       SonixNativeBindings.lib;
       _initialized = true;
+
+      // Try to initialize FFMPEG backend if available
+      _initializeFFMPEG();
     } catch (e) {
       throw FFIException('Failed to initialize native audio bindings', 'Make sure the native library is built and available: $e');
+    }
+  }
+
+  /// Initialize FFMPEG backend if available
+  static void _initializeFFMPEG() {
+    if (_ffmpegInitialized) return;
+
+    try {
+      final result = SonixNativeBindings.initFFMPEG();
+      if (result == SONIX_OK) {
+        _ffmpegInitialized = true;
+      }
+    } catch (e) {
+      // FFMPEG initialization failed, continue with legacy backend
+      _ffmpegInitialized = false;
+    }
+  }
+
+  /// Check if FFMPEG backend is available and initialized
+  static bool get isFFMPEGAvailable {
+    _ensureInitialized();
+    return _ffmpegInitialized && SonixNativeBindings.isFFMPEGAvailable;
+  }
+
+  /// Get current backend type
+  static String get backendType {
+    _ensureInitialized();
+    return isFFMPEGAvailable ? 'FFMPEG' : 'Legacy';
+  }
+
+  /// Cleanup FFMPEG resources (call on app shutdown)
+  static void cleanup() {
+    if (_ffmpegInitialized) {
+      try {
+        SonixNativeBindings.cleanupFFMPEG();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      _ffmpegInitialized = false;
     }
   }
 
@@ -34,6 +77,7 @@ class NativeAudioBindings {
   static int get memoryPressureThreshold => _memoryPressureThreshold;
 
   /// Detect audio format from file data
+  /// Uses FFMPEG probing when available, falls back to legacy detection
   static AudioFormat detectFormat(Uint8List data) {
     _ensureInitialized();
 
@@ -45,13 +89,26 @@ class NativeAudioBindings {
 
     try {
       final formatCode = SonixNativeBindings.detectFormat(pointer, data.length);
-      return formatCodeToEnum(formatCode);
+      final detectedFormat = formatCodeToEnum(formatCode);
+
+      // If FFMPEG is available and format detection failed with legacy,
+      // the native layer should have already tried FFMPEG probing
+      if (detectedFormat == AudioFormat.unknown && isFFMPEGAvailable) {
+        // FFMPEG probing was attempted but failed
+        final errorMsg = _getLastErrorMessage();
+        if (errorMsg.contains('FFMPEG')) {
+          throw DecodingException('FFMPEG format detection failed', errorMsg);
+        }
+      }
+
+      return detectedFormat;
     } finally {
       malloc.free(pointer);
     }
   }
 
   /// Decode audio data from memory
+  /// Uses FFMPEG backend when available, falls back to legacy decoders
   static AudioData decodeAudio(Uint8List data, AudioFormat format) {
     _ensureInitialized();
 
@@ -72,6 +129,22 @@ class NativeAudioBindings {
 
       if (resultPointer == ffi.nullptr) {
         final errorMsg = _getLastErrorMessage();
+
+        // Check for FFMPEG-specific errors and provide better error messages
+        if (errorMsg.contains('FFMPEG') || isFFMPEGAvailable) {
+          // Try to get more specific FFMPEG error information
+          if (errorMsg.contains('probe')) {
+            throw DecodingException(
+              'FFMPEG format probing failed',
+              'The file format could not be detected by FFMPEG. The file may be corrupted or use an unsupported format variant.',
+            );
+          } else if (errorMsg.contains('codec')) {
+            throw DecodingException('FFMPEG codec not found', 'The required codec for this audio format is not available in the FFMPEG build.');
+          } else if (errorMsg.contains('decode')) {
+            throw DecodingException('FFMPEG decoding failed', 'FFMPEG could not decode the audio data. The file may be corrupted.');
+          }
+        }
+
         throw DecodingException('Failed to decode audio', errorMsg);
       }
 
@@ -133,10 +206,36 @@ class NativeAudioBindings {
         return 'FFMPEG codec not found for this audio format. The codec may not be available in this build.';
       case SONIX_ERROR_FFMPEG_DECODE_FAILED:
         return 'FFMPEG failed to decode the audio data. The file may be corrupted or use an unsupported variant.';
+      case SONIX_ERROR_FFMPEG_CONTEXT_FAILED:
+        return 'FFMPEG failed to create decoding context. This may indicate insufficient memory or invalid parameters.';
+      case SONIX_ERROR_FFMPEG_STREAM_NOT_FOUND:
+        return 'FFMPEG could not find an audio stream in the file. The file may not contain audio data.';
+      case SONIX_ERROR_FFMPEG_PACKET_READ_FAILED:
+        return 'FFMPEG failed to read audio packets from the file. The file may be corrupted or truncated.';
+      case SONIX_ERROR_FFMPEG_FRAME_DECODE_FAILED:
+        return 'FFMPEG failed to decode audio frames. The file may contain corrupted audio data.';
+      case SONIX_ERROR_FFMPEG_RESAMPLE_FAILED:
+        return 'FFMPEG failed to resample audio data. This may indicate incompatible audio parameters.';
       case SONIX_ERROR_FFMPEG_NOT_AVAILABLE:
         return 'FFMPEG libraries are not available. Please run the setup script to build FFMPEG libraries.';
       default:
         return _getLastErrorMessage();
+    }
+  }
+
+  /// Check if an error code is FFMPEG-related
+  static bool isFFMPEGError(int errorCode) {
+    return errorCode >= SONIX_ERROR_FFMPEG_RESAMPLE_FAILED && errorCode <= SONIX_ERROR_FFMPEG_INIT_FAILED;
+  }
+
+  /// Get backend-specific error message
+  static String getBackendErrorMessage(int errorCode) {
+    if (isFFMPEGError(errorCode)) {
+      return getFFMPEGErrorMessage(errorCode);
+    } else if (errorCode >= SONIX_ERROR_MP4_UNSUPPORTED_CODEC && errorCode <= SONIX_ERROR_MP4_CONTAINER_INVALID) {
+      return getMP4ErrorMessage(errorCode);
+    } else {
+      return _getLastErrorMessage();
     }
   }
 

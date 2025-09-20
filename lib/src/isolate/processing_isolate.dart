@@ -20,6 +20,7 @@ import 'package:sonix/src/processing/waveform_generator.dart';
 import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/processing/downsampling_algorithm.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
 
 /// Entry point for background processing isolates
 ///
@@ -27,6 +28,15 @@ import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 /// tasks sent from the main isolate. It listens for ProcessingRequest messages
 /// and responds with ProcessingResponse messages.
 void processingIsolateEntryPoint(SendPort handshakeSendPort) {
+  // Initialize native bindings in this isolate context
+  // This ensures FFMPEG context is properly set up for this isolate
+  try {
+    NativeAudioBindings.initialize();
+  } catch (e) {
+    // If initialization fails, we can still continue with legacy backend
+    // The error will be handled when actual processing occurs
+  }
+
   // Create receive port for this isolate
   final receivePort = ReceivePort();
 
@@ -50,6 +60,10 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
         if (mainSendPort != null) {
           await _handleIsolateMessage(isolateMessage, mainSendPort!, activeOperations);
         }
+      } else if (message == 'shutdown') {
+        // Handle isolate shutdown request
+        _cleanupIsolateResources();
+        receivePort.close();
       }
     } catch (error, stackTrace) {
       // Send error back to main isolate if we have the send port
@@ -70,6 +84,14 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
       }
     }
   });
+
+  // Cleanup resources when isolate is about to terminate
+  receivePort.listen(
+    null,
+    onDone: () {
+      _cleanupIsolateResources();
+    },
+  );
 }
 
 /// Represents an active operation in the background isolate
@@ -235,9 +257,20 @@ void _sendErrorResponse(SendPort mainSendPort, String requestId, Object error) {
   if (error is SonixException) {
     errorMessage = error.message;
     errorType = error.runtimeType.toString();
+
+    // Add backend information for debugging FFMPEG-related errors
+    if (error is FFIException && error.message.contains('FFMPEG')) {
+      errorMessage += ' (Backend: ${NativeAudioBindings.backendType})';
+    }
   } else {
     errorMessage = error.toString();
     errorType = 'UnknownError';
+
+    // Check if this might be an FFMPEG-related error
+    if (errorMessage.contains('FFMPEG') || errorMessage.contains('ffmpeg')) {
+      errorType = 'FFMPEGError';
+      errorMessage += ' (Backend: ${NativeAudioBindings.backendType})';
+    }
   }
 
   final errorResponse = ProcessingResponse(
@@ -405,4 +438,14 @@ Future<AudioData> _processWithSelectiveDecoding(
   await decoder.cleanupChunkedProcessing();
 
   return AudioData(samples: amplitudes, sampleRate: sampleRate, channels: channels, duration: estimatedDuration);
+}
+
+/// Cleanup FFMPEG resources when isolate shuts down
+void _cleanupIsolateResources() {
+  try {
+    // Cleanup FFMPEG context in this isolate
+    NativeAudioBindings.cleanup();
+  } catch (e) {
+    // Ignore cleanup errors during shutdown
+  }
 }
