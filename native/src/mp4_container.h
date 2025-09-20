@@ -36,6 +36,8 @@ typedef struct {
     uint16_t channels;      // Number of audio channels
     uint16_t sample_size;   // Sample size in bits
     uint32_t sample_rate;   // Sample rate in Hz
+    uint8_t* decoder_config; // AAC decoder configuration data
+    size_t decoder_config_size; // Size of decoder configuration
 } Mp4SampleDescription;
 
 // MP4 sample table information

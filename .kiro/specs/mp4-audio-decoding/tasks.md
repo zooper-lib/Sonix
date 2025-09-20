@@ -144,7 +144,6 @@
 
 - [x] 17. Implement native MP4 container parsing
 
-
   - Create mp4_container.c with functions for parsing MP4 box structure
   - Implement functions to extract audio track information and sample tables
   - Add validation for MP4 container structure and audio track presence
@@ -152,7 +151,7 @@
   - Write native code tests for container parsing functionality
   - _Requirements: 1.2, 6.1, 6.4_
 
-- [ ] 18. Integrate FAAD2 library for AAC decoding
+- [x] 18. Integrate FAAD2 library for AAC decoding
 
   - Add FAAD2 library integration to CMakeLists.txt build system
   - Create mp4_decoder.c with FAAD2 decoder initialization and cleanup

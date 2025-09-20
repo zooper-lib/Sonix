@@ -10,6 +10,7 @@ set(SOURCES
     src/sonix_native.c
     src/stb_vorbis_wrapper.c
     src/mp4_container.c
+    src/mp4_decoder.c
 )
 
 # Define header directories
@@ -20,13 +21,29 @@ set(INCLUDE_DIRS
     src/dr_wav
     src/stb_vorbis
     src/opus
+    src/faad2
 )
+
+# Find FAAD2 library
+find_library(FAAD2_LIBRARY NAMES faad2 faad libfaad2 libfaad)
+find_path(FAAD2_INCLUDE_DIR NAMES neaacdec.h PATHS /usr/include /usr/local/include /opt/homebrew/include)
 
 # Create shared library
 add_library(sonix_native SHARED ${SOURCES})
 
 # Set include directories
 target_include_directories(sonix_native PRIVATE ${INCLUDE_DIRS})
+
+# Link FAAD2 library if found
+if(FAAD2_LIBRARY AND FAAD2_INCLUDE_DIR)
+    target_link_libraries(sonix_native ${FAAD2_LIBRARY})
+    target_include_directories(sonix_native PRIVATE ${FAAD2_INCLUDE_DIR})
+    target_compile_definitions(sonix_native PRIVATE HAVE_FAAD2=1)
+    message(STATUS "Found FAAD2: ${FAAD2_LIBRARY}")
+else()
+    message(WARNING "FAAD2 library not found. MP4/AAC decoding will be disabled.")
+    target_compile_definitions(sonix_native PRIVATE HAVE_FAAD2=0)
+endif()
 
 # Platform-specific configurations
 if(WIN32)
@@ -83,10 +100,57 @@ if(BUILD_TESTS)
     add_executable(mp4_integration_test
         src/mp4_integration_test.c
         src/mp4_container.c
+        src/mp4_decoder.c
         src/sonix_native.c
         src/stb_vorbis_wrapper.c
     )
     target_include_directories(mp4_integration_test PRIVATE src src/minimp3 src/dr_flac src/dr_wav src/stb_vorbis src/opus)
+    
+    # Link FAAD2 to integration test if available
+    if(FAAD2_LIBRARY AND FAAD2_INCLUDE_DIR)
+        target_link_libraries(mp4_integration_test ${FAAD2_LIBRARY})
+        target_include_directories(mp4_integration_test PRIVATE ${FAAD2_INCLUDE_DIR})
+        target_compile_definitions(mp4_integration_test PRIVATE HAVE_FAAD2=1)
+    else()
+        target_compile_definitions(mp4_integration_test PRIVATE HAVE_FAAD2=0)
+    endif()
+    
+    add_executable(mp4_faad2_test
+        src/mp4_faad2_test.c
+        src/mp4_decoder.c
+        src/mp4_container.c
+        src/sonix_native.c
+        src/stb_vorbis_wrapper.c
+    )
+    target_include_directories(mp4_faad2_test PRIVATE src src/minimp3 src/dr_flac src/dr_wav src/stb_vorbis src/opus)
+    
+    add_executable(mp4_real_file_test
+        src/mp4_real_file_test.c
+        src/mp4_decoder.c
+        src/mp4_container.c
+        src/sonix_native.c
+        src/stb_vorbis_wrapper.c
+    )
+    target_include_directories(mp4_real_file_test PRIVATE src src/minimp3 src/dr_flac src/dr_wav src/stb_vorbis src/opus)
+    
+    # Link FAAD2 to test executables if available
+    if(FAAD2_LIBRARY AND FAAD2_INCLUDE_DIR)
+        target_link_libraries(mp4_faad2_test ${FAAD2_LIBRARY})
+        target_include_directories(mp4_faad2_test PRIVATE ${FAAD2_INCLUDE_DIR})
+        target_compile_definitions(mp4_faad2_test PRIVATE HAVE_FAAD2=1)
+        
+        target_link_libraries(mp4_integration_test ${FAAD2_LIBRARY})
+        target_include_directories(mp4_integration_test PRIVATE ${FAAD2_INCLUDE_DIR})
+        target_compile_definitions(mp4_integration_test PRIVATE HAVE_FAAD2=1)
+        
+        target_link_libraries(mp4_real_file_test ${FAAD2_LIBRARY})
+        target_include_directories(mp4_real_file_test PRIVATE ${FAAD2_INCLUDE_DIR})
+        target_compile_definitions(mp4_real_file_test PRIVATE HAVE_FAAD2=1)
+    else()
+        target_compile_definitions(mp4_faad2_test PRIVATE HAVE_FAAD2=0)
+        target_compile_definitions(mp4_integration_test PRIVATE HAVE_FAAD2=0)
+        target_compile_definitions(mp4_real_file_test PRIVATE HAVE_FAAD2=0)
+    endif()
     
     # Platform-specific test configurations
     if(WIN32)

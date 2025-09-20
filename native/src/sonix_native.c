@@ -1,6 +1,7 @@
 #define SONIX_BUILDING_DLL
 #include "sonix_native.h"
 #include "mp4_container.h"
+#include "mp4_decoder.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -41,7 +42,7 @@ struct SonixChunkedDecoder
         mp3dec_t mp3_decoder;
         drflac *flac_decoder;
         drwav wav_decoder;
-        void *mp4_decoder;  // Placeholder for MP4 decoder context
+        Mp4DecoderContext *mp4_decoder;  // MP4 decoder context
     } decoder_state;
 
     // Audio properties (set after first successful decode)
@@ -640,88 +641,17 @@ static SonixAudioData *decode_ogg(const uint8_t *data, size_t size)
 
 static SonixAudioData *decode_mp4(const uint8_t *data, size_t size)
 {
-    if (!data || size < 32)
-    {
-        set_error("Invalid MP4 data: null pointer or too small");
-        return NULL;
-    }
-
-    // Validate MP4 container structure
-    int validation_result = mp4_validate_container(data, size);
-    if (validation_result != SONIX_OK)
-    {
-        switch (validation_result)
-        {
-        case SONIX_ERROR_MP4_CONTAINER_INVALID:
-            set_error("Invalid MP4 container structure");
-            break;
-        case SONIX_ERROR_MP4_NO_AUDIO_TRACK:
-            set_error("MP4 file contains no audio track");
-            break;
-        case SONIX_ERROR_MP4_UNSUPPORTED_CODEC:
-            set_error("MP4 file contains unsupported audio codec");
-            break;
-        default:
-            set_error("MP4 validation failed");
-            break;
+    // Use the new FAAD2-based MP4 decoder
+    SonixAudioData* result = mp4_decode_file(data, size);
+    if (!result) {
+        // Copy error message from MP4 decoder to main error system
+        const char* mp4_error = mp4_get_error_message();
+        if (mp4_error && strlen(mp4_error) > 0) {
+            set_error(mp4_error);
+        } else {
+            set_error("MP4 decoding failed");
         }
-        return NULL;
     }
-
-    // Find and parse audio track information
-    size_t moov_size;
-    const uint8_t* moov_box = mp4_find_box(data, size, 0x6D6F6F76, &moov_size); // 'moov'
-    if (!moov_box)
-    {
-        set_error("MP4 file missing moov box");
-        return NULL;
-    }
-
-    Mp4AudioTrack audio_track;
-    int track_result = mp4_find_audio_track(moov_box, moov_size, &audio_track);
-    if (track_result != SONIX_OK || !audio_track.is_valid)
-    {
-        set_error("Failed to find valid audio track in MP4 file");
-        return NULL;
-    }
-
-    // For now, return basic metadata without actual decoding
-    // This will be replaced with actual AAC decoding in future tasks
-    SonixAudioData *result = (SonixAudioData *)malloc(sizeof(SonixAudioData));
-    if (!result)
-    {
-        set_error("Failed to allocate memory for MP4 audio data structure");
-        return NULL;
-    }
-
-    // Calculate estimated duration from media header
-    uint32_t duration_ms = 0;
-    if (audio_track.media_header.timescale > 0)
-    {
-        duration_ms = (uint32_t)((audio_track.media_header.duration * 1000) / audio_track.media_header.timescale);
-    }
-
-    // Create minimal sample data for testing (silence)
-    uint32_t estimated_samples = (audio_track.sample_description.sample_rate * audio_track.sample_description.channels * duration_ms) / 1000;
-    if (estimated_samples == 0)
-    {
-        estimated_samples = 44100 * 2; // Default to 1 second of stereo at 44.1kHz
-    }
-
-    float *samples = (float *)calloc(estimated_samples, sizeof(float));
-    if (!samples)
-    {
-        free(result);
-        set_error("Failed to allocate memory for MP4 audio samples");
-        return NULL;
-    }
-
-    result->samples = samples;
-    result->sample_count = estimated_samples;
-    result->sample_rate = audio_track.sample_description.sample_rate > 0 ? audio_track.sample_description.sample_rate : 44100;
-    result->channels = audio_track.sample_description.channels > 0 ? audio_track.sample_description.channels : 2;
-    result->duration_ms = duration_ms > 0 ? duration_ms : 1000;
-
     return result;
 }
 
@@ -837,8 +767,15 @@ SonixChunkedDecoder *sonix_init_chunked_decoder(int format, const char *file_pat
         memset(&decoder->decoder_state.wav_decoder, 0, sizeof(drwav));
         break;
     case SONIX_FORMAT_MP4:
-        // MP4 decoder will be initialized per chunk
-        decoder->decoder_state.mp4_decoder = NULL;
+        // Initialize MP4 decoder context
+        decoder->decoder_state.mp4_decoder = mp4_decoder_init();
+        if (!decoder->decoder_state.mp4_decoder) {
+            fclose(decoder->file_handle);
+            free(decoder->file_path);
+            free(decoder);
+            set_error("Failed to initialize MP4 decoder");
+            return NULL;
+        }
         break;
     case SONIX_FORMAT_OGG:
         fclose(decoder->file_handle);
@@ -1467,10 +1404,10 @@ void sonix_cleanup_chunked_decoder(SonixChunkedDecoder *decoder)
             drwav_uninit(&decoder->decoder_state.wav_decoder);
             break;
         case SONIX_FORMAT_MP4:
-            // MP4 decoder cleanup - placeholder for future implementation
+            // MP4 decoder cleanup
             if (decoder->decoder_state.mp4_decoder)
             {
-                // Future: cleanup MP4 decoder context
+                mp4_decoder_cleanup(decoder->decoder_state.mp4_decoder);
                 decoder->decoder_state.mp4_decoder = NULL;
             }
             break;
