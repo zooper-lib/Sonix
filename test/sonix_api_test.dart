@@ -37,44 +37,7 @@ void main() {
       expect(config.maxMemoryUsage, equals(200 * 1024 * 1024));
     });
 
-    test('should check format support using static methods', () {
-      // These should work with the mock decoder factory - use static methods
-      expect(Sonix.isFormatSupported('test.mp3'), isTrue);
-      expect(Sonix.isFormatSupported('test.wav'), isTrue);
-      expect(Sonix.isFormatSupported('test.flac'), isTrue);
-      expect(Sonix.isFormatSupported('test.ogg'), isTrue);
-      expect(Sonix.isFormatSupported('test.unknown'), isFalse);
-      expect(Sonix.isFormatSupported('test.xyz'), isFalse);
-      expect(Sonix.isFormatSupported('test.txt'), isFalse);
-    });
-
-    test('should return supported formats and extensions using static methods', () {
-      // Use static methods since these are utility functions
-      final formats = Sonix.getSupportedFormats();
-      expect(formats, isA<List<String>>());
-      expect(formats, isNotEmpty);
-      expect(formats, contains('MP3'));
-      expect(formats, contains('WAV'));
-      expect(formats, contains('FLAC'));
-      expect(formats, contains('OGG Vorbis'));
-
-      final extensions = Sonix.getSupportedExtensions();
-      expect(extensions, isA<List<String>>());
-      expect(extensions, isNotEmpty);
-      expect(extensions, contains('mp3'));
-      expect(extensions, contains('wav'));
-      expect(extensions, contains('flac'));
-      expect(extensions, contains('ogg'));
-    });
-
-    test('should check extension support using static methods', () {
-      expect(Sonix.isExtensionSupported('mp3'), isTrue);
-      expect(Sonix.isExtensionSupported('.mp3'), isTrue);
-      expect(Sonix.isExtensionSupported('MP3'), isTrue);
-      expect(Sonix.isExtensionSupported('.WAV'), isTrue);
-      expect(Sonix.isExtensionSupported('xyz'), isFalse);
-      expect(Sonix.isExtensionSupported('.txt'), isFalse);
-    });
+    // Configuration testing moved to test/config/sonix_config_test.dart
 
     test('should provide optimal configuration for different use cases', () {
       final musicConfig = Sonix.getOptimalConfig(useCase: WaveformUseCase.musicVisualization);
@@ -128,44 +91,6 @@ void main() {
       } finally {
         await sonix.dispose();
       }
-    });
-  });
-
-  group('SonixConfig', () {
-    test('should create default config', () {
-      const config = SonixConfig();
-
-      expect(config.maxConcurrentOperations, equals(3));
-      expect(config.isolatePoolSize, equals(2));
-      expect(config.maxMemoryUsage, equals(100 * 1024 * 1024));
-
-      expect(config.enableProgressReporting, isTrue);
-    });
-
-    test('should create mobile config', () {
-      final config = SonixConfig.mobile();
-
-      expect(config.maxConcurrentOperations, equals(2));
-      expect(config.isolatePoolSize, equals(1));
-      expect(config.maxMemoryUsage, equals(50 * 1024 * 1024));
-    });
-
-    test('should create desktop config', () {
-      final config = SonixConfig.desktop();
-
-      expect(config.maxConcurrentOperations, equals(4));
-      expect(config.isolatePoolSize, equals(3));
-      expect(config.maxMemoryUsage, equals(200 * 1024 * 1024));
-    });
-
-    test('should have proper string representation', () {
-      const config = SonixConfig();
-      final str = config.toString();
-
-      expect(str, contains('SonixConfig'));
-      expect(str, contains('maxConcurrentOperations: 3'));
-      expect(str, contains('isolatePoolSize: 2'));
-      expect(str, contains('100.0MB'));
     });
   });
 }

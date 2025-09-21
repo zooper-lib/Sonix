@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
-import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/decoders/mp3_decoder.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
@@ -21,28 +20,7 @@ void main() {
       NativeAudioBindings.initialize();
     });
 
-    group('Format Detection', () {
-      test('should detect MP3 format correctly by extension', () {
-        expect(AudioDecoderFactory.isFormatSupported('test.mp3'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('test.MP3'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('AUDIO.Mp3'), isTrue);
-      });
-
-      test('should create MP3 decoder instance', () {
-        final decoder = AudioDecoderFactory.createDecoder('test.mp3');
-        expect(decoder, isA<MP3Decoder>());
-        decoder.dispose();
-      });
-
-      test('should detect MP3 format from file content', () async {
-        final testFile = File(testFilePath);
-        expect(testFile.existsSync(), isTrue, reason: 'Test MP3 file must exist: $testFilePath');
-
-        final bytes = await testFile.readAsBytes();
-        final format = NativeAudioBindings.detectFormat(Uint8List.fromList(bytes));
-        expect(format, equals(AudioFormat.mp3));
-      });
-    });
+    // Format detection tests moved to test/core/format_detection_test.dart
 
     group('MP3 File Decoding', () {
       test('should decode MP3 file successfully', () async {

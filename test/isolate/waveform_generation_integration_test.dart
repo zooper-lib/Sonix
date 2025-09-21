@@ -132,15 +132,7 @@ void main() {
       expect(() => tempSonix.generateWaveform(testAudioPath), throwsA(isA<StateError>()));
     });
 
-    test('should validate format support correctly', () async {
-      // Act & Assert
-      expect(Sonix.isFormatSupported('test.wav'), isTrue);
-      expect(Sonix.isFormatSupported('test.mp3'), isTrue);
-      expect(Sonix.isFormatSupported('test.flac'), isTrue);
-      expect(Sonix.isFormatSupported('test.ogg'), isTrue);
-      expect(Sonix.isFormatSupported('test.xyz'), isFalse);
-      expect(Sonix.isFormatSupported('test'), isFalse);
-    });
+    // Format detection tests moved to test/core/format_detection_test.dart
 
     test('should return correct supported formats list', () async {
       // Act

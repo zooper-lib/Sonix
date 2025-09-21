@@ -1,7 +1,7 @@
-/// Integration tests for isolate-based waveform generation
+/// Integration tests for isolate infrastructure and communication
 ///
-/// These tests verify the core isolate communication and processing functionality
-/// without relying on complex audio decoding infrastructure.
+/// These tests verify the core isolate management, resource tracking, and
+/// error handling functionality without focusing on audio processing details.
 library;
 
 import 'dart:io';
@@ -13,7 +13,7 @@ import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import '../test_helpers/test_sonix_instance.dart';
 
 void main() {
-  group('Isolate Waveform Generation Tests', () {
+  group('Isolate Infrastructure Tests', () {
     late Sonix sonix;
 
     setUp(() async {
@@ -36,16 +36,7 @@ void main() {
       expect(stats.completedTasks, equals(0));
     });
 
-    test('should validate format support correctly', () async {
-      // Act & Assert - Use static methods since these are utility functions
-      expect(Sonix.isFormatSupported('test.wav'), isTrue);
-      expect(Sonix.isFormatSupported('test.mp3'), isTrue);
-      expect(Sonix.isFormatSupported('test.flac'), isTrue);
-      expect(Sonix.isFormatSupported('test.ogg'), isTrue);
-      expect(Sonix.isFormatSupported('test.mp4'), isTrue);
-      expect(Sonix.isFormatSupported('test.xyz'), isFalse);
-      expect(Sonix.isFormatSupported('test'), isFalse);
-    });
+    // Format detection tests moved to test/core/format_detection_test.dart
 
     test('should return correct supported formats list', () async {
       // Act - Use static methods since these are utility functions
@@ -66,12 +57,12 @@ void main() {
       expect(extensions, contains('mp4'));
     });
 
-    test('should handle non-existent file gracefully', () async {
+    test('should handle isolate task errors gracefully', () async {
       // Act & Assert
       expect(() => sonix.generateWaveform('non_existent_file.mp3'), throwsA(isA<Exception>()));
     });
 
-    test('should handle unsupported file format gracefully', () async {
+    test('should handle isolate task with unsupported format', () async {
       // Arrange
       final unsupportedFile = 'test_unsupported.xyz';
       await File(unsupportedFile).writeAsString('This is not an audio file');
@@ -87,7 +78,7 @@ void main() {
       }
     });
 
-    test('should clean up resources properly after disposal', () async {
+    test('should prevent isolate operations after disposal', () async {
       // Arrange
       final tempSonix = TestSonixInstance();
       await tempSonix.initialize();
