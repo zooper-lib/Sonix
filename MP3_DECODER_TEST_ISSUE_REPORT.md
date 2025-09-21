@@ -1,128 +1,130 @@
 # MP3 Decoder Test Issue Report
 
 ## Problem Summary
-The MP3 decoder tests are failing due to a **segmentation fault (SIGABRT -6)** in the native library when attempting to decode MP3 audio data.
 
-## Root Cause Analysis
+The MP3 decoder tests are failing due to a **missing FFmpeg implementation** in the native library. The current native library uses a stub implementation that cannot actually decode MP3 audio data.
+
+## Root Cause Analysis - UPDATED
 
 ### What Works ✅
+
 - Native library loading (`NativeAudioBindings.initialize()`)
 - Backend detection (using "Legacy" backend)
-- Format detection from file headers
-- Basic FFI binding setup
+- Format detection from file headers (MP3 format properly detected)
+- Basic FFI binding setup and null pointer handling
 - File system access and reading
+- Proper error handling (DecodingException instead of segmentation fault)
 
 ### What Fails ❌
+
 - **Actual audio decoding** (`NativeAudioBindings.decodeAudio()`)
-- Any operation that calls the native MP3 decoding functions
-- Tests crash with SIGABRT (-6) during native decoding
+- The native library returns NULL for `sonix_decode_audio()` calls
+- Stub implementation has no actual MP3 decoding logic
 
-### Technical Details
-- **Backend**: Legacy (not FFMPEG)
-- **Crash Type**: SIGABRT (-6) - indicates memory violation or assertion failure
-- **Crash Location**: Native `sonix_decode_audio` function
-- **Platform**: macOS ARM64
-- **Native Library**: `libsonix_native.dylib` exists and loads successfully
+### Technical Details - UPDATED
 
-## Impact on Tests
-- **15 tests failing** due to segmentation fault
-- Tests properly expose the bug (as they should)
-- No false positives - the failure indicates a real issue that needs fixing
+- **Backend**: Legacy (not FFMPEG) - stub implementation
+- **Issue Type**: DecodingException with message "Failed to decode MP3: no valid frames found"
+- **Native Library**: Built with stub implementation (`sonix_native_stub.c`)
+- **FFmpeg Libraries**: Available in `native/windows/` and `native/macos/` but not linked to build
+- **Platform**: Windows (development), macOS ARM64 (likely production environment)
 
-## Required Fixes
+## Impact on Tests - UPDATED
 
-### 1. Native Library Issues
-The segmentation fault suggests problems in the native C code:
+- **Tests now properly fail** with clear error messages instead of segmentation fault
+- Tests correctly expose the missing implementation issue
+- Error handling works as intended (DecodingException instead of crash)
+- No segmentation faults - the issue was caused by DLL not being found in the correct path
+
+## Required Fixes - UPDATED
+
+### 1. Build Native Library with FFmpeg Support
+
+The current library uses a stub implementation. Need to build with FFmpeg:
 
 ```bash
-# Rebuild the native library with debug symbols
+# Option 1: Use CMake with proper compiler
 cd native
-./build.sh --debug
+# Ensure Visual Studio or MinGW is available
+./build.bat  # Windows
+./build.sh   # macOS/Linux
 
-# Check for memory issues with valgrind (if available)
-valgrind --tool=memcheck ./test_native_decoder
+# Option 2: Setup FFmpeg using provided tool
+dart run tools/setup_ffmpeg.dart
 
-# Verify FFmpeg dependencies
-otool -L libsonix_native.dylib
+# Option 3: Use Flutter's native build system (if configured)
+flutter build windows
 ```
 
-### 2. Potential Issues to Investigate
+### 2. Alternative: Fix Library Path Issues
 
-#### Memory Management
-- Buffer allocation/deallocation in native code
-- Pointer arithmetic errors
-- Stack/heap corruption
+The previous segmentation fault was caused by DLL loading issues:
 
-#### FFI Binding Mismatches
-- Function signature mismatches between Dart and C
-- Data structure alignment issues
-- Incorrect parameter passing
-
-#### Native Dependencies
-- Missing or incompatible FFmpeg libraries
-- Library loading order issues
-- Symbol resolution problems
-
-### 3. Debugging Steps
-
-#### Step 1: Native Library Debugging
 ```bash
-# Enable debug logging in native code
-export SONIX_DEBUG=1
-
-# Run with debug symbols
-lldb flutter_tester
-(lldb) run test/decoders/mp3_decoder_test.dart
+# Ensure native library is in the correct location
+# Copy sonix_native.dll and FFmpeg DLLs to project root for tests
+# Or update library loading path in SonixNativeBindings
 ```
 
-#### Step 2: FFI Binding Verification
-```dart
-// Verify function signatures match native implementation
-// Check sonix_bindings.dart against native header files
-```
+### 3. Build System Integration
 
-#### Step 3: Memory Analysis
-```bash
-# Check for memory leaks
-leaks -atExit -- flutter test test/decoders/mp3_decoder_test.dart
+Integrate native library building into Flutter's build process:
 
-# Monitor memory usage
-instruments -t "Allocations" flutter test
-```
+- Add native assets configuration
+- Ensure proper platform-specific library paths
+- Include FFmpeg dependencies in distribution
 
-## Test Strategy
+## Test Strategy - UPDATED
 
 ### Current Approach ✅
-The tests now properly **fail** when there are issues, which is correct behavior:
-- Tests expose the segmentation fault
-- No false positives or hidden bugs
-- Clear failure indication for developers
+
+The tests now work correctly:
+
+- Tests properly **fail** with clear error messages when implementation is missing
+- No segmentation faults or crashes
+- Clear indication of the actual problem (missing FFmpeg implementation)
+- Proper error handling through exception system
 
 ### What NOT to Do ❌
+
 - ~~Skip tests when native library fails~~
 - ~~Mark tests as "expected to fail"~~
-- ~~Hide the segmentation fault with try-catch~~
+- ~~Hide the missing implementation with try-catch~~
 
 ### Proper Fix Required
-The segmentation fault in the native library must be fixed at the source:
-1. Debug the native C code
-2. Fix memory management issues
-3. Verify FFI bindings
-4. Ensure proper library dependencies
 
-## Files Affected
-- `test/decoders/mp3_decoder_test.dart` - Main test file (properly failing)
-- `test/decoders/mp3_decoder_diagnostic_test.dart` - Diagnostic test
-- `lib/src/native/native_audio_bindings.dart` - FFI bindings
-- `lib/src/native/sonix_bindings.dart` - Native function signatures
-- `native/src/sonix_native.c` - Native implementation (likely source of bug)
+The missing FFmpeg implementation must be addressed:
 
-## Next Steps
-1. **Debug native library** - Use debugger to find exact crash location
-2. **Fix memory issues** - Address buffer overflows, null pointers, etc.
-3. **Verify FFI bindings** - Ensure Dart/C interface is correct
-4. **Test with smaller files** - Use minimal test cases for debugging
-5. **Add native unit tests** - Test native functions independently
+1. Build native library with FFmpeg support
+2. Ensure FFmpeg libraries are properly linked
+3. Test with actual MP3 decoding capability
+4. Verify cross-platform compatibility
 
-## Conclusion
-The tests are working correctly by exposing a real bug in the native library. The segmentation fault must be fixed in the native C code, not hidden in the tests.
+## Files Affected - UPDATED
+
+- `test/decoders/mp3_decoder_test.dart` - Tests work correctly (proper failure)
+- `test/decoders/mp3_decoder_diagnostic_test.dart` - Diagnostic test confirms issue
+- `lib/src/native/native_audio_bindings.dart` - FFI bindings work correctly
+- `lib/src/native/sonix_bindings.dart` - Native function signatures correct
+- `native/src/sonix_native_stub.c` - Current stub implementation (needs replacement)
+- `native/src/ffmpeg_wrapper.c` - Proper implementation (needs to be built and linked)
+- `native/CMakeLists.txt` - Build configuration (needs compiler setup)
+
+## Next Steps - UPDATED
+
+1. **Setup build environment** - Install Visual Studio or MinGW for Windows builds
+2. **Build with FFmpeg** - Use build scripts to create proper implementation
+3. **Test library loading** - Ensure proper DLL/dylib placement for Flutter tests
+4. **Verify cross-platform** - Test on both Windows and macOS environments
+5. **Update CI/CD** - Include native library building in automated builds
+
+## Conclusion - UPDATED
+
+The original segmentation fault was resolved by fixing the library loading path. The tests now correctly expose the real issue: the native library is using a stub implementation instead of the full FFmpeg-based MP3 decoder. This is a build/configuration issue, not a code bug.
+
+### Status
+
+- ✅ **Segmentation fault fixed** - Tests run without crashing
+- ✅ **Error handling works** - Proper exceptions instead of crashes
+- ❌ **MP3 decoding not implemented** - Need to build with FFmpeg support
+- ⚠️ **Build system needs setup** - Requires compiler installation and configuration

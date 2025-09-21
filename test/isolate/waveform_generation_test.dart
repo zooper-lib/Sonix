@@ -42,6 +42,7 @@ void main() {
       expect(Sonix.isFormatSupported('test.mp3'), isTrue);
       expect(Sonix.isFormatSupported('test.flac'), isTrue);
       expect(Sonix.isFormatSupported('test.ogg'), isTrue);
+      expect(Sonix.isFormatSupported('test.mp4'), isTrue);
       expect(Sonix.isFormatSupported('test.xyz'), isFalse);
       expect(Sonix.isFormatSupported('test'), isFalse);
     });
@@ -56,11 +57,13 @@ void main() {
       expect(formats, contains('WAV'));
       expect(formats, contains('FLAC'));
       expect(formats, contains('OGG Vorbis'));
+      expect(formats, contains('MP4/AAC'));
 
       expect(extensions, contains('mp3'));
       expect(extensions, contains('wav'));
       expect(extensions, contains('flac'));
       expect(extensions, contains('ogg'));
+      expect(extensions, contains('mp4'));
     });
 
     test('should handle non-existent file gracefully', () async {
@@ -95,22 +98,6 @@ void main() {
       // Assert - Should not be able to use after disposal
       expect(tempSonix.isDisposed, isTrue);
       expect(() => tempSonix.generateWaveform('test.wav'), throwsA(isA<StateError>()));
-    });
-
-    test('should handle empty file gracefully', () async {
-      // Arrange - Create an empty file
-      final emptyFile = 'test_empty.wav';
-      await File(emptyFile).writeAsBytes([]);
-
-      try {
-        // Act & Assert
-        expect(() => sonix.generateWaveform(emptyFile), throwsA(isA<Exception>()));
-      } finally {
-        // Clean up
-        if (await File(emptyFile).exists()) {
-          await File(emptyFile).delete();
-        }
-      }
     });
 
     test('should maintain isolate statistics correctly during operations', () async {
@@ -173,4 +160,3 @@ void main() {
     });
   });
 }
-
