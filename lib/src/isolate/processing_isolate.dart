@@ -148,6 +148,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       }
 
       decoder = AudioDecoderFactory.createDecoder(request.filePath);
+      print('ProcessingIsolate: Created decoder: ${decoder.runtimeType}');
     } catch (error) {
       // Handle decoder creation errors immediately
       _sendErrorResponse(mainSendPort, request.id, error);
@@ -156,6 +157,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
 
     try {
       // Step 2: Check file size and determine processing strategy
+      print('ProcessingIsolate: Starting file analysis and decoding...');
 
       // Check for cancellation before file analysis
       if (operation.isCancelled) {
@@ -193,10 +195,19 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
 
       if (fileSize > chunkThreshold && decoder is ChunkedAudioDecoder) {
         // Use file-level chunked processing for large files (memory-efficient)
+        print('ProcessingIsolate: Using chunked processing for large file');
         audioData = await _processWithSelectiveDecoding(decoder, request.filePath, request.config, mainSendPort, request.id, operation);
       } else {
         // Use in-memory processing for smaller files (performance-optimized)
-        audioData = await decoder.decode(request.filePath);
+        print('ProcessingIsolate: Using in-memory processing for smaller file');
+        print('ProcessingIsolate: About to call decoder.decode()...');
+        try {
+          audioData = await decoder.decode(request.filePath);
+          print('ProcessingIsolate: decoder.decode() completed successfully');
+        } catch (decodeError) {
+          print('ProcessingIsolate: decoder.decode() failed with error: $decodeError');
+          throw decodeError; // Re-throw to be handled by outer catch block
+        }
       }
 
       // Check for cancellation after decoding
@@ -236,6 +247,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       decoder.dispose();
     }
   } catch (error) {
+    print('ProcessingIsolate: Caught error in main processing: $error');
     // Send error response only if not cancelled
     if (!operation.isCancelled) {
       _sendErrorResponse(mainSendPort, request.id, error);

@@ -1,7 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"/Users/daniel/Development/Projects/Zooper/Sonix/native/build/cmake_install.cmake"
+		"D:/Development/Projects/Zooper/Sonix/native/build/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/Users/daniel/Development/Projects/Zooper/Sonix/native/src/ffmpeg_wrapper.c" "CMakeFiles/sonix_native.dir/src/ffmpeg_wrapper.c.o" "gcc" "CMakeFiles/sonix_native.dir/src/ffmpeg_wrapper.c.o.d"
+  "D:/Development/Projects/Zooper/Sonix/native/src/ffmpeg_wrapper.c" "CMakeFiles/sonix_native.dir/src/ffmpeg_wrapper.c.obj" "gcc" "CMakeFiles/sonix_native.dir/src/ffmpeg_wrapper.c.obj.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

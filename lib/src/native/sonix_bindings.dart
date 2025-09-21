@@ -4,7 +4,7 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'dart:ffi' as ffi;
-import 'dart:io' show Platform;
+import 'dart:io';
 
 /// Audio format constants
 const int SONIX_FORMAT_UNKNOWN = 0;
@@ -171,7 +171,38 @@ class SonixNativeBindings {
     } else if (Platform.isIOS || Platform.isMacOS) {
       _lib = ffi.DynamicLibrary.open('lib$libName.dylib');
     } else if (Platform.isWindows) {
-      _lib = ffi.DynamicLibrary.open('$libName.dll');
+      // Try multiple locations for Windows DLL loading
+      Exception? lastException;
+
+      // Try relative path first (standard approach)
+      try {
+        _lib = ffi.DynamicLibrary.open('$libName.dll');
+        return _lib!;
+      } catch (e) {
+        lastException = e as Exception?;
+      }
+
+      // Try with full path from current directory
+      try {
+        final currentDir = Directory.current.path;
+        final dllPath = '$currentDir\\$libName.dll';
+        _lib = ffi.DynamicLibrary.open(dllPath);
+        return _lib!;
+      } catch (e) {
+        // Continue to next attempt
+      }
+
+      // Try executable directory (for Flutter apps)
+      try {
+        final executablePath = Platform.resolvedExecutable;
+        final executableDir = Directory(executablePath).parent.path;
+        final dllPath = '$executableDir\\$libName.dll';
+        _lib = ffi.DynamicLibrary.open(dllPath);
+        return _lib!;
+      } catch (e) {
+        // All attempts failed, throw the original exception
+        throw lastException ?? Exception('Failed to load $libName.dll from any location');
+      }
     } else if (Platform.isLinux) {
       _lib = ffi.DynamicLibrary.open('lib$libName.so');
     } else {

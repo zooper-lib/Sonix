@@ -1,0 +1,1 @@
+ "D:/Development/Projects/Zooper/Sonix/native/windows/avformat-60.dll" "D:/Development/Projects/Zooper/Sonix/native/windows/avcodec-60.dll" "D:/Development/Projects/Zooper/Sonix/native/windows/avutil-58.dll" "D:/Development/Projects/Zooper/Sonix/native/windows/swresample-4.dll" -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 

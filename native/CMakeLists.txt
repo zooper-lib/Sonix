@@ -62,7 +62,22 @@ find_library(SWRESAMPLE_LIBRARY
 )
 
 # Check if FFMPEG libraries are found
-if(NOT AVFORMAT_LIBRARY OR NOT AVCODEC_LIBRARY OR NOT AVUTIL_LIBRARY OR NOT SWRESAMPLE_LIBRARY)
+if(WIN32 AND EXISTS "${FFMPEG_ROOT_DIR}/avformat-60.dll")
+    # On Windows, check for DLL files directly
+    message(STATUS "Found FFMPEG DLL libraries in ${FFMPEG_ROOT_DIR}")
+    message(STATUS "  avformat: ${FFMPEG_ROOT_DIR}/avformat-60.dll")
+    message(STATUS "  avcodec: ${FFMPEG_ROOT_DIR}/avcodec-60.dll") 
+    message(STATUS "  avutil: ${FFMPEG_ROOT_DIR}/avutil-58.dll")
+    message(STATUS "  swresample: ${FFMPEG_ROOT_DIR}/swresample-4.dll")
+    
+    set(USE_FFMPEG_STUB FALSE)
+    
+    # Set library paths for Windows DLLs
+    set(AVFORMAT_LIBRARY "${FFMPEG_ROOT_DIR}/avformat-60.dll")
+    set(AVCODEC_LIBRARY "${FFMPEG_ROOT_DIR}/avcodec-60.dll") 
+    set(AVUTIL_LIBRARY "${FFMPEG_ROOT_DIR}/avutil-58.dll")
+    set(SWRESAMPLE_LIBRARY "${FFMPEG_ROOT_DIR}/swresample-4.dll")
+elseif(NOT AVFORMAT_LIBRARY OR NOT AVCODEC_LIBRARY OR NOT AVUTIL_LIBRARY OR NOT SWRESAMPLE_LIBRARY)
     message(WARNING "FFMPEG libraries not found in ${FFMPEG_ROOT_DIR}")
     message(WARNING "Please run the FFMPEG setup script to build FFMPEG libraries")
     message(WARNING "Falling back to stub implementation")
@@ -115,10 +130,25 @@ if(USE_FFMPEG_STUB)
     target_compile_definitions(sonix_native PRIVATE USE_FFMPEG_STUB=1)
     message(STATUS "Building with stub implementation")
 else()
-    # Include directories for FFMPEG headers
-    target_include_directories(sonix_native PRIVATE
-        ${FFMPEG_ROOT_DIR}/include
-    )
+    # Include directories for FFMPEG headers - check multiple possible locations
+    set(FFMPEG_INCLUDE_DIRS "")
+    
+    # Try to find include directory
+    if(EXISTS "${FFMPEG_ROOT_DIR}/include")
+        list(APPEND FFMPEG_INCLUDE_DIRS "${FFMPEG_ROOT_DIR}/include")
+    endif()
+    
+    # For development builds, also check the source directory
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../build/ffmpeg/ffmpeg-6.1")
+        list(APPEND FFMPEG_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../build/ffmpeg/ffmpeg-6.1")
+    endif()
+    
+    if(FFMPEG_INCLUDE_DIRS)
+        target_include_directories(sonix_native PRIVATE ${FFMPEG_INCLUDE_DIRS})
+        message(STATUS "Using FFMPEG headers from: ${FFMPEG_INCLUDE_DIRS}")
+    else()
+        message(FATAL_ERROR "Could not find FFMPEG headers")
+    endif()
     
     # Link FFMPEG libraries
     target_link_libraries(sonix_native

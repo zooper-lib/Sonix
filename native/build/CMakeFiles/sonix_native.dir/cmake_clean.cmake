@@ -1,8 +1,10 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/sonix_native.dir/src/ffmpeg_wrapper.c.o"
-  "CMakeFiles/sonix_native.dir/src/ffmpeg_wrapper.c.o.d"
-  "libsonix_native.dylib"
-  "libsonix_native.pdb"
+  "CMakeFiles/sonix_native.dir/src/ffmpeg_wrapper.c.obj"
+  "CMakeFiles/sonix_native.dir/src/ffmpeg_wrapper.c.obj.d"
+  "libsonix_native.dll.a"
+  "sonix_native.dll"
+  "sonix_native.dll.manifest"
+  "sonix_native.pdb"
 )
 
 # Per-language clean rules from dependency scanning.

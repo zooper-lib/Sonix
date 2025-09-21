@@ -516,6 +516,76 @@ class FFMPEGSetupManager {
         print('Installed: $fileName');
       }
     }
+
+    // Provide user guidance for testing
+    _printTestingInstructions(platform);
+  }
+
+  /// Prints instructions for testing the built libraries
+  void _printTestingInstructions(TargetPlatform platform) async {
+    print('');
+    print('📋 TESTING INSTRUCTIONS');
+    print('======================');
+    print('FFMPEG libraries have been installed to native/${platform.name}/');
+    print('');
+    print('To test with your Flutter app:');
+    print('');
+    print('1. Build the native library:');
+    switch (platform) {
+      case TargetPlatform.windows:
+        print('   cd native && build.bat');
+        break;
+      case TargetPlatform.macos:
+      case TargetPlatform.linux:
+        print('   cd native && ./build.sh');
+        break;
+      case TargetPlatform.android:
+        print('   cd native && ./build.sh android');
+        break;
+      case TargetPlatform.ios:
+        print('   cd native && ./build.sh ios');
+        break;
+    }
+    print('');
+    print('2. Copy DLLs to Flutter app directory when testing:');
+    switch (platform) {
+      case TargetPlatform.windows:
+        print('   For example app testing:');
+        print('   - Copy native/windows/*.dll to example/build/windows/x64/runner/Debug/');
+        print('   - Or copy to example/ directory for quick testing');
+        print('');
+        print('   For unit tests:');
+        print('   - Copy native/windows/*.dll to test/ directory');
+        print('   - Or copy sonix_native.dll to project root');
+        break;
+      case TargetPlatform.macos:
+        print('   For example app testing:');
+        print('   - Copy native/macos/*.dylib to example/build/macos/Build/Products/Debug/');
+        print('   - Or copy to example/ directory for quick testing');
+        print('');
+        print('   For unit tests:');
+        print('   - Copy native/macos/*.dylib to test/ directory');
+        break;
+      case TargetPlatform.linux:
+        print('   For example app testing:');
+        print('   - Copy native/linux/*.so to example/build/linux/x64/debug/bundle/lib/');
+        print('   - Or copy to example/ directory for quick testing');
+        print('');
+        print('   For unit tests:');
+        print('   - Copy native/linux/*.so to test/ directory');
+        break;
+      case TargetPlatform.android:
+        print('   Android libraries are automatically bundled during build');
+        break;
+      case TargetPlatform.ios:
+        print('   iOS libraries are automatically bundled during build');
+        break;
+    }
+    print('');
+    print('3. Run your Flutter app or tests');
+    print('');
+    print('💡 TIP: The build script will place sonix_native.dll in the build directory,');
+    print('   but you need to manually copy the FFMPEG DLLs for testing.');
   }
 
   /// Prints help information
@@ -524,6 +594,9 @@ class FFMPEGSetupManager {
 FFMPEG Setup for Sonix
 
 Usage: dart run tools/setup_ffmpeg.dart [options]
+
+This tool builds FFMPEG libraries and installs them to native/[platform]/ directory.
+After building, you'll need to manually copy DLLs to test/build directories for testing.
 
 Options:
   -h, --help                Show this help message
@@ -543,6 +616,12 @@ Examples:
   dart run tools/setup_ffmpeg.dart --platform windows --architecture x86_64
   dart run tools/setup_ffmpeg.dart --verbose --install-deps
   dart run tools/setup_ffmpeg.dart --decoders mp3,aac,flac --demuxers mp3,mp4
+
+Workflow:
+1. Run this tool to build and install FFMPEG libraries
+2. Build the native library: cd native && build.bat (Windows) or ./build.sh (Unix)
+3. Copy DLLs to Flutter build directories or test directory for testing
+4. The tool will show you exactly which files to copy and where
 ''');
   }
 

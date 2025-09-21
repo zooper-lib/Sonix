@@ -106,18 +106,20 @@ class MP4Decoder implements ChunkedAudioDecoder {
           throw MP4TrackException('No audio track found', details: 'The MP4 file does not contain any audio tracks: $filePath');
         } else if (errorMessage.contains('mp4_unsupported_codec') || errorMessage.contains('unsupported codec')) {
           throw MP4CodecException('AAC', details: 'The MP4 file contains an unsupported audio codec. Only AAC is currently supported: $filePath');
-        } else if (errorMessage.contains('unsupported') ||
-            errorMessage.contains('format') ||
-            errorMessage.contains('not yet implemented') ||
-            errorMessage.contains('opus')) {
-          // Native library doesn't support MP4 yet - provide helpful error
+        } else if (errorMessage.contains('opus decoding not yet implemented') || errorMessage.contains('opus')) {
+          throw MP4CodecException(
+            'Opus',
+            details: 'This MP4 file contains Opus audio, which is not yet supported. Please use a file with AAC audio codec instead.',
+          );
+        } else if (errorMessage.contains('ffmpeg not available') || errorMessage.contains('ffmpeg_not_available')) {
+          // FFMPEG backend not available - provide helpful error
           throw UnsupportedFormatException(
             'MP4/AAC',
-            'MP4 decoding is not yet implemented in the native library. This feature is currently under development.',
+            'MP4 decoding requires FFMPEG backend which is not available. Please ensure FFMPEG libraries are properly installed and the native library is built with FFMPEG support.',
           );
         } else {
-          // Re-throw other native errors as decoding exceptions
-          throw DecodingException('Native MP4 decoding failed', 'Error during native decoding: $e');
+          // Re-throw other native errors as decoding exceptions with more context
+          throw DecodingException('Native MP4 decoding failed', 'Error during native MP4 decoding: $e');
         }
       }
     } catch (e) {
