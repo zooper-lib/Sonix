@@ -50,45 +50,43 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
   final Map<String, _ActiveOperation> activeOperations = {};
 
   // Listen for messages from the main isolate
-  receivePort.listen((dynamic message) async {
-    try {
-      if (message is SendPort) {
-        // This is the main isolate's send port for responses
-        mainSendPort = message;
-      } else if (message is Map<String, dynamic>) {
-        final isolateMessage = IsolateMessage.fromJson(message);
-        if (mainSendPort != null) {
-          await _handleIsolateMessage(isolateMessage, mainSendPort!, activeOperations);
-        }
-      } else if (message == 'shutdown') {
-        // Handle isolate shutdown request
-        _cleanupIsolateResources();
-        receivePort.close();
-      }
-    } catch (error, stackTrace) {
-      // Send error back to main isolate if we have the send port
-      if (mainSendPort != null) {
-        try {
-          final errorMessage = ErrorMessage(
-            id: 'error_${DateTime.now().millisecondsSinceEpoch}',
-            timestamp: DateTime.now(),
-            errorMessage: error.toString(),
-            errorType: 'IsolateProcessingError',
-            stackTrace: stackTrace.toString(),
-          );
-          mainSendPort!.send(errorMessage.toJson());
-        } catch (sendError) {
-          // If we can't even send the error, there's not much we can do
-          // The isolate will likely be considered crashed by the health monitor
-        }
-      }
-    }
-  });
-
-  // Cleanup resources when isolate is about to terminate
   receivePort.listen(
-    null,
+    (dynamic message) async {
+      try {
+        if (message is SendPort) {
+          // This is the main isolate's send port for responses
+          mainSendPort = message;
+        } else if (message is Map<String, dynamic>) {
+          final isolateMessage = IsolateMessage.fromJson(message);
+          if (mainSendPort != null) {
+            await _handleIsolateMessage(isolateMessage, mainSendPort!, activeOperations);
+          }
+        } else if (message == 'shutdown') {
+          // Handle isolate shutdown request
+          _cleanupIsolateResources();
+          receivePort.close();
+        }
+      } catch (error, stackTrace) {
+        // Send error back to main isolate if we have the send port
+        if (mainSendPort != null) {
+          try {
+            final errorMessage = ErrorMessage(
+              id: 'error_${DateTime.now().millisecondsSinceEpoch}',
+              timestamp: DateTime.now(),
+              errorMessage: error.toString(),
+              errorType: 'IsolateProcessingError',
+              stackTrace: stackTrace.toString(),
+            );
+            mainSendPort!.send(errorMessage.toJson());
+          } catch (sendError) {
+            // If we can't even send the error, there's not much we can do
+            // The isolate will likely be considered crashed by the health monitor
+          }
+        }
+      }
+    },
     onDone: () {
+      // Cleanup resources when isolate is about to terminate
       _cleanupIsolateResources();
     },
   );
