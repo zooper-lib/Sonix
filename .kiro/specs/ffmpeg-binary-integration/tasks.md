@@ -109,7 +109,10 @@
 
 
 
-- [ ] 4.2 Create cross-platform binary loading tests
+- [x] 4.2 Create cross-platform binary loading tests
+
+
+
 
   - Test FFMPEG binary loading on Windows with DLL files
   - Test FFMPEG binary loading on macOS with dylib files

@@ -2,6 +2,8 @@
 ///
 /// These tests verify the core isolate communication and message handling
 /// without relying on audio decoding functionality.
+// ignore_for_file: avoid_print
+
 library;
 
 import 'dart:async';

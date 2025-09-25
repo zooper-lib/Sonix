@@ -1,16 +1,9 @@
-/// FFMPEG memory management and error handling tests
-///
-/// Tests proper FFMPEG context cleanup, resource management, and error handling
-/// with real FFMPEG contexts and large audio files.
-library;
+// ignore_for_file: avoid_print
 
 import 'dart:ffi';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:ffi/ffi.dart';
 
-import '../test_helpers/test_data_loader.dart';
 import 'audio_test_data_manager.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
 
@@ -243,7 +236,7 @@ void main() {
         final expected = AudioTestDataManager.getExpectedResults(testKey);
         final fileSize = await AudioTestDataManager.getFileSize(testKey);
 
-        print('Testing chunked processing with large file: $filePath (${fileSize} bytes)');
+        print('Testing chunked processing with large file: $filePath ($fileSize bytes)');
 
         final filePathPtr = filePath.toNativeUtf8();
 

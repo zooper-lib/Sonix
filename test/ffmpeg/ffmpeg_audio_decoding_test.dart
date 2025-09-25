@@ -1,19 +1,27 @@
-/// FFMPEG audio decoding tests using real audio files
-///
-/// Tests the FFMPEG-based audio decoding with actual audio files
-/// and validates sample extraction accuracy and audio properties.
-library;
+// ignore_for_file: avoid_print
 
 import 'dart:ffi';
 import 'package:test/test.dart';
 import 'package:ffi/ffi.dart';
 
 import 'audio_test_data_manager.dart';
+import 'ffmpeg_setup_helper.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
 
 void main() {
   group('FFMPEG Audio Decoding Tests', () {
+    bool ffmpegAvailable = false;
+
     setUpAll(() async {
+      // Setup FFMPEG DLLs for testing
+      FFMPEGSetupHelper.printFFMPEGStatus();
+      ffmpegAvailable = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+
+      if (!ffmpegAvailable) {
+        print('⚠️ FFMPEG not available - tests will be skipped');
+        return;
+      }
+
       // Print test file status
       await AudioTestDataManager.printTestFileStatus();
 
@@ -25,13 +33,20 @@ void main() {
       }
     });
 
-    tearDownAll(() {
-      // Cleanup FFMPEG
-      SonixNativeBindings.cleanupFFMPEG();
+    tearDownAll(() async {
+      // Cleanup FFMPEG only if it was available
+      if (ffmpegAvailable) {
+        SonixNativeBindings.cleanupFFMPEG();
+      }
     });
 
     group('Valid Audio Decoding', () {
       test('should decode MP3 audio correctly', () async {
+        if (!ffmpegAvailable) {
+          print('Skipping MP3 decoding test - FFMPEG not available');
+          return;
+        }
+
         const testKey = 'mp3_sample';
 
         if (!await AudioTestDataManager.testFileExists(testKey)) {

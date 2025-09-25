@@ -1,8 +1,4 @@
-/// Basic library loading test without FFMPEG initialization
-///
-/// Tests that the native library can be loaded and basic functions work
-/// without initializing FFMPEG to isolate the issue.
-library;
+// ignore_for_file: avoid_print
 
 import 'dart:ffi';
 import 'package:test/test.dart';
@@ -47,7 +43,7 @@ void main() {
       // Error message should be a string (might be empty)
       expect(errorMsg, isA<String>(), reason: 'Should return string error message');
 
-      print('✅ Error message function works: "${errorMsg}"');
+      print('✅ Error message function works: "$errorMsg"');
     });
 
     test('should handle null data gracefully without FFMPEG', () {

@@ -68,3 +68,16 @@ test/assets/mismatched_*
 
 native/windows/*
 test/assets/ffmpeg/*
+
+# FFMPEG DLLs should never be committed to maintain MIT compliance
+# Users must provide their own FFMPEG binaries in test/fixtures/ffmpeg/
+avcodec-*.dll
+avdevice-*.dll
+avfilter-*.dll
+avformat-*.dll
+avutil-*.dll
+swresample-*.dll
+swscale-*.dll
+postproc-*.dll
+# Keep sonix_native.dll as it's our own library
+!sonix_native.dll

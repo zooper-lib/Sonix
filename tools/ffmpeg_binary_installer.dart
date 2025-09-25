@@ -107,7 +107,7 @@ class FFMPEGBinaryInstaller {
 
   /// Installs binaries to test directory for unit test execution
   Future<void> _installToTestDirectory(String sourcePath, List<String> installedFiles, Map<String, String> installPaths) async {
-    const testDir = 'test/assets/ffmpeg';
+    const testDir = 'test/fixtures/ffmpeg';
     final dir = Directory(testDir);
 
     if (!await dir.exists()) {
@@ -187,13 +187,13 @@ class FFMPEGBinaryInstaller {
     // Also check test directory
     bool testDirComplete = true;
     for (final libraryName in expectedLibraries) {
-      final file = File('test/assets/ffmpeg/$libraryName');
+      final file = File('test/fixtures/ffmpeg/$libraryName');
       if (!await file.exists()) {
         testDirComplete = false;
         break;
       }
     }
-    results['test/assets/ffmpeg'] = testDirComplete;
+    results['test/fixtures/ffmpeg'] = testDirComplete;
 
     return results;
   }
@@ -217,10 +217,10 @@ class FFMPEGBinaryInstaller {
 
       // Remove from test directory
       for (final libraryName in expectedLibraries) {
-        final file = File('test/assets/ffmpeg/$libraryName');
+        final file = File('test/fixtures/ffmpeg/$libraryName');
         if (await file.exists()) {
           await file.delete();
-          print('Removed: test/assets/ffmpeg/$libraryName');
+          print('Removed: test/fixtures/ffmpeg/$libraryName');
         }
       }
 
@@ -234,7 +234,7 @@ class FFMPEGBinaryInstaller {
   /// Gets the status of binary installation across all directories
   Future<Map<String, Map<String, bool>>> getInstallationStatus() async {
     final status = <String, Map<String, bool>>{};
-    final buildDirs = [..._getFlutterBuildDirectories(), 'test/assets/ffmpeg'];
+    final buildDirs = [..._getFlutterBuildDirectories(), 'test/fixtures/ffmpeg'];
     final expectedLibraries = platformInfo.getExpectedLibraryNames();
 
     for (final buildDir in buildDirs) {
@@ -254,7 +254,7 @@ class FFMPEGBinaryInstaller {
   /// Validates installed binaries in all directories
   Future<Map<String, Map<String, BinaryValidationResult>>> validateInstalledBinaries() async {
     final results = <String, Map<String, BinaryValidationResult>>{};
-    final buildDirs = [..._getFlutterBuildDirectories(), 'test/assets/ffmpeg'];
+    final buildDirs = [..._getFlutterBuildDirectories(), 'test/fixtures/ffmpeg'];
 
     for (final buildDir in buildDirs) {
       if (await Directory(buildDir).exists()) {

@@ -1,7 +1,4 @@
-/// FFMPEG initialization test
-///
-/// Tests FFMPEG initialization separately to isolate initialization issues
-library;
+// ignore_for_file: avoid_print
 
 import 'dart:ffi';
 import 'package:test/test.dart';

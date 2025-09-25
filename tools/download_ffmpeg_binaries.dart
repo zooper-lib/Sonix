@@ -50,7 +50,6 @@ class FFMPEGBinaryDownloadTool {
 
   /// Downloads and installs FFMPEG binaries
   Future<void> _downloadAndInstall(Map<String, dynamic> options) async {
-    final platform = options['platform'] as String?;
     final targetPath = options['output'] as String?;
     final skipInstall = options['skip-install'] as bool? ?? false;
     final force = options['force'] as bool? ?? false;

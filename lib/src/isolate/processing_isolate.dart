@@ -208,7 +208,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
           print('ProcessingIsolate: decoder.decode() completed successfully');
         } catch (decodeError) {
           print('ProcessingIsolate: decoder.decode() failed with error: $decodeError');
-          throw decodeError; // Re-throw to be handled by outer catch block
+          rethrow; // Re-throw to be handled by outer catch block
         }
       }
 
