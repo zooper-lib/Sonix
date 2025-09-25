@@ -2,7 +2,6 @@
 
 - [x] 1. Remove all existing FFMPEG stubs and mock implementations
 
-
   - Delete all stub implementation files (sonix_native_stub.c, sonix_native_stub.c.in)
   - Remove mock FFMPEG implementations from performance tests
   - Update CMakeLists.txt to fail when FFMPEG libraries are not found
@@ -17,7 +16,8 @@
   - Update documentation to reflect binary-only approach
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 2. Create FFMPEG binary download and management system
+- [x] 2. Create FFMPEG binary download and management system
+
 
   - Implement FFMPEGBinaryDownloader class for downloading pre-built binaries
   - Create platform-specific binary source configurations
@@ -25,7 +25,7 @@
   - Add support for Windows DLLs, macOS dylibs, and Linux shared objects
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 2.1 Implement binary validation and symbol checking
+- [x] 2.1 Implement binary validation and symbol checking
 
   - Create FFMPEGBinaryValidator class for verifying downloaded binaries
   - Implement symbol verification using nm, objdump, and readelf tools
@@ -33,7 +33,7 @@
   - Create architecture validation for downloaded binaries
   - _Requirements: 3.4, 3.5, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 2.2 Implement Flutter build directory integration
+- [x] 2.2 Implement Flutter build directory integration
 
   - Create binary installer that copies to Flutter build directories
   - Add support for Windows build/windows/x64/runner/Debug/ path

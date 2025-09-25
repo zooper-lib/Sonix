@@ -2,6 +2,8 @@
 ///
 /// This module provides the main entry point and processing logic for
 /// background isolates that handle audio decoding and waveform generation.
+// ignore_for_file: avoid_print
+
 library;
 
 import 'dart:async';

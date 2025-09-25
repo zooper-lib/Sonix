@@ -65,3 +65,6 @@ test/assets/partial_*
 test/assets/text_file.*
 test/assets/truncated.*
 test/assets/mismatched_*
+
+native/windows/*
+test/assets/ffmpeg/*
