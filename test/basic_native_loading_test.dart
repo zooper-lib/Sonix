@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:test/test.dart';
 import 'dart:ffi';
 import 'dart:io';
@@ -9,7 +11,21 @@ void main() {
     late DynamicLibrary nativeLib;
 
     setUpAll(() {
-      // Load the native library
+      // Verify that FFMPEG binaries and native library are in root directory
+      final requiredFiles = Platform.isWindows
+          ? ['sonix_native.dll', 'avformat-62.dll', 'avcodec-62.dll', 'avutil-60.dll', 'swresample-6.dll']
+          : Platform.isMacOS
+          ? ['libsonix_native.dylib']
+          : ['libsonix_native.so'];
+
+      for (final fileName in requiredFiles) {
+        final file = File(fileName);
+        if (!file.existsSync()) {
+          throw StateError('Required file $fileName not found in root directory. Please ensure FFMPEG binaries are properly set up.');
+        }
+      }
+
+      // Load the native library from root directory
       try {
         if (Platform.isWindows) {
           nativeLib = DynamicLibrary.open('./sonix_native.dll');
@@ -138,6 +154,9 @@ void main() {
       } catch (e) {
         print('Warning: Could not perform final cleanup: $e');
       }
+
+      // Note: We do NOT delete the FFMPEG binaries from root directory
+      // They should already be there and should remain for other tests
     });
   });
 }

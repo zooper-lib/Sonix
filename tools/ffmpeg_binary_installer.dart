@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 import 'dart:async';
 import 'ffmpeg_binary_validator.dart';
