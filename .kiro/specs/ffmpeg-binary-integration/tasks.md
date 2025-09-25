@@ -42,7 +42,10 @@
   - Copy binaries to test/ directory for unit test execution
   - _Requirements: 3.3, 6.1, 6.2, 6.3_
 
-- [ ] 3. Rewrite native FFMPEG wrapper without stubs
+- [-] 3. Rewrite native FFMPEG wrapper without stubs
+
+
+
 
   - Create new sonix_ffmpeg.c that only works with real FFMPEG libraries
   - Implement proper FFMPEG initialization and fail-fast error handling
@@ -50,7 +53,18 @@
   - Implement audio decoding using avformat, avcodec, and swresample
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.1, 4.2, 4.3_
 
-- [ ] 3.1 Implement robust FFMPEG memory management
+- [x] 3.1 Implement robust FFMPEG memory management
+
+
+
+
+
+
+
+
+
+
+
 
   - Add proper FFMPEG context initialization and cleanup
   - Implement chunked processing with real FFMPEG contexts
@@ -58,7 +72,9 @@
   - Ensure no memory leaks in FFMPEG resource management
   - _Requirements: 4.1, 4.4, 4.5_
 
-- [ ] 3.2 Update CMakeLists.txt for binary-only FFMPEG integration
+- [x] 3.2 Update CMakeLists.txt for binary-only FFMPEG integration
+
+
 
   - Remove all stub compilation paths from CMakeLists.txt
   - Add required FFMPEG library finding with NO_DEFAULT_PATH

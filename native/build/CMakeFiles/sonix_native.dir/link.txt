@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\sonix_native.dir/objects.a
-C:\msys64\mingw64\bin\ar.exe qc CMakeFiles\sonix_native.dir/objects.a @CMakeFiles\sonix_native.dir\objects1.rsp
-C:\msys64\mingw64\bin\cc.exe -O3 -DNDEBUG -shared -o sonix_native.dll -Wl,--out-implib,libsonix_native.dll.a -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles\sonix_native.dir/objects.a -Wl,--no-whole-archive @CMakeFiles\sonix_native.dir\linkLibs.rsp
