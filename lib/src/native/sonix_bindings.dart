@@ -9,10 +9,11 @@ import 'dart:io';
 /// Audio format constants
 const int SONIX_FORMAT_UNKNOWN = 0;
 const int SONIX_FORMAT_MP3 = 1;
-const int SONIX_FORMAT_FLAC = 2;
-const int SONIX_FORMAT_WAV = 3;
+const int SONIX_FORMAT_WAV = 2;
+const int SONIX_FORMAT_FLAC = 3;
 const int SONIX_FORMAT_OGG = 4;
-const int SONIX_FORMAT_MP4 = 5;
+const int SONIX_FORMAT_OPUS = 5;
+const int SONIX_FORMAT_MP4 = 6;
 
 /// Error codes
 const int SONIX_OK = 0;

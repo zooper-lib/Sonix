@@ -211,12 +211,26 @@ int32_t sonix_detect_format(const uint8_t* data, size_t size) {
         return SONIX_FORMAT_UNKNOWN;
     }
     
+    // Create a copy of the data buffer for FFMPEG to manage
+    // FFMPEG expects to own the buffer, so we need to allocate it properly
+    const size_t buffer_size = size + AV_INPUT_BUFFER_PADDING_SIZE;
+    unsigned char* buffer = (unsigned char*)av_malloc(buffer_size);
+    if (!buffer) {
+        set_error_message("Failed to allocate buffer for format detection");
+        return SONIX_FORMAT_UNKNOWN;
+    }
+    
+    // Copy the data and add padding
+    memcpy(buffer, data, size);
+    memset(buffer + size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+    
     // Create AVIOContext from memory buffer
     AVIOContext* avio_ctx = avio_alloc_context(
-        (unsigned char*)data, size, 0, NULL, NULL, NULL, NULL
+        buffer, size, 0, NULL, NULL, NULL, NULL
     );
     
     if (!avio_ctx) {
+        av_free(buffer);
         set_error_message("Failed to create AVIO context for format detection");
         return SONIX_FORMAT_UNKNOWN;
     }
@@ -231,8 +245,14 @@ int32_t sonix_detect_format(const uint8_t* data, size_t size) {
     
     fmt_ctx->pb = avio_ctx;
     
-    // Probe the format
-    const AVInputFormat* input_format = av_probe_input_format2(fmt_ctx, 1, NULL);
+    // Probe the format using a safer approach
+    AVProbeData probe_data;
+    probe_data.buf = buffer;
+    probe_data.buf_size = size;
+    probe_data.filename = "";
+    probe_data.mime_type = NULL;
+    
+    const AVInputFormat* input_format = av_probe_input_format(&probe_data, 1);
     int32_t detected_format = SONIX_FORMAT_UNKNOWN;
     
     if (input_format) {
@@ -253,7 +273,7 @@ int32_t sonix_detect_format(const uint8_t* data, size_t size) {
         }
     }
     
-    // Cleanup
+    // Cleanup - the avio_context_free will also free the buffer
     avformat_free_context(fmt_ctx);
     avio_context_free(&avio_ctx);
     
@@ -285,16 +305,26 @@ SonixAudioData* sonix_decode_audio(const uint8_t* data, size_t size, int32_t for
     
     TRACK_CONTEXT_ALLOC();
     
-    // For memory buffer input, we need to create a custom AVIO context
-    // For now, we'll use a simpler approach by creating a temporary file
-    // This is a limitation that should be addressed in future versions
+    // Create a copy of the data buffer for FFMPEG to manage
+    // FFMPEG expects to own the buffer, so we need to allocate it properly
+    const size_t input_buffer_size = size + AV_INPUT_BUFFER_PADDING_SIZE;
+    unsigned char* buffer = (unsigned char*)av_malloc(input_buffer_size);
+    if (!buffer) {
+        set_error_message("Failed to allocate buffer for audio decoding");
+        goto cleanup;
+    }
     
-    // Create AVIOContext from memory buffer (simplified approach)
+    // Copy the data and add padding
+    memcpy(buffer, data, size);
+    memset(buffer + size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+    
+    // Create AVIOContext from memory buffer
     avio_ctx = avio_alloc_context(
-        (unsigned char*)data, size, 0, NULL, NULL, NULL, NULL
+        buffer, size, 0, NULL, NULL, NULL, NULL
     );
     
     if (!avio_ctx) {
+        av_free(buffer);
         set_error_message("Failed to create AVIO context");
         goto cleanup;
     }
@@ -366,18 +396,26 @@ SonixAudioData* sonix_decode_audio(const uint8_t* data, size_t size, int32_t for
         goto cleanup;
     }
     
-    // Calculate total samples and duration
-    int64_t duration = audio_stream->duration;
-    if (duration == AV_NOPTS_VALUE) {
-        duration = fmt_ctx->duration * audio_stream->time_base.den / (audio_stream->time_base.num * AV_TIME_BASE);
-    }
-    
     uint32_t sample_rate = codec_ctx->sample_rate;
     uint32_t channels = codec_ctx->ch_layout.nb_channels;
-    uint32_t duration_ms = (uint32_t)(duration * audio_stream->time_base.num * 1000 / audio_stream->time_base.den);
     
-    // Estimate total samples
-    uint64_t total_samples = (uint64_t)sample_rate * duration_ms / 1000 * channels;
+    // Use a more conservative approach for buffer allocation
+    // Estimate based on file size and typical compression ratios
+    size_t estimated_samples;
+    if (size < 1024 * 1024) {
+        // Small files: allocate generously
+        estimated_samples = size * 8; // Very conservative for small files
+    } else {
+        // Large files: use compression ratio estimates
+        // WAV: ~1:1 ratio, MP3: ~10:1 ratio, FLAC: ~2:1 ratio
+        estimated_samples = size * 4; // Conservative middle ground
+    }
+    
+    // Ensure minimum reasonable size
+    const size_t min_samples = sample_rate * channels * 10; // At least 10 seconds worth
+    if (estimated_samples < min_samples) {
+        estimated_samples = min_samples;
+    }
     
     // Allocate audio data structure
     audio_data = (SonixAudioData*)safe_malloc(sizeof(SonixAudioData), "audio data structure");
@@ -388,14 +426,17 @@ SonixAudioData* sonix_decode_audio(const uint8_t* data, size_t size, int32_t for
     // Initialize audio data structure
     memset(audio_data, 0, sizeof(SonixAudioData));
     
-    // Allocate sample buffer with safety margin
-    const size_t buffer_size = (total_samples + 1024) * sizeof(float); // Extra samples for safety
+    // Allocate sample buffer with generous safety margin
+    const size_t buffer_size = estimated_samples * sizeof(float);
     audio_data->samples = (float*)safe_malloc(buffer_size, "sample buffer");
     if (!audio_data->samples) {
         free(audio_data);
         audio_data = NULL;
         goto cleanup;
     }
+    
+    // Store the buffer capacity for overflow checking
+    const uint64_t max_samples = estimated_samples;
     
     // Initialize resampler to convert to float
     swr_ctx = swr_alloc();
@@ -449,7 +490,7 @@ SonixAudioData* sonix_decode_audio(const uint8_t* data, size_t size, int32_t for
                 
                 // Check buffer bounds before conversion
                 uint64_t required_samples = sample_index + (frame->nb_samples * channels);
-                if (required_samples > total_samples + 1024) {
+                if (required_samples > max_samples) {
                     set_error_message("Sample buffer overflow detected");
                     goto cleanup;
                 }
@@ -495,7 +536,8 @@ SonixAudioData* sonix_decode_audio(const uint8_t* data, size_t size, int32_t for
         audio_data->sample_count = (uint32_t)sample_index;
         audio_data->sample_rate = sample_rate;
         audio_data->channels = channels;
-        audio_data->duration_ms = duration_ms;
+        // Calculate duration from actual samples
+        audio_data->duration_ms = (uint32_t)((sample_index * 1000) / (sample_rate * channels));
     }
 
 cleanup:
