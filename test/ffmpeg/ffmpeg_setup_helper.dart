@@ -7,11 +7,18 @@ class FFMPEGSetupHelper {
   static bool _setupComplete = false;
   static String? _fixturesPath;
 
-  /// List of FFMPEG libraries required for each platform
-  static const Map<String, List<String>> ffmpegLibraries = {
-    'windows': ['avcodec-62.dll', 'avdevice-62.dll', 'avfilter-11.dll', 'avformat-62.dll', 'avutil-60.dll', 'swresample-6.dll', 'swscale-9.dll'],
-    'macos': ['libavcodec.dylib', 'libavformat.dylib', 'libavutil.dylib', 'libswresample.dylib'],
-    'linux': ['libavcodec.so', 'libavformat.so', 'libavutil.so', 'libswresample.so'],
+  /// List of FFMPEG libraries for each platform
+  /// Core libraries are required, optional libraries are nice-to-have
+  static const Map<String, List<String>> coreLibraries = {
+    'windows': ['avutil-60.dll', 'avcodec-62.dll', 'avformat-62.dll', 'swresample-6.dll'],
+    'macos': ['libavutil.dylib', 'libavcodec.dylib', 'libavformat.dylib', 'libswresample.dylib'],
+    'linux': ['libavutil.so', 'libavcodec.so', 'libavformat.so', 'libswresample.so'],
+  };
+
+  static const Map<String, List<String>> optionalLibraries = {
+    'windows': ['avdevice-62.dll', 'avfilter-11.dll', 'swscale-9.dll'],
+    'macos': [],
+    'linux': [],
   };
 
   /// Get the current platform key
@@ -22,9 +29,16 @@ class FFMPEGSetupHelper {
     throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
   }
 
-  /// Get the list of required libraries for the current platform
+  /// Get the list of core libraries for the current platform
   static List<String> get requiredLibraries {
-    return ffmpegLibraries[currentPlatform] ?? [];
+    return coreLibraries[currentPlatform] ?? [];
+  }
+
+  /// Get the list of all libraries (core + optional) for the current platform
+  static List<String> get allLibraries {
+    final core = coreLibraries[currentPlatform] ?? [];
+    final optional = optionalLibraries[currentPlatform] ?? [];
+    return [...core, ...optional];
   }
 
   /// Setup FFMPEG libraries for testing
@@ -45,35 +59,56 @@ class FFMPEGSetupHelper {
 
     _fixturesPath = fixturesDir.absolute.path;
 
-    // Verify all required libraries are present
-    bool allAvailable = true;
-    final availableFiles = <String>[];
-    final missingFiles = <String>[];
+    // Check core libraries (required)
+    bool coreAvailable = true;
+    final availableCoreFiles = <String>[];
+    final missingCoreFiles = <String>[];
 
     for (final libraryName in requiredLibraries) {
       final libraryFile = File('${fixturesDir.path}/$libraryName');
       if (libraryFile.existsSync()) {
-        availableFiles.add(libraryName);
+        availableCoreFiles.add(libraryName);
       } else {
-        missingFiles.add(libraryName);
-        allAvailable = false;
+        missingCoreFiles.add(libraryName);
+        coreAvailable = false;
       }
     }
 
-    if (allAvailable) {
-      print('✅ FFMPEG libraries available for testing: ${availableFiles.join(', ')}');
+    // Check optional libraries (nice-to-have)
+    final availableOptionalFiles = <String>[];
+    final missingOptionalFiles = <String>[];
+
+    for (final libraryName in optionalLibraries[currentPlatform] ?? []) {
+      final libraryFile = File('${fixturesDir.path}/$libraryName');
+      if (libraryFile.existsSync()) {
+        availableOptionalFiles.add(libraryName);
+      } else {
+        missingOptionalFiles.add(libraryName);
+      }
+    }
+
+    if (coreAvailable) {
+      print('✅ Core FFMPEG libraries available: ${availableCoreFiles.join(', ')}');
+      if (availableOptionalFiles.isNotEmpty) {
+        print('✅ Optional FFMPEG libraries available: ${availableOptionalFiles.join(', ')}');
+      }
+      if (missingOptionalFiles.isNotEmpty) {
+        print('ℹ️ Optional FFMPEG libraries missing: ${missingOptionalFiles.join(', ')} (not required)');
+      }
 
       // Set up environment for loading libraries from fixtures directory
       await _setupLibraryPath();
     } else {
-      print('⚠️ Missing FFMPEG libraries: ${missingFiles.join(', ')}');
-      print('   Available: ${availableFiles.join(', ')}');
+      print('⚠️ Missing core FFMPEG libraries: ${missingCoreFiles.join(', ')}');
+      if (availableCoreFiles.isNotEmpty) {
+        print('   Available core: ${availableCoreFiles.join(', ')}');
+      }
       print('   To download missing libraries, run:');
       print('   dart run tools/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
     }
 
     _setupComplete = true;
-    return allAvailable;
+    return coreAvailable;
   }
 
   /// Setup library path environment for loading FFMPEG from fixtures
@@ -132,22 +167,54 @@ class FFMPEGSetupHelper {
 
   /// Get libraries in dependency order (dependencies first)
   static List<String> _getLibrariesInDependencyOrder() {
+    // Get all available libraries in dependency order
+    final allAvailable = <String>[];
+
     if (Platform.isWindows) {
-      return [
+      final orderedLibs = [
         'avutil-60.dll', // Base utility library (no dependencies)
         'swresample-6.dll', // Depends on avutil
         'avcodec-62.dll', // Depends on avutil, swresample
         'avformat-62.dll', // Depends on avutil, avcodec
-        'avfilter-11.dll', // Depends on avutil, avcodec, avformat, swresample
-        'avdevice-62.dll', // Depends on avutil, avcodec, avformat
-        'swscale-9.dll', // Depends on avutil
+        'swscale-9.dll', // Depends on avutil (optional)
+        'avfilter-11.dll', // Depends on avutil, avcodec, avformat, swresample (optional)
+        'avdevice-62.dll', // Depends on avutil, avcodec, avformat (optional)
       ];
+
+      // Only include libraries that actually exist
+      for (final lib in orderedLibs) {
+        if (_fixturesPath != null) {
+          final file = File('$_fixturesPath/$lib');
+          if (file.existsSync()) {
+            allAvailable.add(lib);
+          }
+        }
+      }
     } else if (Platform.isMacOS) {
-      return ['libavutil.dylib', 'libswresample.dylib', 'libavcodec.dylib', 'libavformat.dylib'];
+      final orderedLibs = ['libavutil.dylib', 'libswresample.dylib', 'libavcodec.dylib', 'libavformat.dylib'];
+
+      for (final lib in orderedLibs) {
+        if (_fixturesPath != null) {
+          final file = File('$_fixturesPath/$lib');
+          if (file.existsSync()) {
+            allAvailable.add(lib);
+          }
+        }
+      }
     } else if (Platform.isLinux) {
-      return ['libavutil.so', 'libswresample.so', 'libavcodec.so', 'libavformat.so'];
+      final orderedLibs = ['libavutil.so', 'libswresample.so', 'libavcodec.so', 'libavformat.so'];
+
+      for (final lib in orderedLibs) {
+        if (_fixturesPath != null) {
+          final file = File('$_fixturesPath/$lib');
+          if (file.existsSync()) {
+            allAvailable.add(lib);
+          }
+        }
+      }
     }
-    return [];
+
+    return allAvailable;
   }
 
   /// Get the full path to a specific FFMPEG library in fixtures
@@ -163,12 +230,19 @@ class FFMPEGSetupHelper {
     final fixturesDir = Directory('test/fixtures/ffmpeg');
     if (!fixturesDir.existsSync()) return false;
 
+    // Check that all core libraries are available
     for (final libraryName in requiredLibraries) {
       final file = File('${fixturesDir.path}/$libraryName');
       if (!file.existsSync()) return false;
     }
 
     return true;
+  }
+
+  /// Cleanup after testing (no longer copies files, so minimal cleanup needed)
+  static Future<void> cleanupFFMPEGAfterTesting() async {
+    // No files to clean up since we don't copy to root anymore
+    print('ℹ️ FFMPEG test cleanup complete');
   }
 
   /// Print FFMPEG availability status
