@@ -1,6 +1,6 @@
 # Product Overview
 
-Sonix is a comprehensive Flutter package for generating and displaying audio waveforms without relying on FFMPEG. It provides high-performance audio processing through native C libraries via Dart FFI.
+Sonix is a comprehensive Flutter package for generating and displaying audio waveforms using FFMPEG. It provides high-performance audio processing through native C libraries via Dart FFI.
 
 ## Core Features
 

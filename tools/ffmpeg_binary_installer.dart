@@ -23,7 +23,18 @@ class InstallationResult {
   }
 }
 
-/// Manages installation of FFMPEG binaries to Flutter build directories
+/// Manages installation of FFMPEG binaries for Sonix package development
+///
+/// ⚠️  FOR PACKAGE DEVELOPMENT ONLY - NOT FOR END USER APPS
+///
+/// This installer places FFMPEG binaries in locations needed for:
+/// - Example app build directories (for local testing)
+/// - Test fixture directories (for unit test execution)
+///
+/// Note: The native/{platform}/ directory is handled separately by the downloader
+/// for CMake builds, not by this installer.
+///
+/// End users of the Sonix package will need their own FFMPEG integration strategy.
 class FFMPEGBinaryInstaller {
   final PlatformInfo platformInfo;
   final FFMPEGBinaryValidator validator;
@@ -91,15 +102,16 @@ class FFMPEGBinaryInstaller {
     }
   }
 
-  /// Gets Flutter build directories for the current platform
+  /// Gets Flutter build directories for development
+  /// Only includes example app build dirs since packages don't have build dirs
   List<String> _getFlutterBuildDirectories() {
     switch (platformInfo.platform) {
       case 'windows':
-        return ['build/windows/x64/runner/Debug', 'build/windows/x64/runner/Release'];
+        return ['example/build/windows/x64/runner/Debug', 'example/build/windows/x64/runner/Release'];
       case 'macos':
-        return ['build/macos/Build/Products/Debug', 'build/macos/Build/Products/Release'];
+        return ['example/build/macos/Build/Products/Debug', 'example/build/macos/Build/Products/Release'];
       case 'linux':
-        return ['build/linux/x64/debug/bundle/lib', 'build/linux/x64/release/bundle/lib'];
+        return ['example/build/linux/x64/debug/bundle/lib', 'example/build/linux/x64/release/bundle/lib'];
       default:
         throw UnsupportedError('Unsupported platform: ${platformInfo.platform}');
     }

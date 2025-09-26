@@ -7,6 +7,33 @@ import 'ffmpeg_binary_downloader.dart';
 import 'ffmpeg_binary_validator.dart';
 import 'ffmpeg_binary_installer.dart';
 
+/// FFMPEG Binary Download Tool for Sonix Package Development
+///
+/// ⚠️  IMPORTANT: This tool is for Sonix package developers only, NOT for end users!
+///
+/// ## Purpose
+/// This tool downloads FFMPEG binaries required for Sonix package development and testing.
+/// It installs binaries to specific directories needed for the development workflow:
+///
+/// 1. **native/{platform}/** - Used by the native build system (CMake) to link against FFMPEG
+/// 2. **test/fixtures/ffmpeg/** - Required for unit tests to load FFMPEG libraries
+/// 3. **example/build/.../** - Enables the example app to run with FFMPEG support
+///
+/// ## Why This Approach?
+/// - Sonix uses FFMPEG via FFI but cannot ship FFMPEG binaries due to licensing
+/// - FFMPEG is GPL-licensed, Sonix is MIT-licensed - they cannot be bundled together
+/// - End users must provide their own FFMPEG installation or use system libraries
+/// - This tool only supports package development, testing, and example app execution
+///
+/// ## End User Integration
+/// End users of the Sonix package will need to:
+/// - Install FFMPEG system-wide, OR
+/// - Provide FFMPEG libraries in their app's build directories, OR
+/// - Use the runtime binary loading features (if implemented)
+///
+/// The Sonix package documentation should provide clear instructions for end users
+/// on how to integrate FFMPEG with their applications.
+///
 /// Command-line tool for downloading and installing FFMPEG binaries
 class FFMPEGBinaryDownloadTool {
   final FFMPEGBinaryDownloader downloader;
@@ -94,7 +121,10 @@ class FFMPEGBinaryDownloadTool {
       }
 
       print('');
-      print('🎉 Setup complete! You can now use Sonix with FFMPEG support.');
+      print('🎉 Development setup complete! You can now build and test Sonix with FFMPEG support.');
+      print('');
+      print('📝 Note: This only sets up the development environment.');
+      print('   End users will need to provide their own FFMPEG installation.');
     } else {
       print('');
       print('❌ Download failed: ${result.errorMessage}');
@@ -271,10 +301,24 @@ class FFMPEGBinaryDownloadTool {
   /// Prints usage information
   void _printUsage() {
     print('''
-FFMPEG Binary Download Tool
-===========================
+FFMPEG Binary Download Tool for Sonix Package Development
+=========================================================
 
-Downloads and installs pre-built FFMPEG binaries for the Sonix Flutter package.
+⚠️  FOR SONIX PACKAGE DEVELOPERS ONLY - NOT FOR END USERS!
+
+This tool downloads FFMPEG binaries required for Sonix package development,
+testing, and example app execution. It does NOT solve FFMPEG integration
+for end users of the Sonix package.
+
+Purpose:
+  - Downloads FFMPEG binaries for package development
+  - Installs to native/{platform}/ for CMake builds  
+  - Installs to test/fixtures/ffmpeg/ for unit tests
+  - Installs to example/build/ for example app execution
+
+End User Note:
+  If you're using Sonix in your app, this tool won't help you.
+  See the Sonix documentation for proper FFMPEG integration in your app.
 
 Usage:
   dart run tools/download_ffmpeg_binaries.dart [options]
@@ -305,10 +349,17 @@ Examples:
   # Remove installed binaries
   dart run tools/download_ffmpeg_binaries.dart --uninstall
 
-Notes:
-  - Binaries are automatically installed to Flutter build directories
-  - Test directory installation is included for unit test execution
+Development Notes:
+  - Binaries are installed to package development directories only
+  - Test directory installation enables unit test execution  
+  - Example app installation enables local testing
   - Use --verify to check if installation is complete and valid
+  - This does NOT install FFMPEG for end users of the Sonix package
+
+Licensing Note:
+  - FFMPEG is GPL-licensed, Sonix is MIT-licensed
+  - Cannot ship FFMPEG binaries with the package
+  - End users must provide their own FFMPEG installation
 ''');
   }
 }

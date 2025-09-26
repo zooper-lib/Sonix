@@ -1,208 +1,163 @@
-# FFMPEG Binary Download and Management Tools
+# Sonix Development Tools
 
-This directory contains tools for downloading, validating, and installing FFMPEG binaries for the Sonix Flutter package.
+This directory contains tools for **Sonix package development only**. These tools are not intended for end users of the Sonix package.
 
-## Overview
+## ⚠️ Important: Developer Tools Only
 
-The FFMPEG binary management system consists of three main components:
+**These tools are for Sonix package developers, not for end users!**
 
-1. **FFMPEGBinaryDownloader** - Downloads pre-built FFMPEG binaries from reliable sources
-2. **FFMPEGBinaryValidator** - Validates downloaded binaries for compatibility and completeness
-3. **FFMPEGBinaryInstaller** - Installs binaries to Flutter build directories and test locations
+If you're using Sonix in your Flutter app, these tools won't help you integrate FFMPEG. See the main Sonix documentation for proper FFMPEG integration in your application.
 
-## Quick Start
+## Tools Overview
 
-### Download and Install FFMPEG Binaries
+### For End Users: `setup_ffmpeg_for_app.dart`
+
+**This tool is for end users of the Sonix package!**
+
+A user-friendly tool that helps Flutter app developers integrate FFMPEG with their Sonix-powered applications.
+
+**Purpose:**
+
+- Downloads FFMPEG binaries for the user's platform
+- Installs them to the app's build directories
+- Validates the installation
+- Enables Sonix to work with FFMPEG in the user's app
+
+**Usage (for end users):**
 
 ```bash
-# Download and install for current platform
+# From your Flutter app's root directory
+dart run sonix:setup_ffmpeg_for_app
+
+# Verify installation
+dart run sonix:setup_ffmpeg_for_app --verify
+
+# Force reinstall
+dart run sonix:setup_ffmpeg_for_app --force
+```
+
+**Requirements:**
+
+- Must be run from a Flutter app's root directory
+- Sonix must be added as a dependency in pubspec.yaml
+
+### For Package Developers: `download_ffmpeg_binaries.dart`
+
+Downloads and installs FFMPEG binaries required for Sonix package development and testing.
+
+**Purpose:**
+
+- Enables native library compilation (CMake builds)
+- Provides FFMPEG libraries for unit tests
+- Sets up the example app for local testing
+
+**Installation Locations:**
+
+1. `native/{platform}/` - Used by CMake to link against FFMPEG during native library builds
+2. `test/fixtures/ffmpeg/` - Required for unit tests to load FFMPEG libraries via FFI
+3. `example/build/{platform}/` - Enables the example app to run with FFMPEG support
+
+**Usage:**
+
+```bash
+# Download and install for development
 dart run tools/download_ffmpeg_binaries.dart
 
-# Force reinstall even if binaries exist
+# Force reinstall
 dart run tools/download_ffmpeg_binaries.dart --force
 
-# Verify current installation
+# Verify installation
 dart run tools/download_ffmpeg_binaries.dart --verify
-```
 
-### Command Line Options
-
-```bash
-# Show help
+# See all options
 dart run tools/download_ffmpeg_binaries.dart --help
-
-# Download to custom directory without installing
-dart run tools/download_ffmpeg_binaries.dart --output ./custom --skip-install
-
-# List supported platforms
-dart run tools/download_ffmpeg_binaries.dart --list-platforms
-
-# Remove installed binaries
-dart run tools/download_ffmpeg_binaries.dart --uninstall
 ```
 
-## File Structure
+### Supporting Files
 
-```
-tools/
-├── download_ffmpeg_binaries.dart    # Main command-line tool
-├── ffmpeg_binary_downloader.dart    # Binary download functionality
-├── ffmpeg_binary_validator.dart     # Binary validation and symbol checking
-├── ffmpeg_binary_installer.dart     # Flutter build directory integration
-├── ffmpeg_binary_sources.json       # Configuration for binary sources
-└── README.md                        # This file
-```
+- `ffmpeg_binary_downloader.dart` - Handles downloading FFMPEG archives from official sources
+- `ffmpeg_binary_validator.dart` - Validates downloaded binaries for completeness and compatibility
+- `ffmpeg_binary_installer.dart` - Manages installation to development directories
 
-## Binary Installation Locations
+## Development Workflow
 
-The tool automatically installs FFMPEG binaries to the following locations:
+### Initial Setup
 
-### Windows
-- `build/windows/x64/runner/Debug/`
-- `build/windows/x64/runner/Release/`
-- `test/assets/ffmpeg/` (for unit tests)
+1. Clone the Sonix repository
+2. Run `flutter pub get`
+3. Run `dart run tools/download_ffmpeg_binaries.dart`
+4. Build native libraries: `cd native && ./build.sh` (or `build.bat` on Windows)
 
-### macOS
-- `build/macos/Build/Products/Debug/`
-- `build/macos/Build/Products/Release/`
-- `test/assets/ffmpeg/` (for unit tests)
+### Testing
 
-### Linux
-- `build/linux/x64/debug/bundle/lib/`
-- `build/linux/x64/release/bundle/lib/`
-- `test/assets/ffmpeg/` (for unit tests)
+1. Ensure FFMPEG binaries are installed: `dart run tools/download_ffmpeg_binaries.dart --verify`
+2. Run tests: `flutter test`
+3. Run example app: `cd example && flutter run`
 
-## Binary Sources
+### Updating FFMPEG
 
-The tool downloads FFMPEG binaries from trusted sources:
+1. Run `dart run tools/download_ffmpeg_binaries.dart --force` to get latest binaries
+2. Rebuild native libraries if needed
+3. Run tests to ensure compatibility
 
-- **Windows**: BtbN/FFmpeg-Builds (GitHub releases)
-- **macOS**: evermeet.cx (official builds)
-- **Linux**: johnvansickle.com (static builds)
+## Licensing Considerations
 
-## Validation Process
+**Why we can't ship FFMPEG binaries:**
 
-Each downloaded binary is validated for:
+- FFMPEG is licensed under GPL (copyleft license)
+- Sonix is licensed under MIT (permissive license)
+- GPL and MIT are incompatible for binary distribution
+- Shipping FFMPEG would force Sonix to become GPL-licensed
 
-1. **File integrity** - SHA-256 checksum verification
-2. **Symbol presence** - Required FFMPEG symbols are checked
-3. **Architecture compatibility** - Platform and architecture validation
-4. **Version compatibility** - FFMPEG version checking
+**Development vs. Distribution:**
 
-## Required FFMPEG Libraries
+- These tools enable development and testing with FFMPEG
+- The published Sonix package does NOT include FFMPEG binaries
+- End users must provide their own FFMPEG installation
 
-The following libraries are required for each platform:
+## End User Integration
 
-### Windows
-- `avformat-60.dll` - Container format handling
-- `avcodec-60.dll` - Audio/video codecs
-- `avutil-58.dll` - Utility functions
-- `swresample-4.dll` - Audio resampling
+End users of the Sonix package have several options for FFMPEG integration:
 
-### macOS
-- `libavformat.dylib` - Container format handling
-- `libavcodec.dylib` - Audio/video codecs
-- `libavutil.dylib` - Utility functions
-- `libswresample.dylib` - Audio resampling
+1. **System Installation**: Install FFMPEG system-wide and let Sonix find it
+2. **App Bundling**: Include FFMPEG binaries in their app's build process
+3. **Runtime Loading**: Use Sonix's runtime binary loading features (if available)
 
-### Linux
-- `libavformat.so` - Container format handling
-- `libavcodec.so` - Audio/video codecs
-- `libavutil.so` - Utility functions
-- `libswresample.so` - Audio resampling
+See the main Sonix documentation for detailed end-user integration instructions.
+
+## Platform Support
+
+Currently supported platforms for development:
+
+- **Windows**: x64 architecture
+- **macOS**: x64 architecture (Intel and Apple Silicon via Rosetta)
+- **Linux**: x64 architecture
 
 ## Troubleshooting
 
 ### Download Issues
 
-If downloads fail:
+- Check internet connection
+- Verify platform is supported: `dart run tools/download_ffmpeg_binaries.dart --list-platforms`
+- Try force reinstall: `dart run tools/download_ffmpeg_binaries.dart --force`
 
-1. Check internet connectivity
-2. Verify the binary sources are accessible
-3. Check if antivirus software is blocking downloads
-4. Try using a different network or VPN
+### Build Issues
 
-### Validation Issues
+- Ensure FFMPEG binaries are installed and validated
+- Check that native build scripts have execute permissions (Unix systems)
+- Verify CMake can find the FFMPEG libraries in `native/{platform}/`
 
-If binary validation fails:
+### Test Issues
 
-1. Re-download the binaries with `--force`
-2. Check if the binaries are corrupted
-3. Verify platform compatibility
-4. Check if required tools are installed (nm, objdump, readelf)
+- Verify test fixtures are installed: check `test/fixtures/ffmpeg/` directory
+- Run installation verification: `dart run tools/download_ffmpeg_binaries.dart --verify`
+- Ensure FFI can load the libraries from the test fixtures directory
 
-### Installation Issues
+## Contributing
 
-If installation to Flutter directories fails:
+When modifying these tools:
 
-1. Ensure Flutter project structure exists
-2. Check write permissions to build directories
-3. Run `flutter clean` and try again
-4. Manually create build directories if needed
-
-### Platform-Specific Issues
-
-#### Windows
-- Ensure PowerShell execution policy allows script execution
-- Install Visual Studio Build Tools if needed
-- Check Windows Defender exclusions
-
-#### macOS
-- Install Xcode command line tools: `xcode-select --install`
-- Check Gatekeeper settings for downloaded binaries
-- Verify code signing if required
-
-#### Linux
-- Install required tools: `sudo apt-get install binutils`
-- Check library dependencies with `ldd`
-- Verify executable permissions
-
-## Development
-
-### Running Tests
-
-```bash
-# Run binary download system tests
-dart test test/tools/ffmpeg_binary_download_test.dart
-
-# Run all tests
-dart test
-```
-
-### Updating Binary Sources
-
-To update binary sources, modify `ffmpeg_binary_sources.json`:
-
-1. Update URLs to new binary releases
-2. Update checksums for new binaries
-3. Test downloads on all platforms
-4. Update version numbers
-
-### Adding New Platforms
-
-To add support for new platforms:
-
-1. Add platform configuration to `PlatformInfo.detect()`
-2. Add binary sources to `ffmpeg_binary_sources.json`
-3. Update validation logic in `FFMPEGBinaryValidator`
-4. Add installation paths in `FFMPEGBinaryInstaller`
-5. Test thoroughly on the new platform
-
-## Security Considerations
-
-- All downloads use HTTPS
-- Binary integrity is verified with SHA-256 checksums
-- Binaries are sourced from trusted, well-known providers
-- Symbol validation ensures binaries contain expected functions
-- Architecture validation prevents incompatible binaries
-
-## Performance
-
-- Downloads are performed with progress reporting
-- Checksums are calculated efficiently using streaming
-- Binary validation uses platform-native tools
-- Installation uses file copying for reliability
-
-## License
-
-This tool downloads FFMPEG binaries which are licensed under LGPL/GPL. Please ensure compliance with FFMPEG licensing requirements in your application.
+1. Maintain clear separation between development and end-user concerns
+2. Update documentation to reflect any changes in workflow
+3. Test on all supported platforms
+4. Ensure licensing compliance (no GPL code in MIT-licensed files)
