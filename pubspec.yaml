@@ -1,9 +1,9 @@
 name: sonix
-description: "Flutter audio waveform package with multi-format support (MP3, WAV, FLAC, OGG, Opus) using native C libraries. No FFMPEG dependency required."
-version: 0.0.1
-homepage: https://github.com/your-repo/sonix
-repository: https://github.com/your-repo/sonix
-issue_tracker: https://github.com/your-repo/sonix/issues
+description: "Flutter audio waveform package with multi-format support (MP3, WAV, FLAC, OGG, Opus, MP4, M4A) using FFMPEG."
+version: 1.0.0
+homepage: https://github.com/zooper-lib/Sonix
+repository: https://github.com/zooper-lib/Sonix
+issue_tracker: https://github.com/zooper-lib/Sonix/issues
 documentation: https://pub.dev/documentation/sonix/latest/
 
 environment:
