@@ -34,6 +34,8 @@ Then run:
 flutter pub get
 ```
 
+**Note**: Sonix includes pre-built native libraries (`sonix_native`) for all supported platforms. These are automatically bundled with your app - no additional compilation required!
+
 ### FFMPEG Setup
 
 Sonix uses FFMPEG for audio decoding. You need to install FFMPEG binaries in your Flutter app to use Sonix.
@@ -549,10 +551,14 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 1. Clone the repository
 2. Run `flutter pub get`
 3. **Install FFMPEG binaries for development**: `dart run tools/download_ffmpeg_binaries.dart`
-4. Run tests: `flutter test`
-5. Run example: `cd example && flutter run`
+4. **Build native library for testing**: `dart run tools/build_native_for_development.dart`
+5. Run tests: `flutter test`
+6. Run example: `cd example && flutter run`
 
-**Note for Contributors**: Use `tools/download_ffmpeg_binaries.dart` for package development. End users should use `dart run sonix:setup_ffmpeg_for_app` in their own apps.
+**Note for Contributors**: 
+- Use `dart run tools/build_native_for_development.dart` for quick development builds
+- Use `dart run tools/build_native_for_distribution.dart` for release builds
+- End users should use `dart run sonix:setup_ffmpeg_for_app` in their own apps
 
 ## License
 

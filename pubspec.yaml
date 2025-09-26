@@ -31,3 +31,16 @@ executables:
   setup_ffmpeg_for_app: setup_ffmpeg_for_app
 
 flutter:
+  plugin:
+    platforms:
+      android:
+        package: dev.zooper.sonix
+        pluginClass: SonixPlugin
+      ios:
+        pluginClass: SonixPlugin
+      linux:
+        pluginClass: SonixPlugin
+      macos:
+        pluginClass: SonixPlugin
+      windows:
+        pluginClass: SonixPlugin

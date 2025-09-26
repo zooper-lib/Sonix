@@ -73,6 +73,75 @@ dart run tools/download_ffmpeg_binaries.dart --verify
 dart run tools/download_ffmpeg_binaries.dart --help
 ```
 
+### `build_native_for_development.dart`
+
+**This tool is for Sonix package developers during development!**
+
+Quick development build script that compiles the native library for local testing and development.
+
+**Purpose:**
+
+- Fast development builds for testing changes
+- Builds to `build/development/` directory (not for distribution)
+- Single platform (current platform only)
+- Incremental builds supported
+
+**Usage:**
+
+```bash
+# Quick development build
+dart run tools/build_native_for_development.dart
+
+# Debug build with verbose output
+dart run tools/build_native_for_development.dart --build-type Debug --verbose
+
+# Clean build directory
+dart run tools/build_native_for_development.dart --clean
+```
+
+**Output Locations:**
+
+- Windows: `build/development/Release/sonix_native.dll`
+- Linux: `build/development/libsonix_native.so`
+- macOS: `build/development/libsonix_native.dylib`
+
+### `build_native_for_distribution.dart`
+
+**This tool is for Sonix package developers preparing releases!**
+
+Compiles the `sonix_native` library for all supported platforms and places them in the correct plugin directories for package distribution.
+
+**Purpose:**
+
+- Compiles sonix_native for Windows, Linux, macOS, iOS, and Android
+- Places binaries in platform-specific plugin directories
+- Prepares libraries for automatic bundling with the published package
+- Eliminates the need for end users to compile native code
+
+**Usage:**
+
+```bash
+# Build for current platform
+dart run tools/build_native_for_distribution.dart
+
+# Build for all platforms
+dart run tools/build_native_for_distribution.dart --platforms all
+
+# Build for specific platforms
+dart run tools/build_native_for_distribution.dart --platforms windows,linux
+
+# Clean build artifacts
+dart run tools/build_native_for_distribution.dart --clean
+```
+
+**Output Locations:**
+
+- Windows: `windows/sonix_native.dll`
+- Linux: `linux/libsonix_native.so`
+- macOS: `macos/libsonix_native.dylib`
+- iOS: `ios/libsonix_native.a`
+- Android: `android/src/main/jniLibs/{arch}/libsonix_native.so`
+
 ### Supporting Files
 
 - `ffmpeg_binary_downloader.dart` - Handles downloading FFMPEG archives from official sources
