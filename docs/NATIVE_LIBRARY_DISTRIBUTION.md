@@ -153,7 +153,7 @@ When Sonix code runs:
 ### Initial Setup
 ```bash
 # Clone repository
-git clone https://github.com/your-repo/sonix.git
+git clone https://github.com/zooper-dev/sonix.git
 cd sonix
 
 # Install dependencies
