@@ -1,3 +1,0 @@
-D:/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/sonix_native.dir
-D:/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/ALL_BUILD.dir
-D:/Development/Projects/Zooper/Sonix/native/build/CMakeFiles/ZERO_CHECK.dir
