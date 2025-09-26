@@ -34,9 +34,33 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
   // This ensures FFMPEG context is properly set up for this isolate
   try {
     NativeAudioBindings.initialize();
+
+    // Verify FFMPEG is available in this isolate
+    if (!NativeAudioBindings.isFFMPEGAvailable) {
+      throw FFIException(
+        'FFMPEG not available in isolate',
+        'FFMPEG libraries are required but not available in this isolate context. '
+            'Run: dart run tools/download_ffmpeg_binaries.dart',
+      );
+    }
   } catch (e) {
-    // If initialization fails, we can still continue with legacy backend
-    // The error will be handled when actual processing occurs
+    // FFMPEG initialization failed - this is now a critical error
+    // Send error back to main isolate and terminate
+    final errorMessage = ErrorMessage(
+      id: 'init_error_${DateTime.now().millisecondsSinceEpoch}',
+      timestamp: DateTime.now(),
+      errorMessage: 'Failed to initialize FFMPEG in isolate: $e',
+      errorType: 'FFMPEGInitializationError',
+      stackTrace: StackTrace.current.toString(),
+    );
+
+    // Try to send error back, then terminate
+    try {
+      handshakeSendPort.send(errorMessage.toJson());
+    } catch (_) {
+      // If we can't send the error, just terminate
+    }
+    return;
   }
 
   // Create receive port for this isolate

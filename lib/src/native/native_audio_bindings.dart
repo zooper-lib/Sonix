@@ -22,14 +22,19 @@ class NativeAudioBindings {
       SonixNativeBindings.lib;
       _initialized = true;
 
-      // Try to initialize FFMPEG backend if available
+      // Try to initialize FFMPEG backend - REQUIRED for operation
       _initializeFFMPEG();
     } catch (e) {
-      throw FFIException('Failed to initialize native audio bindings', 'Make sure the native library is built and available: $e');
+      throw FFIException(
+        'Failed to initialize native audio bindings',
+        'Make sure the native library is built and FFMPEG binaries are installed. '
+            'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+            'Error: $e',
+      );
     }
   }
 
-  /// Initialize FFMPEG backend if available
+  /// Initialize FFMPEG backend - REQUIRED for operation
   static void _initializeFFMPEG() {
     if (_ffmpegInitialized) return;
 
@@ -37,10 +42,29 @@ class NativeAudioBindings {
       final result = SonixNativeBindings.initFFMPEG();
       if (result == SONIX_OK) {
         _ffmpegInitialized = true;
+      } else {
+        // FFMPEG initialization failed - this is now a critical error
+        final errorMsg = _getLastErrorMessage();
+        throw FFIException(
+          'FFMPEG initialization failed',
+          'FFMPEG libraries are required but could not be initialized. '
+              'Please ensure FFMPEG binaries are properly installed.\n'
+              'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+              'Error: $errorMsg',
+        );
       }
     } catch (e) {
-      // FFMPEG initialization failed, continue with legacy backend
-      _ffmpegInitialized = false;
+      if (e is FFIException) {
+        rethrow;
+      }
+      // FFMPEG libraries not found or other critical error
+      throw FFIException(
+        'FFMPEG libraries not available',
+        'FFMPEG libraries are required but not found. '
+            'Please install FFMPEG binaries.\n'
+            'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+            'Error: $e',
+      );
     }
   }
 
@@ -50,10 +74,17 @@ class NativeAudioBindings {
     return _ffmpegInitialized && SonixNativeBindings.isFFMPEGAvailable;
   }
 
-  /// Get current backend type
+  /// Get current backend type - always FFMPEG now
   static String get backendType {
     _ensureInitialized();
-    return isFFMPEGAvailable ? 'FFMPEG' : 'Legacy';
+    if (!isFFMPEGAvailable) {
+      throw FFIException(
+        'FFMPEG backend not available',
+        'FFMPEG is required but not properly initialized. '
+            'Run: dart run tools/download_ffmpeg_binaries.dart',
+      );
+    }
+    return 'FFMPEG';
   }
 
   /// Cleanup FFMPEG resources (call on app shutdown)
@@ -77,12 +108,21 @@ class NativeAudioBindings {
   static int get memoryPressureThreshold => _memoryPressureThreshold;
 
   /// Detect audio format from file data
-  /// Uses FFMPEG probing when available, falls back to legacy detection
+  /// Uses FFMPEG probing - FFMPEG is required
   static AudioFormat detectFormat(Uint8List data) {
     _ensureInitialized();
 
     if (data.isEmpty) {
       throw DecodingException('Cannot detect format: empty data');
+    }
+
+    // Ensure FFMPEG is available before proceeding
+    if (!isFFMPEGAvailable) {
+      throw DecodingException(
+        'FFMPEG not available for format detection',
+        'FFMPEG libraries are required for audio format detection. '
+            'Run: dart run tools/download_ffmpeg_binaries.dart',
+      );
     }
 
     final pointer = _allocateUint8Array(data);
@@ -91,14 +131,15 @@ class NativeAudioBindings {
       final formatCode = SonixNativeBindings.detectFormat(pointer, data.length);
       final detectedFormat = formatCodeToEnum(formatCode);
 
-      // If FFMPEG is available and format detection failed with legacy,
-      // the native layer should have already tried FFMPEG probing
-      if (detectedFormat == AudioFormat.unknown && isFFMPEGAvailable) {
-        // FFMPEG probing was attempted but failed
+      // If format detection failed, provide detailed error information
+      if (detectedFormat == AudioFormat.unknown) {
         final errorMsg = _getLastErrorMessage();
-        if (errorMsg.contains('FFMPEG')) {
-          throw DecodingException('FFMPEG format detection failed', errorMsg);
-        }
+        throw DecodingException(
+          'FFMPEG format detection failed',
+          'Could not detect audio format using FFMPEG. '
+              'The file may be corrupted or use an unsupported format.\n'
+              'Error: $errorMsg',
+        );
       }
 
       return detectedFormat;
@@ -108,7 +149,7 @@ class NativeAudioBindings {
   }
 
   /// Decode audio data from memory
-  /// Uses FFMPEG backend when available, falls back to legacy decoders
+  /// Uses FFMPEG backend - FFMPEG is required
   static AudioData decodeAudio(Uint8List data, AudioFormat format) {
     _ensureInitialized();
 
@@ -116,9 +157,22 @@ class NativeAudioBindings {
       throw DecodingException('Cannot decode: empty data');
     }
 
+    // Ensure FFMPEG is available before proceeding
+    if (!isFFMPEGAvailable) {
+      throw DecodingException(
+        'FFMPEG not available for audio decoding',
+        'FFMPEG libraries are required for audio decoding. '
+            'Run: dart run tools/download_ffmpeg_binaries.dart',
+      );
+    }
+
     // Check for memory pressure before large allocations
     if (data.length > _memoryPressureThreshold) {
-      throw MemoryException('File size exceeds memory pressure threshold', 'File size: ${data.length} bytes, threshold: $_memoryPressureThreshold bytes');
+      throw MemoryException(
+        'File size exceeds memory pressure threshold',
+        'File size: ${data.length} bytes, threshold: $_memoryPressureThreshold bytes. '
+            'Consider using chunked processing for large files.',
+      );
     }
 
     final dataPointer = _allocateUint8Array(data);
@@ -130,22 +184,40 @@ class NativeAudioBindings {
       if (resultPointer == ffi.nullptr) {
         final errorMsg = _getLastErrorMessage();
 
-        // Check for FFMPEG-specific errors and provide better error messages
-        if (errorMsg.contains('FFMPEG') || isFFMPEGAvailable) {
-          // Try to get more specific FFMPEG error information
-          if (errorMsg.contains('probe')) {
-            throw DecodingException(
-              'FFMPEG format probing failed',
-              'The file format could not be detected by FFMPEG. The file may be corrupted or use an unsupported format variant.',
-            );
-          } else if (errorMsg.contains('codec')) {
-            throw DecodingException('FFMPEG codec not found', 'The required codec for this audio format is not available in the FFMPEG build.');
-          } else if (errorMsg.contains('decode')) {
-            throw DecodingException('FFMPEG decoding failed', 'FFMPEG could not decode the audio data. The file may be corrupted.');
-          }
+        // Provide detailed FFMPEG-specific error messages
+        if (errorMsg.contains('not found') || errorMsg.contains('download')) {
+          throw DecodingException(
+            'FFMPEG libraries not found',
+            'FFMPEG libraries are required but not properly installed. '
+                'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+                'Error: $errorMsg',
+          );
+        } else if (errorMsg.contains('probe')) {
+          throw DecodingException(
+            'FFMPEG format probing failed',
+            'The file format could not be detected by FFMPEG. '
+                'The file may be corrupted or use an unsupported format variant.\n'
+                'Error: $errorMsg',
+          );
+        } else if (errorMsg.contains('codec')) {
+          throw DecodingException(
+            'FFMPEG codec not found',
+            'The required codec for this audio format is not available in the FFMPEG build.\n'
+                'Error: $errorMsg',
+          );
+        } else if (errorMsg.contains('decode')) {
+          throw DecodingException(
+            'FFMPEG decoding failed',
+            'FFMPEG could not decode the audio data. The file may be corrupted.\n'
+                'Error: $errorMsg',
+          );
+        } else {
+          throw DecodingException(
+            'FFMPEG audio decoding failed',
+            'FFMPEG failed to decode the audio data.\n'
+                'Error: $errorMsg',
+          );
         }
-
-        throw DecodingException('Failed to decode audio', errorMsg);
       }
 
       try {
@@ -157,7 +229,12 @@ class NativeAudioBindings {
       if (e is SonixException) {
         rethrow;
       }
-      throw DecodingException('Native decoding failed', 'Error during FFI operation: $e');
+      throw DecodingException(
+        'Native decoding failed',
+        'Error during FFI operation. Ensure FFMPEG libraries are properly installed.\n'
+            'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+            'Error: $e',
+      );
     } finally {
       malloc.free(dataPointer);
     }

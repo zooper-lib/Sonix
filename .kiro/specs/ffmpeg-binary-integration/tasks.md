@@ -18,7 +18,6 @@
 
 - [x] 2. Create FFMPEG binary download and management system
 
-
   - Implement FFMPEGBinaryDownloader class for downloading pre-built binaries
   - Create platform-specific binary source configurations
   - Implement binary integrity verification using checksums
@@ -42,10 +41,7 @@
   - Copy binaries to test/ directory for unit test execution
   - _Requirements: 3.3, 6.1, 6.2, 6.3_
 
-- [-] 3. Rewrite native FFMPEG wrapper without stubs
-
-
-
+- [x] 3. Rewrite native FFMPEG wrapper without stubs
 
   - Create new sonix_ffmpeg.c that only works with real FFMPEG libraries
   - Implement proper FFMPEG initialization and fail-fast error handling
@@ -55,17 +51,6 @@
 
 - [x] 3.1 Implement robust FFMPEG memory management
 
-
-
-
-
-
-
-
-
-
-
-
   - Add proper FFMPEG context initialization and cleanup
   - Implement chunked processing with real FFMPEG contexts
   - Add comprehensive error handling and FFMPEG error translation
@@ -73,8 +58,6 @@
   - _Requirements: 4.1, 4.4, 4.5_
 
 - [x] 3.2 Update CMakeLists.txt for binary-only FFMPEG integration
-
-
 
   - Remove all stub compilation paths from CMakeLists.txt
   - Add required FFMPEG library finding with NO_DEFAULT_PATH
@@ -85,11 +68,6 @@
 
 - [x] 4. Create comprehensive unit tests using real FFMPEG and audio files
 
-
-
-
-
-
   - Create AudioTestDataManager for managing real audio test files
   - Add test audio files for MP3, WAV, FLAC, OGG, and MP4 formats
   - Implement format detection tests using real audio file headers
@@ -98,21 +76,13 @@
 
 - [x] 4.1 Implement FFMPEG memory management and error handling tests
 
-
-
-
   - Create tests for proper FFMPEG context cleanup and resource management
   - Add tests for chunked processing with real large audio files
   - Implement error handling tests using invalid/corrupted audio files
   - Create memory leak detection tests for FFMPEG integration
   - _Requirements: 5.4, 5.5, 5.6_
 
-
-
 - [x] 4.2 Create cross-platform binary loading tests
-
-
-
 
   - Test FFMPEG binary loading on Windows with DLL files
   - Test FFMPEG binary loading on macOS with dylib files
@@ -120,7 +90,7 @@
   - Verify platform-specific binary path resolution
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 5. Update Dart FFI bindings and API integration
+- [x] 5. Update Dart FFI bindings and API integration
 
   - Modify existing Dart FFI bindings to work with new native wrapper
   - Ensure SonixInstance API remains unchanged for backward compatibility
@@ -128,7 +98,7 @@
   - Test isolate-based processing with real FFMPEG contexts
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 5.1 Create binary download command-line tool
+- [x] 5.1 Create binary download command-line tool
 
   - Implement tools/download_ffmpeg_binaries.dart as main user interface
   - Add command-line options for platform selection and binary sources
@@ -151,6 +121,7 @@
   - Test runtime loading of FFMPEG binaries in Flutter applications
   - Add end-to-end testing from binary download to Flutter app execution
   - _Requirements: 6.1, 6.2, 6.3, 7.1, 7.2_
+
 
 - [ ] 7. Documentation and user experience improvements
 
