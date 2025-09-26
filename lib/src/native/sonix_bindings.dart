@@ -4,15 +4,16 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'dart:ffi' as ffi;
-import 'dart:io' show Platform;
+import 'dart:io';
 
 /// Audio format constants
 const int SONIX_FORMAT_UNKNOWN = 0;
 const int SONIX_FORMAT_MP3 = 1;
-const int SONIX_FORMAT_FLAC = 2;
-const int SONIX_FORMAT_WAV = 3;
+const int SONIX_FORMAT_WAV = 2;
+const int SONIX_FORMAT_FLAC = 3;
 const int SONIX_FORMAT_OGG = 4;
 const int SONIX_FORMAT_OPUS = 5;
+const int SONIX_FORMAT_MP4 = 6;
 
 /// Error codes
 const int SONIX_OK = 0;
@@ -20,6 +21,27 @@ const int SONIX_ERROR_INVALID_FORMAT = -1;
 const int SONIX_ERROR_DECODE_FAILED = -2;
 const int SONIX_ERROR_OUT_OF_MEMORY = -3;
 const int SONIX_ERROR_INVALID_DATA = -4;
+
+/// MP4-specific error codes
+const int SONIX_ERROR_MP4_CONTAINER_INVALID = -10;
+const int SONIX_ERROR_MP4_NO_AUDIO_TRACK = -11;
+const int SONIX_ERROR_MP4_UNSUPPORTED_CODEC = -12;
+
+/// FFMPEG-specific error codes
+const int SONIX_ERROR_FFMPEG_INIT_FAILED = -20;
+const int SONIX_ERROR_FFMPEG_PROBE_FAILED = -21;
+const int SONIX_ERROR_FFMPEG_CODEC_NOT_FOUND = -22;
+const int SONIX_ERROR_FFMPEG_DECODE_FAILED = -23;
+const int SONIX_ERROR_FFMPEG_CONTEXT_FAILED = -24;
+const int SONIX_ERROR_FFMPEG_STREAM_NOT_FOUND = -25;
+const int SONIX_ERROR_FFMPEG_PACKET_READ_FAILED = -26;
+const int SONIX_ERROR_FFMPEG_FRAME_DECODE_FAILED = -27;
+const int SONIX_ERROR_FFMPEG_RESAMPLE_FAILED = -28;
+const int SONIX_ERROR_FFMPEG_NOT_AVAILABLE = -100;
+
+/// FFMPEG backend availability flag
+const int SONIX_BACKEND_LEGACY = 0;
+const int SONIX_BACKEND_FFMPEG = 1;
 
 /// Native audio data structure
 final class SonixAudioData extends ffi.Struct {
@@ -122,6 +144,19 @@ typedef SonixGetErrorMessageNative = ffi.Pointer<ffi.Char> Function();
 
 typedef SonixGetErrorMessageDart = ffi.Pointer<ffi.Char> Function();
 
+// FFMPEG-specific function signatures
+typedef SonixGetBackendTypeNative = ffi.Int32 Function();
+
+typedef SonixGetBackendTypeDart = int Function();
+
+typedef SonixInitFFMPEGNative = ffi.Int32 Function();
+
+typedef SonixInitFFMPEGDart = int Function();
+
+typedef SonixCleanupFFMPEGNative = ffi.Void Function();
+
+typedef SonixCleanupFFMPEGDart = void Function();
+
 /// Native library bindings
 class SonixNativeBindings {
   static ffi.DynamicLibrary? _lib;
@@ -137,7 +172,38 @@ class SonixNativeBindings {
     } else if (Platform.isIOS || Platform.isMacOS) {
       _lib = ffi.DynamicLibrary.open('lib$libName.dylib');
     } else if (Platform.isWindows) {
-      _lib = ffi.DynamicLibrary.open('$libName.dll');
+      // Try multiple locations for Windows DLL loading
+      Object? firstException;
+
+      // Try relative path first (standard approach)
+      try {
+        _lib = ffi.DynamicLibrary.open('$libName.dll');
+        return _lib!;
+      } catch (e) {
+        firstException = e;
+      }
+
+      // Try with full path from current directory
+      try {
+        final currentDir = Directory.current.path;
+        final dllPath = '$currentDir\\$libName.dll';
+        _lib = ffi.DynamicLibrary.open(dllPath);
+        return _lib!;
+      } catch (e) {
+        // Continue to next attempt
+      }
+
+      // Try executable directory (for Flutter apps)
+      try {
+        final executablePath = Platform.resolvedExecutable;
+        final executableDir = Directory(executablePath).parent.path;
+        final dllPath = '$executableDir\\$libName.dll';
+        _lib = ffi.DynamicLibrary.open(dllPath);
+        return _lib!;
+      } catch (e) {
+        // All attempts failed, throw the first exception
+        throw firstException;
+      }
     } else if (Platform.isLinux) {
       _lib = ffi.DynamicLibrary.open('lib$libName.so');
     } else {
@@ -194,4 +260,24 @@ class SonixNativeBindings {
 
   /// Free chunk result allocated by processFileChunk
   static final SonixFreeChunkResultDart freeChunkResult = lib.lookup<ffi.NativeFunction<SonixFreeChunkResultNative>>('sonix_free_chunk_result').asFunction();
+
+  // FFMPEG-specific functions
+
+  /// Get the current backend type (legacy or FFMPEG)
+  static final SonixGetBackendTypeDart getBackendType = lib.lookup<ffi.NativeFunction<SonixGetBackendTypeNative>>('sonix_get_backend_type').asFunction();
+
+  /// Initialize FFMPEG backend (called once at startup)
+  static final SonixInitFFMPEGDart initFFMPEG = lib.lookup<ffi.NativeFunction<SonixInitFFMPEGNative>>('sonix_init_ffmpeg').asFunction();
+
+  /// Cleanup FFMPEG backend resources
+  static final SonixCleanupFFMPEGDart cleanupFFMPEG = lib.lookup<ffi.NativeFunction<SonixCleanupFFMPEGNative>>('sonix_cleanup_ffmpeg').asFunction();
+
+  /// Check if FFMPEG backend is available and initialized
+  static bool get isFFMPEGAvailable {
+    try {
+      return getBackendType() == SONIX_BACKEND_FFMPEG;
+    } catch (e) {
+      return false;
+    }
+  }
 }

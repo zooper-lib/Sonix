@@ -2,6 +2,8 @@
 ///
 /// This module provides the main entry point and processing logic for
 /// background isolates that handle audio decoding and waveform generation.
+// ignore_for_file: avoid_print
+
 library;
 
 import 'dart:async';
@@ -20,6 +22,7 @@ import 'package:sonix/src/processing/waveform_generator.dart';
 import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/processing/downsampling_algorithm.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
 
 /// Entry point for background processing isolates
 ///
@@ -27,6 +30,39 @@ import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 /// tasks sent from the main isolate. It listens for ProcessingRequest messages
 /// and responds with ProcessingResponse messages.
 void processingIsolateEntryPoint(SendPort handshakeSendPort) {
+  // Initialize native bindings in this isolate context
+  // This ensures FFMPEG context is properly set up for this isolate
+  try {
+    NativeAudioBindings.initialize();
+
+    // Verify FFMPEG is available in this isolate
+    if (!NativeAudioBindings.isFFMPEGAvailable) {
+      throw FFIException(
+        'FFMPEG not available in isolate',
+        'FFMPEG libraries are required but not available in this isolate context. '
+            'Run: dart run tools/download_ffmpeg_binaries.dart',
+      );
+    }
+  } catch (e) {
+    // FFMPEG initialization failed - this is now a critical error
+    // Send error back to main isolate and terminate
+    final errorMessage = ErrorMessage(
+      id: 'init_error_${DateTime.now().millisecondsSinceEpoch}',
+      timestamp: DateTime.now(),
+      errorMessage: 'Failed to initialize FFMPEG in isolate: $e',
+      errorType: 'FFMPEGInitializationError',
+      stackTrace: StackTrace.current.toString(),
+    );
+
+    // Try to send error back, then terminate
+    try {
+      handshakeSendPort.send(errorMessage.toJson());
+    } catch (_) {
+      // If we can't send the error, just terminate
+    }
+    return;
+  }
+
   // Create receive port for this isolate
   final receivePort = ReceivePort();
 
@@ -40,36 +76,46 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
   final Map<String, _ActiveOperation> activeOperations = {};
 
   // Listen for messages from the main isolate
-  receivePort.listen((dynamic message) async {
-    try {
-      if (message is SendPort) {
-        // This is the main isolate's send port for responses
-        mainSendPort = message;
-      } else if (message is Map<String, dynamic>) {
-        final isolateMessage = IsolateMessage.fromJson(message);
+  receivePort.listen(
+    (dynamic message) async {
+      try {
+        if (message is SendPort) {
+          // This is the main isolate's send port for responses
+          mainSendPort = message;
+        } else if (message is Map<String, dynamic>) {
+          final isolateMessage = IsolateMessage.fromJson(message);
+          if (mainSendPort != null) {
+            await _handleIsolateMessage(isolateMessage, mainSendPort!, activeOperations);
+          }
+        } else if (message == 'shutdown') {
+          // Handle isolate shutdown request
+          _cleanupIsolateResources();
+          receivePort.close();
+        }
+      } catch (error, stackTrace) {
+        // Send error back to main isolate if we have the send port
         if (mainSendPort != null) {
-          await _handleIsolateMessage(isolateMessage, mainSendPort!, activeOperations);
+          try {
+            final errorMessage = ErrorMessage(
+              id: 'error_${DateTime.now().millisecondsSinceEpoch}',
+              timestamp: DateTime.now(),
+              errorMessage: error.toString(),
+              errorType: 'IsolateProcessingError',
+              stackTrace: stackTrace.toString(),
+            );
+            mainSendPort!.send(errorMessage.toJson());
+          } catch (sendError) {
+            // If we can't even send the error, there's not much we can do
+            // The isolate will likely be considered crashed by the health monitor
+          }
         }
       }
-    } catch (error, stackTrace) {
-      // Send error back to main isolate if we have the send port
-      if (mainSendPort != null) {
-        try {
-          final errorMessage = ErrorMessage(
-            id: 'error_${DateTime.now().millisecondsSinceEpoch}',
-            timestamp: DateTime.now(),
-            errorMessage: error.toString(),
-            errorType: 'IsolateProcessingError',
-            stackTrace: stackTrace.toString(),
-          );
-          mainSendPort!.send(errorMessage.toJson());
-        } catch (sendError) {
-          // If we can't even send the error, there's not much we can do
-          // The isolate will likely be considered crashed by the health monitor
-        }
-      }
-    }
-  });
+    },
+    onDone: () {
+      // Cleanup resources when isolate is about to terminate
+      _cleanupIsolateResources();
+    },
+  );
 }
 
 /// Represents an active operation in the background isolate
@@ -128,6 +174,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       }
 
       decoder = AudioDecoderFactory.createDecoder(request.filePath);
+      print('ProcessingIsolate: Created decoder: ${decoder.runtimeType}');
     } catch (error) {
       // Handle decoder creation errors immediately
       _sendErrorResponse(mainSendPort, request.id, error);
@@ -136,6 +183,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
 
     try {
       // Step 2: Check file size and determine processing strategy
+      print('ProcessingIsolate: Starting file analysis and decoding...');
 
       // Check for cancellation before file analysis
       if (operation.isCancelled) {
@@ -173,10 +221,19 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
 
       if (fileSize > chunkThreshold && decoder is ChunkedAudioDecoder) {
         // Use file-level chunked processing for large files (memory-efficient)
+        print('ProcessingIsolate: Using chunked processing for large file');
         audioData = await _processWithSelectiveDecoding(decoder, request.filePath, request.config, mainSendPort, request.id, operation);
       } else {
         // Use in-memory processing for smaller files (performance-optimized)
-        audioData = await decoder.decode(request.filePath);
+        print('ProcessingIsolate: Using in-memory processing for smaller file');
+        print('ProcessingIsolate: About to call decoder.decode()...');
+        try {
+          audioData = await decoder.decode(request.filePath);
+          print('ProcessingIsolate: decoder.decode() completed successfully');
+        } catch (decodeError) {
+          print('ProcessingIsolate: decoder.decode() failed with error: $decodeError');
+          rethrow; // Re-throw to be handled by outer catch block
+        }
       }
 
       // Check for cancellation after decoding
@@ -216,6 +273,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       decoder.dispose();
     }
   } catch (error) {
+    print('ProcessingIsolate: Caught error in main processing: $error');
     // Send error response only if not cancelled
     if (!operation.isCancelled) {
       _sendErrorResponse(mainSendPort, request.id, error);
@@ -235,9 +293,20 @@ void _sendErrorResponse(SendPort mainSendPort, String requestId, Object error) {
   if (error is SonixException) {
     errorMessage = error.message;
     errorType = error.runtimeType.toString();
+
+    // Add backend information for debugging FFMPEG-related errors
+    if (error is FFIException && error.message.contains('FFMPEG')) {
+      errorMessage += ' (Backend: ${NativeAudioBindings.backendType})';
+    }
   } else {
     errorMessage = error.toString();
     errorType = 'UnknownError';
+
+    // Check if this might be an FFMPEG-related error
+    if (errorMessage.contains('FFMPEG') || errorMessage.contains('ffmpeg')) {
+      errorType = 'FFMPEGError';
+      errorMessage += ' (Backend: ${NativeAudioBindings.backendType})';
+    }
   }
 
   final errorResponse = ProcessingResponse(
@@ -405,4 +474,14 @@ Future<AudioData> _processWithSelectiveDecoding(
   await decoder.cleanupChunkedProcessing();
 
   return AudioData(samples: amplitudes, sampleRate: sampleRate, channels: channels, duration: estimatedDuration);
+}
+
+/// Cleanup FFMPEG resources when isolate shuts down
+void _cleanupIsolateResources() {
+  try {
+    // Cleanup FFMPEG context in this isolate
+    NativeAudioBindings.cleanup();
+  } catch (e) {
+    // Ignore cleanup errors during shutdown
+  }
 }

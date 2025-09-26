@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
-import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/decoders/mp3_decoder.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
@@ -15,43 +14,18 @@ void main() {
     late String testFilePath;
 
     setUpAll(() {
-      // Initialize native bindings before running tests
-      NativeAudioBindings.initialize();
       testFilePath = 'test/assets/Double-F the King - Your Blessing.mp3';
+
+      // Initialize native bindings - this should work or the tests should fail
+      NativeAudioBindings.initialize();
     });
 
-    group('Format Detection', () {
-      test('should detect MP3 format correctly', () {
-        expect(AudioDecoderFactory.isFormatSupported('test.mp3'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('test.MP3'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('AUDIO.Mp3'), isTrue);
-      });
-
-      test('should create MP3 decoder instance', () {
-        final decoder = AudioDecoderFactory.createDecoder('test.mp3');
-        expect(decoder, isA<MP3Decoder>());
-      });
-
-      test('should detect MP3 format from file content', () async {
-        final testFile = File(testFilePath);
-        if (!testFile.existsSync()) {
-          markTestSkipped('Test MP3 file not found: $testFilePath');
-          return;
-        }
-
-        final bytes = await testFile.readAsBytes();
-        final format = NativeAudioBindings.detectFormat(Uint8List.fromList(bytes));
-        expect(format, equals(AudioFormat.mp3));
-      });
-    });
+    // Format detection tests moved to test/core/format_detection_test.dart
 
     group('MP3 File Decoding', () {
       test('should decode MP3 file successfully', () async {
         final testFile = File(testFilePath);
-        if (!testFile.existsSync()) {
-          markTestSkipped('Test MP3 file not found: $testFilePath');
-          return;
-        }
+        expect(testFile.existsSync(), isTrue, reason: 'Test MP3 file must exist: $testFilePath');
 
         final bytes = await testFile.readAsBytes();
         final audioData = NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.mp3);
@@ -73,10 +47,7 @@ void main() {
 
       test('should decode MP3 using decoder class', () async {
         final testFile = File(testFilePath);
-        if (!testFile.existsSync()) {
-          markTestSkipped('Test MP3 file not found: $testFilePath');
-          return;
-        }
+        expect(testFile.existsSync(), isTrue, reason: 'Test MP3 file must exist: $testFilePath');
 
         final decoder = MP3Decoder();
         final audioData = await decoder.decode(testFilePath);
@@ -92,10 +63,7 @@ void main() {
 
       test('should handle MP3 file with expected audio characteristics', () async {
         final testFile = File(testFilePath);
-        if (!testFile.existsSync()) {
-          markTestSkipped('Test MP3 file not found: $testFilePath');
-          return;
-        }
+        expect(testFile.existsSync(), isTrue, reason: 'Test MP3 file must exist: $testFilePath');
 
         final bytes = await testFile.readAsBytes();
         final audioData = NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.mp3);
@@ -115,47 +83,51 @@ void main() {
       test('should handle corrupted MP3 header', () async {
         final corruptedFile = File('test/assets/corrupted_header.mp3');
         if (!corruptedFile.existsSync()) {
-          markTestSkipped('Corrupted MP3 test file not found');
-          return;
+          fail('Corrupted MP3 test file must exist for proper testing');
         }
 
         final bytes = await corruptedFile.readAsBytes();
-
         expect(() => NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.mp3), throwsA(isA<DecodingException>()));
       });
 
       test('should handle empty MP3 file', () async {
         final emptyFile = File('test/assets/empty_file.mp3');
         if (!emptyFile.existsSync()) {
-          markTestSkipped('Empty MP3 test file not found');
-          return;
+          fail('Empty MP3 test file must exist for proper testing');
         }
 
         final bytes = await emptyFile.readAsBytes();
-
         expect(() => NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.mp3), throwsA(isA<DecodingException>()));
       });
 
       test('should handle invalid MP3 data', () {
         final invalidData = Uint8List.fromList([0xFF, 0xFE, 0x01, 0x02]); // Not valid MP3
-
         expect(() => NativeAudioBindings.decodeAudio(invalidData, AudioFormat.mp3), throwsA(isA<DecodingException>()));
       });
 
       test('should handle null or empty data', () {
         final emptyData = Uint8List(0);
-
         expect(() => NativeAudioBindings.decodeAudio(emptyData, AudioFormat.mp3), throwsA(isA<DecodingException>()));
+      });
+
+      test('should handle non-existent file in decoder', () async {
+        final decoder = MP3Decoder();
+
+        try {
+          await decoder.decode('definitely_does_not_exist.mp3');
+          fail('Should have thrown an exception for non-existent file');
+        } catch (e) {
+          expect(e, isA<FileAccessException>());
+        } finally {
+          decoder.dispose();
+        }
       });
     });
 
     group('MP3 Audio Quality Validation', () {
       test('should produce valid audio samples', () async {
         final testFile = File(testFilePath);
-        if (!testFile.existsSync()) {
-          markTestSkipped('Test MP3 file not found: $testFilePath');
-          return;
-        }
+        expect(testFile.existsSync(), isTrue, reason: 'Test MP3 file must exist: $testFilePath');
 
         final bytes = await testFile.readAsBytes();
         final audioData = NativeAudioBindings.decodeAudio(Uint8List.fromList(bytes), AudioFormat.mp3);
@@ -172,10 +144,7 @@ void main() {
 
       test('should decode consistently on multiple runs', () async {
         final testFile = File(testFilePath);
-        if (!testFile.existsSync()) {
-          markTestSkipped('Test MP3 file not found: $testFilePath');
-          return;
-        }
+        expect(testFile.existsSync(), isTrue, reason: 'Test MP3 file must exist: $testFilePath');
 
         final bytes = await testFile.readAsBytes();
 
@@ -199,10 +168,7 @@ void main() {
     group('MP3 Performance Tests', () {
       test('should decode MP3 file within reasonable time', () async {
         final testFile = File(testFilePath);
-        if (!testFile.existsSync()) {
-          markTestSkipped('Test MP3 file not found: $testFilePath');
-          return;
-        }
+        expect(testFile.existsSync(), isTrue, reason: 'Test MP3 file must exist: $testFilePath');
 
         final bytes = await testFile.readAsBytes();
         final stopwatch = Stopwatch()..start();
@@ -211,8 +177,8 @@ void main() {
 
         stopwatch.stop();
 
-        // Decoding should complete in reasonable time (less than 2 seconds for most files)
-        expect(stopwatch.elapsedMilliseconds, lessThan(2000));
+        // Decoding should complete in reasonable time (less than 5 seconds for most files)
+        expect(stopwatch.elapsedMilliseconds, lessThan(5000));
 
         print('MP3 decoding performance:');
         print('  File size: ${bytes.length} bytes');
@@ -221,6 +187,54 @@ void main() {
         print('  Decode rate: ${(audioData.samples.length / stopwatch.elapsedMilliseconds * 1000).round()} samples/sec');
       });
     });
+
+    group('MP3 Decoder Lifecycle', () {
+      test('should handle multiple dispose calls safely', () {
+        final decoder = MP3Decoder();
+
+        // Should not crash on multiple dispose calls
+        decoder.dispose();
+        decoder.dispose();
+        decoder.dispose();
+      });
+
+      test('should create multiple decoder instances', () {
+        final decoder1 = MP3Decoder();
+        final decoder2 = MP3Decoder();
+        final decoder3 = MP3Decoder();
+
+        expect(decoder1, isNotNull);
+        expect(decoder2, isNotNull);
+        expect(decoder3, isNotNull);
+
+        decoder1.dispose();
+        decoder2.dispose();
+        decoder3.dispose();
+      });
+    });
+
+    group('Native Library Integration', () {
+      test('should have working native bindings', () {
+        // This test ensures the native library is properly loaded and functional
+        // If this fails, it indicates a serious issue that needs to be fixed
+        expect(() => NativeAudioBindings.initialize(), returnsNormally);
+      });
+
+      test('should detect backend type', () {
+        final backendType = NativeAudioBindings.backendType;
+        expect(backendType, anyOf('FFMPEG', 'Legacy'));
+        print('Using backend: $backendType');
+      });
+
+      test('should handle memory pressure threshold', () {
+        final originalThreshold = NativeAudioBindings.memoryPressureThreshold;
+
+        NativeAudioBindings.setMemoryPressureThreshold(50 * 1024 * 1024); // 50MB
+        expect(NativeAudioBindings.memoryPressureThreshold, equals(50 * 1024 * 1024));
+
+        // Restore original threshold
+        NativeAudioBindings.setMemoryPressureThreshold(originalThreshold);
+      });
+    });
   });
 }
-

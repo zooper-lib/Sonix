@@ -10,7 +10,8 @@ import '../native/native_audio_bindings.dart';
 import 'audio_decoder.dart';
 import 'chunked_audio_decoder.dart';
 
-/// MP3 audio decoder using minimp3 library with chunked processing support
+/// MP3 audio decoder using FFMPEG backend when available, falls back to minimp3 library
+/// Maintains full chunked processing support with both backends
 class MP3Decoder implements ChunkedAudioDecoder {
   bool _disposed = false;
   bool _initialized = false;
@@ -53,7 +54,7 @@ class MP3Decoder implements ChunkedAudioDecoder {
         throw MemoryException('File too large for direct decoding', 'File size exceeds memory limits. Consider using chunked processing instead.');
       }
 
-      // Use native bindings to decode
+      // Use native bindings to decode (automatically uses FFMPEG when available)
       final audioData = NativeAudioBindings.decodeAudio(fileData, AudioFormat.mp3);
       return audioData;
     } catch (e) {
@@ -324,6 +325,7 @@ class MP3Decoder implements ChunkedAudioDecoder {
     _checkDisposed();
     return {
       'format': 'MP3',
+      'backend': NativeAudioBindings.backendType,
       'sampleRate': _sampleRate,
       'channels': _channels,
       'duration': _totalDuration?.inMilliseconds,
@@ -331,6 +333,7 @@ class MP3Decoder implements ChunkedAudioDecoder {
       'supportsSeekTable': false,
       'avgFrameSize': 417, // Typical MP3 frame size
       'seekingAccuracy': 'approximate',
+      'ffmpegAvailable': NativeAudioBindings.isFFMPEGAvailable,
     };
   }
 

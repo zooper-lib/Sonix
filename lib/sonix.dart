@@ -2,7 +2,7 @@
 ///
 /// A comprehensive solution for generating and displaying audio waveforms
 /// with isolate-based processing to prevent UI thread blocking. Supports multiple
-/// audio formats (MP3, OGG, WAV, FLAC, Opus) using native C libraries through Dart FFI.
+/// audio formats (MP3, OGG, WAV, FLAC) using native C libraries through Dart FFI.
 ///
 /// ## Quick Start
 ///
@@ -24,7 +24,7 @@
 ///
 /// - **Isolate-Based Processing**: All audio processing happens in background isolates
 /// - **Instance-Based API**: Create multiple instances with different configurations
-/// - **Multi-format Support**: MP3, OGG, WAV, FLAC, Opus
+/// - **Multi-format Support**: MP3, OGG, WAV, FLAC
 /// - **High Performance**: Native C libraries via Dart FFI
 /// - **Memory Efficient**: Automatic resource management and cleanup
 /// - **Streaming API**: Real-time progress updates
@@ -42,9 +42,11 @@ export 'src/config/sonix_config.dart';
 export 'src/models/waveform_data.dart';
 export 'src/models/waveform_type.dart';
 export 'src/models/waveform_metadata.dart';
-
-
 export 'src/models/audio_data.dart';
+export 'src/models/mp4_models.dart';
+
+// Audio format enum (from decoders)
+export 'src/decoders/audio_decoder.dart' show AudioFormat, AudioFormatExtension;
 
 // Processing and generation
 export 'src/processing/waveform_generator.dart' show WaveformGenerator;
@@ -59,6 +61,7 @@ export 'src/processing/upsample_method.dart';
 
 // Exceptions
 export 'src/exceptions/sonix_exceptions.dart';
+export 'src/exceptions/mp4_exceptions.dart';
 
 // UI widgets
 export 'src/widgets/waveform_painter.dart';

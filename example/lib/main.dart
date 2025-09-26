@@ -189,20 +189,12 @@ class ExampleHomePage extends StatelessWidget {
                   const SizedBox(height: 8),
                   const Text(
                     'Sonix is a comprehensive Flutter package for generating and displaying '
-                    'audio waveforms without relying on FFMPEG. It supports multiple audio '
+                    'audio waveforms using FFMPEG. It supports multiple audio '
                     'formats using native C libraries for optimal performance.',
                     style: TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildFeatureChip('MP3'),
-                      _buildFeatureChip('WAV'),
-                      _buildFeatureChip('FLAC'),
-                      _buildFeatureChip('OGG'),
-                      _buildFeatureChip('Opus'),
-                    ],
-                  ),
+                  Row(children: [_buildFeatureChip('MP3'), _buildFeatureChip('WAV'), _buildFeatureChip('FLAC'), _buildFeatureChip('OGG')]),
                 ],
               ),
             ),

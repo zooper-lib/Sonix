@@ -232,9 +232,22 @@ class _ManagedIsolate {
 
   /// Dispose of this isolate
   void dispose() {
-    _messageSubscription.cancel();
-    receivePort.close();
-    isolate.kill(priority: Isolate.immediate);
+    try {
+      // Send shutdown message to allow FFMPEG cleanup
+      sendPort.send('shutdown');
+
+      // Give isolate a brief moment to cleanup
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _messageSubscription.cancel();
+        receivePort.close();
+        isolate.kill(priority: Isolate.immediate);
+      });
+    } catch (e) {
+      // If sending shutdown message fails, proceed with immediate cleanup
+      _messageSubscription.cancel();
+      receivePort.close();
+      isolate.kill(priority: Isolate.immediate);
+    }
   }
 
   /// Get info about this isolate

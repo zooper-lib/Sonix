@@ -37,6 +37,9 @@ class ErrorSerializer {
         errorData['format'] = error.format;
       } else if (error is CorruptedFileException) {
         errorData['filePath'] = error.filePath;
+      } else if (error is FFIException) {
+        // Handle FFMPEG-related FFI exceptions
+        errorData['isFFMPEGRelated'] = error.message.contains('FFMPEG');
       }
     } else {
       // Handle non-Sonix exceptions
@@ -101,6 +104,9 @@ class ErrorSerializer {
 
       case 'StreamingException':
         return StreamingException(message, details);
+
+      case 'FFMPEGException':
+        return FFIException(message, details); // Map FFMPEG errors to FFI exceptions
 
       default:
         // Fallback to generic SonixException

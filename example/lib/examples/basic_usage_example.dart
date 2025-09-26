@@ -95,7 +95,7 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                    SelectableText(_error!, style: const TextStyle(color: Colors.red)),
                   ],
                 ),
               ),
@@ -213,7 +213,7 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['wav', 'mp3', 'flac', 'ogg', 'opus'],
+        allowedExtensions: ['wav', 'mp3', 'flac', 'ogg', 'opus', 'mp4'],
         allowMultiple: false,
       );
 

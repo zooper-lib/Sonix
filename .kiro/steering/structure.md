@@ -5,14 +5,17 @@
 ```
 sonix/
 ├── lib/                    # Main Dart library code
-├── native/                 # Native C libraries and build system
-├── example/                # Example Flutter application
+├── example/                # Example Flutter app demonstrating usage
 ├── test/                   # Comprehensive test suite
-├── doc/                    # Documentation files
-├── scripts/                # Build and utility scripts
-├── templates/              # Project templates for specs/plans
-├── memory/                 # Project constitution and guidelines
-└── .kiro/                  # Kiro IDE configuration and steering
+├── tools/                  # Development and build tools
+├── native/                 # Native C library source code
+├── docs/                   # Additional documentation
+├── android/                # Android plugin configuration
+├── ios/                    # iOS plugin configuration  
+├── linux/                  # Linux plugin configuration
+├── macos/                  # macOS plugin configuration
+├── windows/                # Windows plugin configuration
+└── .kiro/                  # Kiro AI assistant configuration
 ```
 
 ## Library Structure (`lib/`)
@@ -20,84 +23,106 @@ sonix/
 ```
 lib/
 ├── sonix.dart              # Main library export file
-└── src/                    # Internal implementation
-    ├── sonix_api.dart      # Primary API (SonixInstance, SonixConfig)
-    ├── models/             # Data models (WaveformData, AudioData, etc.)
-    ├── processing/         # Audio processing and waveform generation
-    ├── decoders/           # Format-specific audio decoders
-    ├── isolate/            # Isolate management and messaging
-    ├── widgets/            # Flutter UI widgets
-    ├── utils/              # Utilities (caching, memory management, etc.)
-    └── exceptions/         # Custom exception classes
+└── src/
+    ├── sonix_api.dart      # Primary API class (Sonix)
+    ├── config/             # Configuration classes
+    ├── decoders/           # Audio format decoders
+    ├── exceptions/         # Custom exception classes
+    ├── isolate/            # Isolate management and communication
+    ├── models/             # Data models (WaveformData, etc.)
+    ├── native/             # FFI bindings and native interface
+    ├── processing/         # Waveform generation and processing
+    ├── utils/              # Utility classes and helpers
+    └── widgets/            # Flutter UI widgets
 ```
 
-## Native Code Structure (`native/`)
+## Key Directories
 
-```
-native/
-├── src/                    # C source files
-│   ├── sonix_native.c      # Main native interface
-│   ├── minimp3/            # MP3 decoder library
-│   ├── dr_wav/             # WAV decoder library
-│   ├── dr_flac/            # FLAC decoder library
-│   ├── stb_vorbis/         # OGG Vorbis decoder library
-│   └── opus/               # Opus decoder library
-├── CMakeLists.txt          # CMake build configuration
-├── build.sh                # Unix build script
-├── build.bat               # Windows build script
-└── [platform]/            # Platform-specific configurations
-```
+### `/lib/src/` - Core Implementation
+- **`sonix_api.dart`**: Main entry point class with instance-based API
+- **`config/`**: Configuration classes for Sonix instances and processing
+- **`models/`**: Data structures (WaveformData, AudioData, metadata)
+- **`processing/`**: Waveform generation algorithms and processing logic
+- **`isolate/`**: Background processing infrastructure and communication
+- **`widgets/`**: Flutter widgets for waveform display and interaction
+- **`native/`**: FFI bindings and native library interface
+- **`decoders/`**: Audio format detection and decoding logic
+- **`exceptions/`**: Custom exception hierarchy
+- **`utils/`**: Performance profiling, memory management, validation
 
-## Test Structure (`test/`)
+### `/test/` - Comprehensive Testing
+- **`assets/`**: Test audio files and fixtures
+- **`core/`**: Core functionality tests
+- **`integration/`**: End-to-end integration tests
+- **`performance/`**: Performance benchmarking tests
+- **`mocks/`**: Mock objects and test doubles
+- **`fixtures/`**: Test data and FFMPEG binaries for testing
 
-```
-test/
-├── *_test.dart             # Individual test files
-├── assets/                 # Test audio files
-├── decoders/               # Decoder-specific tests
-├── exceptions/             # Exception handling tests
-├── integration/            # Integration tests
-├── isolate/                # Isolate functionality tests
-├── mocks/                  # Mock objects for testing
-├── models/                 # Data model tests
-├── processing/             # Processing algorithm tests
-├── test_helpers/           # Test utilities and helpers
-├── utils/                  # Utility function tests
-└── widgets/                # Widget tests
-```
+### `/tools/` - Development Tools
+- **`setup_ffmpeg_for_app.dart`**: End-user FFMPEG setup tool (executable)
+- **`download_ffmpeg_binaries.dart`**: Developer FFMPEG download tool
+- **`build_native_for_development.dart`**: Quick development builds
+- **`build_native_for_distribution.dart`**: Production builds for all platforms
+- **Supporting files**: Downloaders, validators, installers
 
-## Documentation Structure (`doc/`)
+### `/native/` - Native Library Source
+- **`src/`**: C source code for sonix_native wrapper
+- **`CMakeLists.txt`**: CMake build configuration
+- **Platform subdirectories**: Platform-specific build artifacts
 
-- `API_REFERENCE.md` - Complete API documentation
-- `CHUNKED_PROCESSING_*.md` - Chunked processing guides and configuration
-- `PERFORMANCE_GUIDE.md` - Performance optimization guidance
-- `PLATFORM_GUIDE.md` - Platform-specific implementation details
+### Platform Plugin Directories
+- **`android/`**: Android plugin configuration and JNI libraries
+- **`ios/`**: iOS plugin configuration and static libraries
+- **`linux/`**: Linux plugin configuration and shared libraries
+- **`macos/`**: macOS plugin configuration and dynamic libraries
+- **`windows/`**: Windows plugin configuration and DLLs
 
-## Key Architectural Principles
+## File Naming Conventions
 
-### API Design
-- **Instance-based**: Primary API uses `SonixInstance` with configuration
-- **Backward compatibility**: Legacy static `Sonix` API still supported
-- **Isolate-first**: All heavy processing happens in background isolates
+### Dart Files
+- **Snake case**: `waveform_data.dart`, `sonix_api.dart`
+- **Descriptive names**: Clearly indicate purpose and scope
+- **Suffix patterns**: 
+  - `_config.dart` for configuration classes
+  - `_exception.dart` for exception classes
+  - `_widget.dart` for Flutter widgets
+  - `_test.dart` for test files
 
-### Code Organization
-- **Feature-based modules**: Each major feature has its own directory
-- **Clear separation**: Models, processing, UI, and utilities are separated
-- **Export control**: Main library file (`sonix.dart`) controls public API
+### Native Files
+- **C source**: `.c` and `.h` extensions
+- **CMake**: `CMakeLists.txt` for build configuration
+- **Platform libraries**: Follow platform conventions (`.dll`, `.so`, `.dylib`, `.a`)
 
-### Testing Strategy
-- **Comprehensive coverage**: Unit, integration, and performance tests
-- **Real data testing**: Uses actual audio files for validation
-- **Isolate testing**: Dedicated tests for isolate functionality
-- **Platform testing**: Cross-platform compatibility validation
+### Tool Scripts
+- **Descriptive names**: Clearly indicate tool purpose
+- **Dart executable**: All tools are Dart scripts for consistency
+- **Prefix patterns**: `build_`, `download_`, `setup_` for different tool categories
 
-### File Naming Conventions
-- **Snake_case**: All Dart files use snake_case naming
-- **Descriptive names**: File names clearly indicate their purpose
-- **Test suffix**: Test files end with `_test.dart`
-- **Integration prefix**: Integration tests clearly marked
+## Import Organization
 
-### Import Organization
-- **Relative imports**: Use relative imports within the package
-- **Barrel exports**: Main library file re-exports public APIs
-- **Selective exports**: Only expose necessary classes and functions
+### Library Exports (`lib/sonix.dart`)
+- **Selective exports**: Only expose public API, not internal implementation
+- **Grouped by category**: API, configuration, models, widgets, etc.
+- **Documentation**: Each export group has explanatory comments
+
+### Internal Imports
+- **Relative imports**: Use relative paths within the package
+- **Grouped imports**: Dart SDK, Flutter, external packages, internal
+- **Alphabetical order**: Within each group, maintain alphabetical order
+
+## Architecture Patterns
+
+### Instance-Based API
+- **Main class**: `Sonix` class manages isolates and resources
+- **Configuration**: `SonixConfig` for instance customization
+- **Resource management**: Explicit `dispose()` for cleanup
+
+### Isolate Communication
+- **Message passing**: Structured messages for isolate communication
+- **Error serialization**: Custom error handling across isolate boundaries
+- **Health monitoring**: Isolate health tracking and recovery
+
+### Plugin Architecture
+- **Platform abstraction**: Common interface with platform-specific implementations
+- **Native library loading**: Dynamic loading with fallback mechanisms
+- **Resource bundling**: Automatic inclusion of native libraries in builds

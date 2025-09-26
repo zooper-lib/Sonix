@@ -5,6 +5,8 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:convert';
 
+import 'mp4_test_data_generator.dart';
+
 /// Generates test audio files and reference data for comprehensive testing
 class TestDataGenerator {
   static const String assetsPath = 'test/assets';
@@ -34,7 +36,7 @@ class TestDataGenerator {
   ];
 
   /// Supported audio formats
-  static const List<String> supportedFormats = ['wav', 'mp3', 'flac', 'ogg'];
+  static const List<String> supportedFormats = ['wav', 'mp3', 'flac', 'ogg', 'mp4'];
 
   /// Generates all test audio files and reference data
   static Future<void> generateAllTestData({bool force = false}) async {
@@ -65,6 +67,9 @@ class TestDataGenerator {
     // Generate test configurations
     await _generateTestConfigurations();
 
+    // Generate MP4 test files
+    await MP4TestDataGenerator.generateAllMP4TestData(force: force);
+
     print('All test data generated successfully');
   }
 
@@ -93,6 +98,9 @@ class TestDataGenerator {
     // Generate test configurations
     await _generateTestConfigurations();
 
+    // Generate essential MP4 test files
+    await MP4TestDataGenerator.generateEssentialMP4TestData(force: force);
+
     print('Essential test data generated successfully');
   }
 
@@ -103,6 +111,7 @@ class TestDataGenerator {
       '$generatedPath/stereo_44100.wav',
       '$generatedPath/short_duration.mp3',
       '$generatedPath/sample_audio.flac',
+      '$generatedPath/mp4_tiny_44100_2ch.mp4',
     ];
 
     for (final filePath in basicFiles) {
@@ -120,6 +129,7 @@ class TestDataGenerator {
       '$generatedPath/stereo_44100.wav',
       '$generatedPath/short_duration.mp3',
       '$generatedPath/sample_audio.flac',
+      '$generatedPath/mp4_tiny_44100_2ch.mp4',
       '$generatedPath/sample_audio.ogg',
       '$generatedPath/corrupted_header.mp3',
       '$generatedPath/empty_file.wav',
@@ -232,6 +242,9 @@ class TestDataGenerator {
         break;
       case 'ogg':
         await _generateOggFileWithSize(filePath, targetSize, sampleRate, channels);
+        break;
+      case 'mp4':
+        await _generateMp4FileWithSize(filePath, targetSize, sampleRate, channels);
         break;
       default:
         throw ArgumentError('Unsupported format: $format');
@@ -349,6 +362,17 @@ class TestDataGenerator {
     await file.writeAsBytes(data);
   }
 
+  /// Generates MP4 file with specific target size (synthetic)
+  static Future<void> _generateMp4FileWithSize(String filePath, int targetSize, int sampleRate, int channels) async {
+    // Calculate approximate duration based on target size and bitrate (128kbps default)
+    final bitrate = 128;
+    final approximateDuration = (targetSize * 8) / (bitrate * 1000); // Convert to seconds
+    final clampedDuration = approximateDuration.clamp(0.1, 60.0); // Reasonable bounds
+
+    // Use the MP4TestDataGenerator to create the file
+    await MP4TestDataGenerator.generateSyntheticMP4File(filePath, sampleRate, channels, clampedDuration, bitrate);
+  }
+
   /// Generates synthetic audio with specific duration
   static List<double> _generateSyntheticAudioWithDuration(int sampleRate, int channels, double durationSeconds) {
     final totalSamples = (sampleRate * durationSeconds * channels).round();
@@ -452,7 +476,6 @@ class TestDataGenerator {
     // Generate other format placeholders
     await _generateSyntheticAudioFile('sample_audio.flac', format: 'flac', durationSeconds: 2);
     await _generateSyntheticAudioFile('sample_audio.ogg', format: 'ogg', durationSeconds: 2);
-    await _generateSyntheticAudioFile('sample_audio.opus', format: 'opus', durationSeconds: 2);
   }
 
   /// Generates essential valid audio files (smaller, faster for regular testing)
@@ -602,14 +625,6 @@ class TestDataGenerator {
         data[2] = 0x67; // 'g'
         data[3] = 0x53; // 'S'
         break;
-      case 'opus':
-        // Opus in OGG container
-        data[0] = 0x4F; // 'O'
-        data[1] = 0x67; // 'g'
-        data[2] = 0x67; // 'g'
-        data[3] = 0x53; // 'S'
-        // Add Opus identification header later in the stream
-        break;
     }
 
     // Fill with synthetic audio-like data
@@ -665,6 +680,9 @@ class TestDataGenerator {
         break;
       case 'ogg':
         await _generateCorruptedOggFiles();
+        break;
+      case 'mp4':
+        await _generateCorruptedMp4Files();
         break;
     }
   }
@@ -757,6 +775,14 @@ class TestDataGenerator {
     final invalidPage = await File('$generatedPath/invalid_page_structure.ogg').readAsBytes();
     invalidPage[5] = 0xFF; // Corrupt page type
     await File('$generatedPath/invalid_page_structure.ogg').writeAsBytes(invalidPage);
+  }
+
+  /// Generates corrupted MP4 files
+  static Future<void> _generateCorruptedMp4Files() async {
+    // Use the MP4TestDataGenerator for corrupted MP4 files
+    await MP4TestDataGenerator.generateCorruptedMP4Container();
+    await MP4TestDataGenerator.generateInvalidMP4Signature();
+    await MP4TestDataGenerator.generateTruncatedMP4File();
   }
 
   /// Generates additional error scenarios
@@ -1378,5 +1404,35 @@ class TestFileManager {
     await inventoryFile.writeAsString(jsonEncode(inventory));
 
     print('Generated test file inventory: ${inventoryFile.path}');
+  }
+}
+
+/// Main function to run test data generation
+Future<void> main(List<String> args) async {
+  final force = args.contains('--force') || args.contains('-f');
+  final essential = args.contains('--essential') || args.contains('-e');
+  final cleanup = args.contains('--cleanup') || args.contains('-c');
+
+  try {
+    if (cleanup) {
+      await TestFileManager.cleanupAllGeneratedFiles();
+      print('Test file cleanup completed successfully!');
+      return;
+    }
+
+    if (essential) {
+      await TestDataGenerator.generateEssentialTestData(force: force);
+    } else {
+      await TestDataGenerator.generateAllTestData(force: force);
+    }
+
+    print('\nTest data generation completed successfully!');
+    print('Generated files are located in: test/assets/generated/');
+
+    // Generate inventory
+    await TestFileManager.generateTestFileInventory();
+  } catch (e) {
+    print('Error generating test data: $e');
+    exit(1);
   }
 }

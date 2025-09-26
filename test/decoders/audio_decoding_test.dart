@@ -1,52 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
+import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
-import '../../tools/test_data_generator.dart';
 
 void main() {
   group('Audio Decoding Tests', () {
-    setUpAll(() async {
-      // Generate essential test data if it doesn't exist (faster)
-      if (!await TestDataLoader.assetExists('test_configurations.json')) {
-        await TestDataGenerator.generateEssentialTestData();
-      }
-    });
-
-    group('Format Detection', () {
-      test('should detect MP3 format correctly', () {
-        expect(AudioDecoderFactory.isFormatSupported('test.mp3'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('test.MP3'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.mp3'), isTrue);
-      });
-
-      test('should detect WAV format correctly', () {
-        expect(AudioDecoderFactory.isFormatSupported('test.wav'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('test.WAV'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.wav'), isTrue);
-      });
-
-      test('should detect FLAC format correctly', () {
-        expect(AudioDecoderFactory.isFormatSupported('test.flac'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('test.FLAC'), isTrue);
-      });
-
-      test('should detect OGG format correctly', () {
-        expect(AudioDecoderFactory.isFormatSupported('test.ogg'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('test.OGG'), isTrue);
-      });
-
-      test('should detect Opus format correctly', () {
-        expect(AudioDecoderFactory.isFormatSupported('test.opus'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('test.OPUS'), isTrue);
-      });
-
-      test('should reject unsupported formats', () {
-        expect(AudioDecoderFactory.isFormatSupported('test.xyz'), isFalse);
-        expect(AudioDecoderFactory.isFormatSupported('test.txt'), isFalse);
-        expect(AudioDecoderFactory.isFormatSupported('test.pdf'), isFalse);
-        expect(AudioDecoderFactory.isFormatSupported('test'), isFalse);
-      });
-    });
+    // Format detection tests moved to test/core/format_detection_test.dart
 
     group('Decoder Creation', () {
       test('should create appropriate decoder for each format', () {
@@ -62,94 +21,92 @@ void main() {
         final oggDecoder = AudioDecoderFactory.createDecoder('test.ogg');
         expect(oggDecoder.runtimeType.toString(), contains('Vorbis'));
 
-        final opusDecoder = AudioDecoderFactory.createDecoder('test.opus');
-        expect(opusDecoder.runtimeType.toString(), contains('Opus'));
+        final mp4Decoder = AudioDecoderFactory.createDecoder('test.mp4');
+        expect(mp4Decoder.runtimeType.toString(), contains('MP4'));
+
+        final m4aDecoder = AudioDecoderFactory.createDecoder('test.m4a');
+        expect(m4aDecoder.runtimeType.toString(), contains('MP4'));
       });
 
       test('should throw UnsupportedFormatException for unsupported formats', () {
         expect(() => AudioDecoderFactory.createDecoder('test.xyz'), throwsA(isA<UnsupportedFormatException>()));
         expect(() => AudioDecoderFactory.createDecoder('test.txt'), throwsA(isA<UnsupportedFormatException>()));
       });
+
+      test('should dispose decoders properly', () {
+        final decoder = AudioDecoderFactory.createDecoder('test.mp3');
+        expect(() => decoder.dispose(), returnsNormally);
+      });
     });
 
-    group('MP3 Decoding Accuracy', () {
-      test('should decode short MP3 file', () async {
-        final filePath = TestDataLoader.getAssetPath('test_short.mp3');
-        if (!await TestDataLoader.assetExists('test_short.mp3')) {
-          return; // Skip if file doesn't exist
-        }
-
-        final decoder = AudioDecoderFactory.createDecoder(filePath);
-        final audioData = await decoder.decode(filePath);
-
-        expect(audioData.sampleRate, greaterThan(0));
-        expect(audioData.channels, greaterThan(0));
-        expect(audioData.samples, isNotEmpty);
-        expect(audioData.duration.inMilliseconds, greaterThan(0));
+    group('Supported Formats API', () {
+      test('should return all supported extensions', () {
+        final extensions = AudioDecoderFactory.getSupportedExtensions();
+        expect(extensions, contains('mp3'));
+        expect(extensions, contains('wav'));
+        expect(extensions, contains('flac'));
+        expect(extensions, contains('ogg'));
+        expect(extensions, contains('mp4'));
+        expect(extensions, contains('m4a'));
+        expect(extensions.length, greaterThanOrEqualTo(6));
       });
 
-      test('should decode medium MP3 file', () async {
-        final filePath = TestDataLoader.getAssetPath('test_medium.mp3');
-        if (!await TestDataLoader.assetExists('test_medium.mp3')) {
-          return; // Skip if file doesn't exist
-        }
-
-        final decoder = AudioDecoderFactory.createDecoder(filePath);
-        final audioData = await decoder.decode(filePath);
-
-        expect(audioData.duration.inSeconds, greaterThan(5));
-        expect(audioData.samples.length, greaterThan(44100 * 5)); // At least 5 seconds
-      });
-    }, skip: 'Native audio decoders not implemented yet');
-
-    group('FLAC Decoding Accuracy', () {
-      test('should decode FLAC file correctly', () async {
-        final filePath = TestDataLoader.getAssetPath('test_sample.flac');
-        if (!await TestDataLoader.assetExists('test_sample.flac')) {
-          return; // Skip if file doesn't exist
-        }
-
-        final decoder = AudioDecoderFactory.createDecoder(filePath);
-        final audioData = await decoder.decode(filePath);
-
-        expect(audioData.sampleRate, greaterThan(0));
-        expect(audioData.channels, greaterThan(0));
-        expect(audioData.samples, isNotEmpty);
-
-        // FLAC should provide lossless quality
-        expect(audioData.samples.every((s) => s >= -1.0 && s <= 1.0), isTrue);
-      });
-    }, skip: 'Native audio decoders not implemented yet');
-
-    group('Error Handling', () {
-      test('should handle corrupted MP3 header', () async {
-        final filePath = TestDataLoader.getAssetPath('corrupted_header.mp3');
-        final decoder = AudioDecoderFactory.createDecoder(filePath);
-
-        expect(() async => await decoder.decode(filePath), throwsA(isA<DecodingException>()));
+      test('should return all supported formats', () {
+        final formats = AudioDecoderFactory.getSupportedFormats();
+        expect(formats, contains(AudioFormat.mp3));
+        expect(formats, contains(AudioFormat.wav));
+        expect(formats, contains(AudioFormat.flac));
+        expect(formats, contains(AudioFormat.ogg));
+        expect(formats, contains(AudioFormat.mp4));
+        expect(formats.length, equals(5));
       });
 
-      test('should handle truncated FLAC file', () async {
-        final filePath = TestDataLoader.getAssetPath('truncated.flac');
-        final decoder = AudioDecoderFactory.createDecoder(filePath);
+      test('should return human-readable format names', () {
+        final formatNames = AudioDecoderFactory.getSupportedFormatNames();
+        expect(formatNames, contains('MP3'));
+        expect(formatNames, contains('WAV'));
+        expect(formatNames, contains('FLAC'));
+        expect(formatNames, contains('OGG Vorbis'));
+        expect(formatNames, contains('MP4/AAC'));
+        expect(formatNames.length, equals(5));
+      });
+    });
 
-        expect(() async => await decoder.decode(filePath), throwsA(isA<DecodingException>()));
+    group('AudioFormat Extension Methods', () {
+      test('should provide correct extensions for each format', () {
+        expect(AudioFormat.mp3.extensions, equals(['mp3']));
+        expect(AudioFormat.wav.extensions, equals(['wav']));
+        expect(AudioFormat.flac.extensions, equals(['flac']));
+        expect(AudioFormat.ogg.extensions, equals(['ogg']));
+        expect(AudioFormat.mp4.extensions, equals(['mp4', 'm4a']));
+        expect(AudioFormat.unknown.extensions, isEmpty);
       });
 
-      test('should handle empty file', () async {
-        final filePath = TestDataLoader.getAssetPath('empty_file.mp3');
-        final decoder = AudioDecoderFactory.createDecoder(filePath);
-
-        expect(() async => await decoder.decode(filePath), throwsA(isA<DecodingException>()));
+      test('should provide correct format names', () {
+        expect(AudioFormat.mp3.name, equals('MP3'));
+        expect(AudioFormat.wav.name, equals('WAV'));
+        expect(AudioFormat.flac.name, equals('FLAC'));
+        expect(AudioFormat.ogg.name, equals('OGG Vorbis'));
+        expect(AudioFormat.mp4.name, equals('MP4/AAC'));
+        expect(AudioFormat.unknown.name, equals('Unknown'));
+      });
+      test('should indicate chunked processing support', () {
+        expect(AudioFormat.mp3.supportsChunkedProcessing, isTrue);
+        expect(AudioFormat.wav.supportsChunkedProcessing, isTrue);
+        expect(AudioFormat.flac.supportsChunkedProcessing, isTrue);
+        expect(AudioFormat.ogg.supportsChunkedProcessing, isTrue);
+        expect(AudioFormat.mp4.supportsChunkedProcessing, isTrue);
+        expect(AudioFormat.unknown.supportsChunkedProcessing, isFalse);
       });
 
-      test('should handle non-existent file', () async {
-        final filePath = TestDataLoader.getAssetPath('non_existent.mp3');
-        final decoder = AudioDecoderFactory.createDecoder(filePath);
-
-        expect(() async => await decoder.decode(filePath), throwsA(isA<FileAccessException>()));
+      test('should provide compression ratios', () {
+        expect(AudioFormat.mp3.typicalCompressionRatio, equals(10.0));
+        expect(AudioFormat.ogg.typicalCompressionRatio, equals(8.0));
+        expect(AudioFormat.mp4.typicalCompressionRatio, equals(10.0));
+        expect(AudioFormat.flac.typicalCompressionRatio, equals(2.0));
+        expect(AudioFormat.wav.typicalCompressionRatio, equals(1.0));
+        expect(AudioFormat.unknown.typicalCompressionRatio, equals(10.0));
       });
     });
   });
 }
-

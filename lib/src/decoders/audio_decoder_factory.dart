@@ -1,12 +1,14 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'audio_decoder.dart';
 import 'mp3_decoder.dart';
 import 'wav_decoder.dart';
 import 'flac_decoder.dart';
 import 'vorbis_decoder.dart';
-import 'opus_decoder.dart';
+import 'mp4_decoder.dart';
 import '../exceptions/sonix_exceptions.dart';
+import '../native/native_audio_bindings.dart';
 
 /// Factory for creating appropriate audio decoders
 class AudioDecoderFactory {
@@ -23,8 +25,8 @@ class AudioDecoderFactory {
         return FLACDecoder();
       case AudioFormat.ogg:
         return VorbisDecoder();
-      case AudioFormat.opus:
-        return OpusDecoder();
+      case AudioFormat.mp4:
+        return MP4Decoder();
       case AudioFormat.unknown:
         throw UnsupportedFormatException(_getFileExtension(filePath), 'Unable to determine audio format for file: $filePath');
     }
@@ -44,8 +46,9 @@ class AudioDecoderFactory {
         return AudioFormat.flac;
       case 'ogg':
         return AudioFormat.ogg;
-      case 'opus':
-        return AudioFormat.opus;
+      case 'mp4':
+      case 'm4a':
+        return AudioFormat.mp4;
       default:
         // Try to detect by file content if extension is unknown
         return _detectFormatByContent(filePath);
@@ -53,6 +56,7 @@ class AudioDecoderFactory {
   }
 
   /// Detect format by examining file content (magic bytes)
+  /// Uses FFMPEG probing when available for more accurate detection
   static AudioFormat _detectFormatByContent(String filePath) {
     try {
       final file = File(filePath);
@@ -60,14 +64,26 @@ class AudioDecoderFactory {
         return AudioFormat.unknown;
       }
 
-      // Read first few bytes to check magic numbers
-      final bytes = file.readAsBytesSync().take(12).toList();
+      // Read first chunk for format detection
+      final bytes = file.readAsBytesSync().take(8192).toList(); // Read more data for FFMPEG probing
 
       if (bytes.length < 4) {
         return AudioFormat.unknown;
       }
 
-      // Check for various format signatures
+      // Try FFMPEG probing first if available (more accurate)
+      try {
+        if (NativeAudioBindings.isFFMPEGAvailable) {
+          final format = NativeAudioBindings.detectFormat(Uint8List.fromList(bytes));
+          if (format != AudioFormat.unknown) {
+            return format;
+          }
+        }
+      } catch (e) {
+        // Fall back to legacy detection if FFMPEG probing fails
+      }
+
+      // Legacy magic byte detection as fallback
       if (_checkMP3Signature(bytes)) {
         return AudioFormat.mp3;
       }
@@ -82,6 +98,10 @@ class AudioDecoderFactory {
 
       if (_checkOggSignature(bytes)) {
         return AudioFormat.ogg; // Could be Vorbis or Opus
+      }
+
+      if (_checkMP4Signature(bytes)) {
+        return AudioFormat.mp4;
       }
 
       return AudioFormat.unknown;
@@ -145,6 +165,16 @@ class AudioDecoderFactory {
     return false;
   }
 
+  /// Check if bytes match MP4 signature
+  static bool _checkMP4Signature(List<int> bytes) {
+    if (bytes.length >= 8) {
+      // Check for MP4 ftyp box signature
+      // Skip first 4 bytes (box size), check for 'ftyp'
+      return bytes[4] == 0x66 && bytes[5] == 0x74 && bytes[6] == 0x79 && bytes[7] == 0x70;
+    }
+    return false;
+  }
+
   /// Get file extension from path
   static String _getFileExtension(String filePath) {
     final lastDot = filePath.lastIndexOf('.');
@@ -167,13 +197,13 @@ class AudioDecoderFactory {
       ...AudioFormat.wav.extensions,
       ...AudioFormat.flac.extensions,
       ...AudioFormat.ogg.extensions,
-      ...AudioFormat.opus.extensions,
+      ...AudioFormat.mp4.extensions,
     ];
   }
 
   /// Get list of supported formats
   static List<AudioFormat> getSupportedFormats() {
-    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg, AudioFormat.opus];
+    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg, AudioFormat.mp4];
   }
 
   /// Get human-readable list of supported formats
