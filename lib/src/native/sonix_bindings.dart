@@ -173,14 +173,14 @@ class SonixNativeBindings {
       _lib = ffi.DynamicLibrary.open('lib$libName.dylib');
     } else if (Platform.isWindows) {
       // Try multiple locations for Windows DLL loading
-      Exception? lastException;
+      Object? firstException;
 
       // Try relative path first (standard approach)
       try {
         _lib = ffi.DynamicLibrary.open('$libName.dll');
         return _lib!;
       } catch (e) {
-        lastException = e as Exception?;
+        firstException = e;
       }
 
       // Try with full path from current directory
@@ -201,8 +201,8 @@ class SonixNativeBindings {
         _lib = ffi.DynamicLibrary.open(dllPath);
         return _lib!;
       } catch (e) {
-        // All attempts failed, throw the original exception
-        throw lastException ?? Exception('Failed to load $libName.dll from any location');
+        // All attempts failed, throw the first exception
+        throw firstException;
       }
     } else if (Platform.isLinux) {
       _lib = ffi.DynamicLibrary.open('lib$libName.so');
