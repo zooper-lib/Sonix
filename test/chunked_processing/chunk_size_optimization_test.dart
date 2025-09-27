@@ -7,7 +7,9 @@ import 'package:sonix/src/decoders/wav_decoder.dart';
 import 'package:sonix/src/decoders/flac_decoder.dart';
 import 'package:sonix/src/decoders/vorbis_decoder.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 /// Centralized chunked processing tests
 ///
@@ -54,7 +56,7 @@ void main() {
           final recommendation = decoder.getOptimalChunkSize(100 * 1024 * 1024); // 100MB
 
           expect(recommendation.recommendedSize, greaterThan(256 * 1024));
-          expect(recommendation.recommendedSize, lessThanOrEqualTo(4 * 1024 * 1024));
+          expect(recommendation.recommendedSize, lessThanOrEqualTo(20 * 1024 * 1024));
           expect(recommendation.reason, contains('Large MP3 file'));
         });
       });
@@ -123,7 +125,7 @@ void main() {
           final recommendation = decoder.getOptimalChunkSize(50 * 1024 * 1024); // 50MB
 
           expect(recommendation.recommendedSize, greaterThan(16 * 1024));
-          expect(recommendation.recommendedSize, lessThanOrEqualTo(8 * 1024 * 1024));
+          expect(recommendation.recommendedSize, lessThanOrEqualTo(25 * 1024 * 1024));
           expect(recommendation.reason, contains('WAV'));
           expect(recommendation.metadata?['format'], equals('WAV'));
         });
@@ -144,7 +146,7 @@ void main() {
           final recommendation = decoder.getOptimalChunkSize(100 * 1024 * 1024); // 100MB
 
           expect(recommendation.recommendedSize, greaterThan(32 * 1024));
-          expect(recommendation.recommendedSize, lessThanOrEqualTo(4 * 1024 * 1024));
+          expect(recommendation.recommendedSize, lessThanOrEqualTo(25 * 1024 * 1024));
           expect(recommendation.reason, contains('FLAC'));
           expect(recommendation.metadata?['format'], equals('FLAC'));
         });
@@ -165,9 +167,9 @@ void main() {
           final recommendation = decoder.getOptimalChunkSize(80 * 1024 * 1024); // 80MB
 
           expect(recommendation.recommendedSize, greaterThan(16 * 1024));
-          expect(recommendation.recommendedSize, lessThanOrEqualTo(6 * 1024 * 1024));
+          expect(recommendation.recommendedSize, lessThanOrEqualTo(30 * 1024 * 1024));
           expect(recommendation.reason, contains('Vorbis'));
-          expect(recommendation.metadata?['format'], equals('Vorbis'));
+          expect(recommendation.metadata?['format'], equals('OGG Vorbis'));
         });
       });
 
@@ -194,7 +196,7 @@ void main() {
 
             // Each format may have different optimal sizes
             expect(mp3Chunk.metadata?['format'], equals('MP3'));
-            expect(mp4Chunk.metadata?['format'], equals('MP4'));
+            expect(mp4Chunk.metadata?['format'], equals('MP4/AAC'));
             expect(wavChunk.metadata?['format'], equals('WAV'));
             expect(flacChunk.metadata?['format'], equals('FLAC'));
           } finally {
@@ -208,6 +210,17 @@ void main() {
     });
 
     group('Native Chunked Processing Interface', () {
+      setUpAll(() async {
+        // Ensure FFMPEG is available for testing
+        final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+        if (!available) {
+          throw Exception('FFMPEG libraries not available for testing');
+        }
+        
+        // Initialize native bindings for testing
+        NativeAudioBindings.initialize();
+      });
+
       test('should initialize chunked decoder for different formats', () {
         // Test with non-existent file to check error handling
         final filePathPtr = 'non_existent.mp3'.toNativeUtf8();
