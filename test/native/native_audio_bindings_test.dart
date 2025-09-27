@@ -4,10 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
   group('NativeAudioBindings MP4 Support', () {
-    setUpAll(() {
+    setUpAll(() async {
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw Exception('FFMPEG libraries not available for testing');
+      }
+      
       // Initialize native bindings before running tests
       NativeAudioBindings.initialize();
     });

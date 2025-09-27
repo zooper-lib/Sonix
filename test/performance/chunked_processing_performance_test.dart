@@ -5,9 +5,22 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
   group('Chunked Processing Performance Tests', () {
+    setUpAll(() async {
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw Exception('FFMPEG libraries not available for testing');
+      }
+      
+      // Initialize native bindings for testing
+      NativeAudioBindings.initialize();
+    });
+
     test('should demonstrate chunked processing performance with large WAV file', () async {
       final wavFile = File('test/assets/Double-F the King - Your Blessing.wav');
 
