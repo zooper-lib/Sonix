@@ -5,9 +5,18 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
   group('MP3 Decoder Diagnostic Tests', () {
+    setUpAll(() async {
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw Exception('FFMPEG libraries not available for testing');
+      }
+    });
+
     test('should identify segmentation fault location', () async {
       print('=== MP3 Decoder Segmentation Fault Diagnostic ===');
 

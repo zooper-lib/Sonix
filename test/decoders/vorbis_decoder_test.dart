@@ -4,10 +4,19 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/vorbis_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
   group('VorbisDecoder Integration Tests', () {
     late VorbisDecoder decoder;
+
+    setUpAll(() async {
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw Exception('FFMPEG libraries not available for testing');
+      }
+    });
 
     setUp(() {
       decoder = VorbisDecoder();

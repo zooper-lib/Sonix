@@ -7,10 +7,19 @@ import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'dart:io';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
   group('WAV Decoder Tests', () {
     late WAVDecoder decoder;
+
+    setUpAll(() async {
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw Exception('FFMPEG libraries not available for testing');
+      }
+    });
 
     setUp(() {
       decoder = WAVDecoder();

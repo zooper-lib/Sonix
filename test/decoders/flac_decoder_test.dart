@@ -9,12 +9,19 @@ import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/decoders/flac_decoder.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
   group('FLAC Decoder Tests', () {
     late String testFilePath;
 
-    setUpAll(() {
+    setUpAll(() async {
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw Exception('FFMPEG libraries not available for testing');
+      }
+      
       // Initialize native bindings before running tests
       NativeAudioBindings.initialize();
       testFilePath = 'test/assets/Double-F the King - Your Blessing.flac';
