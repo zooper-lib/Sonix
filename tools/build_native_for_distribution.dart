@@ -102,7 +102,7 @@ class NativeDistributionBuilder {
     }
 
     // Check FFMPEG binaries
-    final ffmpegDirs = ['native/windows', 'native/linux', 'native/macos'];
+    final ffmpegDirs = ['build/ffmpeg/windows', 'build/ffmpeg/linux', 'build/ffmpeg/macos'];
     bool ffmpegFound = false;
 
     for (final dir in ffmpegDirs) {
@@ -196,7 +196,7 @@ class NativeDistributionBuilder {
       '-A',
       'x64',
       '-DCMAKE_BUILD_TYPE=Release',
-      '-DFFMPEG_ROOT=native/windows',
+      '-DFFMPEG_ROOT=build/ffmpeg/windows',
     ]);
 
     if (configResult.exitCode != 0) {
@@ -231,7 +231,7 @@ class NativeDistributionBuilder {
     await _createBuildDirectory(tempBuildDir);
 
     // Configure with CMake
-    final configResult = await Process.run('cmake', ['-S', 'native', '-B', tempBuildDir, '-DCMAKE_BUILD_TYPE=Release', '-DFFMPEG_ROOT=native/linux']);
+    final configResult = await Process.run('cmake', ['-S', 'native', '-B', tempBuildDir, '-DCMAKE_BUILD_TYPE=Release', '-DFFMPEG_ROOT=build/ffmpeg/linux']);
 
     if (configResult.exitCode != 0) {
       throw Exception('CMake configuration failed: ${configResult.stderr}');
@@ -269,7 +269,7 @@ class NativeDistributionBuilder {
       '-S', 'native',
       '-B', tempBuildDir,
       '-DCMAKE_BUILD_TYPE=Release',
-      '-DFFMPEG_ROOT=native/macos',
+      '-DFFMPEG_ROOT=build/ffmpeg/macos',
       '-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64', // Universal binary
     ]);
 
@@ -311,7 +311,7 @@ class NativeDistributionBuilder {
       '-DCMAKE_BUILD_TYPE=Release',
       '-DCMAKE_TOOLCHAIN_FILE=cmake/ios.toolchain.cmake', // You'll need an iOS toolchain file
       '-DPLATFORM=OS64COMBINED', // Universal iOS binary
-      '-DFFMPEG_ROOT=native/ios',
+      '-DFFMPEG_ROOT=build/ffmpeg/ios',
     ]);
 
     if (configResult.exitCode != 0) {
@@ -377,7 +377,7 @@ class NativeDistributionBuilder {
       '-DCMAKE_TOOLCHAIN_FILE=\$ANDROID_NDK/build/cmake/android.toolchain.cmake',
       '-DANDROID_ABI=$abi',
       '-DANDROID_PLATFORM=android-21',
-      '-DFFMPEG_ROOT=native/android/$arch',
+      '-DFFMPEG_ROOT=build/ffmpeg/android/$arch',
     ]);
 
     if (configResult.exitCode != 0) {

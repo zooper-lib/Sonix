@@ -18,7 +18,17 @@ elseif(UNIX)
 endif()
 
 # CRITICAL: Look for FFMPEG libraries in platform-specific directories
-set(FFMPEG_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${PLATFORM_NAME}")
+# Check if FFMPEG_ROOT is provided, otherwise use the old default location
+if(DEFINED FFMPEG_ROOT)
+    # Convert to absolute path if it's relative
+    if(IS_ABSOLUTE ${FFMPEG_ROOT})
+        set(FFMPEG_ROOT_DIR "${FFMPEG_ROOT}")
+    else()
+        set(FFMPEG_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../${FFMPEG_ROOT}")
+    endif()
+else()
+    set(FFMPEG_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${PLATFORM_NAME}")
+endif()
 
 message(STATUS "Looking for FFMPEG libraries in: ${FFMPEG_ROOT_DIR}")
 

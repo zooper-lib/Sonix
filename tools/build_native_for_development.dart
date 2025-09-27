@@ -65,7 +65,7 @@ class NativeDevelopmentBuilder {
     print('');
 
     // Create build directory
-    final buildDir = 'build/development';
+    final buildDir = 'build/sonix';
     await _createBuildDirectory(buildDir);
 
     // Configure with CMake
@@ -119,6 +119,10 @@ class NativeDevelopmentBuilder {
     // Show built files
     await _showBuiltFiles(buildDir, platform);
 
+    // Copy the built library to runtime locations
+    print('');
+    await _copyBuiltLibraryToRuntimeLocations(buildDir, platform, buildType);
+
     print('');
     print('🎉 Development build completed!');
     print('');
@@ -151,7 +155,7 @@ class NativeDevelopmentBuilder {
 
     // Check FFMPEG binaries (optional for development)
     final platform = _getCurrentPlatform();
-    final ffmpegDir = 'native/$platform';
+    final ffmpegDir = 'build/ffmpeg/$platform';
     if (!await Directory(ffmpegDir).exists()) {
       print('⚠️  FFMPEG binaries not found in $ffmpegDir');
       print('   Run: dart run tools/download_ffmpeg_binaries.dart');
@@ -163,7 +167,7 @@ class NativeDevelopmentBuilder {
 
   /// Gets CMake configuration arguments for the platform
   List<String> _getCMakeConfigArgs(String platform, String buildType) {
-    final args = ['-S', 'native', '-B', 'build/development', '-DCMAKE_BUILD_TYPE=$buildType'];
+    final args = ['-S', 'native', '-B', 'build/sonix', '-DCMAKE_BUILD_TYPE=$buildType'];
 
     // Add platform-specific configuration
     switch (platform) {
@@ -177,9 +181,9 @@ class NativeDevelopmentBuilder {
     }
 
     // Add FFMPEG path if available
-    final ffmpegDir = Directory('native/$platform');
+    final ffmpegDir = Directory('build/ffmpeg/$platform');
     if (ffmpegDir.existsSync()) {
-      args.add('-DFFMPEG_ROOT=native/$platform');
+      args.add('-DFFMPEG_ROOT=build/ffmpeg/$platform');
     }
 
     return args;
@@ -187,7 +191,7 @@ class NativeDevelopmentBuilder {
 
   /// Gets CMake build arguments for the platform
   List<String> _getCMakeBuildArgs(String platform, String buildType) {
-    final args = ['--build', 'build/development'];
+    final args = ['--build', 'build/sonix'];
 
     // Add platform-specific build options
     switch (platform) {
@@ -251,6 +255,97 @@ class NativeDevelopmentBuilder {
     print('Build directory: ${Directory(buildDir).absolute.path}');
   }
 
+  /// Copies the built native library to runtime locations
+  Future<void> _copyBuiltLibraryToRuntimeLocations(String buildDir, String platform, String buildType) async {
+    print('Copying native library to runtime locations...');
+
+    final libraryName = _getLibraryName(platform);
+    final sourcePath = _getBuiltLibraryPath(buildDir, platform, buildType, libraryName);
+    final sourceFile = File(sourcePath);
+
+    if (!await sourceFile.exists()) {
+      print('⚠️  Built library not found: $sourcePath');
+      return;
+    }
+
+    final targetLocations = _getRuntimeLibraryLocations(platform);
+    bool anySuccess = false;
+
+    for (final targetLocation in targetLocations) {
+      try {
+        final targetDir = Directory(targetLocation);
+        if (!await targetDir.exists()) {
+          await targetDir.create(recursive: true);
+        }
+
+        final targetFile = File('$targetLocation/$libraryName');
+        await sourceFile.copy(targetFile.path);
+
+        final size = _formatFileSize(await sourceFile.length());
+        print('  ✅ Copied to: $targetLocation ($size)');
+        anySuccess = true;
+      } catch (e) {
+        print('  ⚠️  Failed to copy to $targetLocation: $e');
+      }
+    }
+
+    if (anySuccess) {
+      print('✅ Native library deployed to runtime locations');
+    } else {
+      print('⚠️  Failed to deploy native library to any runtime location');
+    }
+  }
+
+  /// Gets the platform-specific library name
+  String _getLibraryName(String platform) {
+    switch (platform) {
+      case 'windows':
+        return 'sonix_native.dll';
+      case 'linux':
+        return 'libsonix_native.so';
+      case 'macos':
+        return 'libsonix_native.dylib';
+      default:
+        throw UnsupportedError('Unsupported platform: $platform');
+    }
+  }
+
+  /// Gets the path to the built library
+  String _getBuiltLibraryPath(String buildDir, String platform, String buildType, String libraryName) {
+    switch (platform) {
+      case 'windows':
+        return '$buildDir/$buildType/$libraryName';
+      case 'linux':
+      case 'macos':
+        return '$buildDir/$libraryName';
+      default:
+        throw UnsupportedError('Unsupported platform: $platform');
+    }
+  }
+
+  /// Gets the runtime locations where the library should be copied
+  List<String> _getRuntimeLibraryLocations(String platform) {
+    final locations = <String>[];
+
+    // Root directory for tests
+    locations.add('.');
+
+    // Example app build directories
+    switch (platform) {
+      case 'windows':
+        locations.addAll(['example/build/windows/x64/runner/Debug', 'example/build/windows/x64/runner/Release']);
+        break;
+      case 'linux':
+        locations.addAll(['example/build/linux/x64/debug/bundle/lib', 'example/build/linux/x64/release/bundle/lib']);
+        break;
+      case 'macos':
+        locations.addAll(['example/build/macos/Build/Products/Debug', 'example/build/macos/Build/Products/Release']);
+        break;
+    }
+
+    return locations;
+  }
+
   /// Gets library file extensions for the platform
   List<String> _getLibraryExtensions(String platform) {
     switch (platform) {
@@ -307,7 +402,7 @@ class NativeDevelopmentBuilder {
   Future<void> _cleanBuild() async {
     print('Cleaning development build...');
 
-    final buildDir = Directory('build/development');
+    final buildDir = Directory('build/sonix');
     if (await buildDir.exists()) {
       await buildDir.delete(recursive: true);
       print('✅ Removed: ${buildDir.path}');
@@ -392,9 +487,9 @@ Examples:
   dart run tools/build_native_for_development.dart --clean
 
 Build Output:
-  - Windows: build/development/Release/sonix_native.dll
-  - Linux: build/development/libsonix_native.so
-  - macOS: build/development/libsonix_native.dylib
+  - Windows: build/sonix/Release/sonix_native.dll
+  - Linux: build/sonix/libsonix_native.so
+  - macOS: build/sonix/libsonix_native.dylib
 
 Note: This is for development only. For package distribution builds, use:
   dart run tools/build_native_for_distribution.dart

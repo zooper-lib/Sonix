@@ -72,7 +72,7 @@ class FFMPEGBinaryDownloader {
 
     try {
       final config = _getBinaryConfigForPlatform();
-      final downloadPath = targetPath ?? 'native/${platformInfo.platform}';
+      final downloadPath = targetPath ?? 'build/ffmpeg/${platformInfo.platform}';
 
       // Create download directory
       final downloadDir = Directory(downloadPath);
@@ -227,42 +227,69 @@ class FFMPEGBinaryDownloader {
       final downloadedFiles = <String>[];
       final filePaths = <String, String>{};
 
-      // Extract each required library
+      // Extract each required library or directory
       for (final entry in config.libraryPaths.entries) {
         final libraryName = entry.key;
         final pathInArchive = entry.value;
 
         print('Extracting $libraryName from $pathInArchive...');
 
-        // Find the file in the archive
-        ArchiveFile? targetFile;
+        // Check if this is a directory extraction (ends with /)
+        if (pathInArchive.endsWith('/')) {
+          // Extract entire directory
+          final prefix = pathInArchive.substring(0, pathInArchive.length - 1);
+          final matchingFiles = archive.files.where((file) => file.name.startsWith('$prefix/') && file.isFile).toList();
 
-        if (pathInArchive.contains('*')) {
-          // Handle wildcard paths (common in tar archives)
-          final pattern = RegExp(pathInArchive.replaceAll('*', r'[^/]*'));
-          targetFile = archive.files.firstWhere(
-            (file) => pattern.hasMatch(file.name) && file.name.endsWith(libraryName),
-            orElse: () => throw Exception('File not found matching pattern: $pathInArchive'),
-          );
+          if (matchingFiles.isEmpty) {
+            throw Exception('No files found in directory: $pathInArchive');
+          }
+
+          for (final file in matchingFiles) {
+            // Calculate relative path within the directory
+            final relativePath = file.name.substring(prefix.length + 1);
+            final outputPath = '$targetPath/$libraryName/$relativePath';
+
+            // Create directory structure if needed
+            final outputFile = File(outputPath);
+            await outputFile.parent.create(recursive: true);
+            await outputFile.writeAsBytes(file.content as List<int>);
+
+            downloadedFiles.add(relativePath);
+            filePaths[relativePath] = outputPath;
+          }
+
+          print('✓ Extracted directory $libraryName (${matchingFiles.length} files)');
         } else {
-          // Direct path lookup
-          targetFile = archive.files.firstWhere(
-            (file) => file.name == pathInArchive || file.name.endsWith('/$pathInArchive'),
-            orElse: () => throw Exception('File not found: $pathInArchive'),
-          );
-        }
+          // Extract individual file (existing logic)
+          ArchiveFile? targetFile;
 
-        if (targetFile.isFile) {
-          final outputPath = '$targetPath/$libraryName';
-          final outputFile = File(outputPath);
-          await outputFile.writeAsBytes(targetFile.content as List<int>);
+          if (pathInArchive.contains('*')) {
+            // Handle wildcard paths (common in tar archives)
+            final pattern = RegExp(pathInArchive.replaceAll('*', r'[^/]*'));
+            targetFile = archive.files.firstWhere(
+              (file) => pattern.hasMatch(file.name) && file.name.endsWith(libraryName),
+              orElse: () => throw Exception('File not found matching pattern: $pathInArchive'),
+            );
+          } else {
+            // Direct path lookup
+            targetFile = archive.files.firstWhere(
+              (file) => file.name == pathInArchive || file.name.endsWith('/$pathInArchive'),
+              orElse: () => throw Exception('File not found: $pathInArchive'),
+            );
+          }
 
-          downloadedFiles.add(libraryName);
-          filePaths[libraryName] = outputPath;
+          if (targetFile.isFile) {
+            final outputPath = '$targetPath/$libraryName';
+            final outputFile = File(outputPath);
+            await outputFile.writeAsBytes(targetFile.content as List<int>);
 
-          print('✓ Extracted $libraryName (${targetFile.size} bytes)');
-        } else {
-          throw Exception('$pathInArchive is not a file');
+            downloadedFiles.add(libraryName);
+            filePaths[libraryName] = outputPath;
+
+            print('✓ Extracted $libraryName (${targetFile.size} bytes)');
+          } else {
+            throw Exception('$pathInArchive is not a file');
+          }
         }
       }
 
@@ -300,6 +327,7 @@ class FFMPEGBinaryDownloader {
   /// Windows FFMPEG binary configuration
   FFMPEGBinaryConfig _getWindowsConfig() {
     // Using BtbN builds which are reliable and well-maintained
+    // Use the shared version which includes DLLs, headers, and import libraries for development
     const archiveUrl = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip';
 
     return FFMPEGBinaryConfig(
@@ -308,10 +336,14 @@ class FFMPEGBinaryDownloader {
       version: '6.0',
       archiveUrl: archiveUrl,
       libraryPaths: {
+        // Runtime DLLs
         'avformat-62.dll': 'ffmpeg-master-latest-win64-gpl-shared/bin/avformat-62.dll',
         'avcodec-62.dll': 'ffmpeg-master-latest-win64-gpl-shared/bin/avcodec-62.dll',
         'avutil-60.dll': 'ffmpeg-master-latest-win64-gpl-shared/bin/avutil-60.dll',
         'swresample-6.dll': 'ffmpeg-master-latest-win64-gpl-shared/bin/swresample-6.dll',
+        // Development files (headers and import libraries)
+        'include': 'ffmpeg-master-latest-win64-gpl-shared/include/',
+        'lib': 'ffmpeg-master-latest-win64-gpl-shared/lib/',
       },
       requiredSymbols: ['avformat_open_input', 'avcodec_find_decoder', 'swr_alloc'],
     );
