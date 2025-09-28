@@ -1,20 +1,34 @@
-/// Cross-platform FFMPEG binary loading tests
-///
-/// Tests FFMPEG binary loading on Windows (DLL), macOS (dylib), and Linux (so)
-/// and verifies platform-specific binary path resolution.
 // ignore_for_file: avoid_print
-
-library;
 
 import 'dart:ffi';
 import 'dart:io';
 import 'package:test/test.dart';
 import 'package:ffi/ffi.dart';
 
+import 'ffmpeg_setup_helper.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
+
+/// Cross-platform FFMPEG binary loading tests
+///
+/// Tests FFMPEG binary loading on Windows (DLL), macOS (dylib), and Linux (so)
+/// and verifies platform-specific binary path resolution.
 
 void main() {
   group('Cross-Platform FFMPEG Binary Loading Tests', () {
+    bool ffmpegAvailable = false;
+
+    setUpAll(() async {
+      // Setup FFMPEG libraries for testing using the fixtures directory
+      FFMPEGSetupHelper.printFFMPEGStatus();
+      ffmpegAvailable = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+
+      if (!ffmpegAvailable) {
+        print('⚠️ FFMPEG not available - some tests will be skipped');
+        print('   To set up FFMPEG for testing, run:');
+        print('   dart run tools/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
+      }
+    });
+
     group('Platform Detection', () {
       test('should correctly identify current platform', () {
         print('Current platform: ${Platform.operatingSystem}');
@@ -83,25 +97,40 @@ void main() {
         // On Windows, verify that the DLL and its dependencies can be loaded
         final expectedFiles = ['sonix_native.dll', 'avformat-62.dll', 'avcodec-62.dll', 'avutil-60.dll', 'swresample-6.dll'];
 
+        // Check in test fixtures directory (where DLLs are actually located)
+        final currentDir = Directory.current.path;
+        final testFixturesDir = '$currentDir\\test\\fixtures\\ffmpeg';
+        final windowsDir = '$currentDir\\windows';
+
         print('Checking for Windows FFMPEG DLL files:');
+        print('  Test fixtures dir: $testFixturesDir');
+        print('  Windows build dir: $windowsDir');
+
+        bool mainDllFound = false;
+
         for (final fileName in expectedFiles) {
-          final file = File(fileName);
-          final exists = file.existsSync();
-          print('  $fileName: ${exists ? "✅ Found" : "❌ Missing"}');
+          // Check in test fixtures directory (preferred for tests)
+          final testFile = File('$testFixturesDir\\$fileName');
+          final windowsFile = File('$windowsDir\\$fileName');
+
+          final testExists = testFile.existsSync();
+          final windowsExists = windowsFile.existsSync();
+          final exists = testExists || windowsExists;
+
+          print('  $fileName: ${exists ? "✅ Found" : "❌ Missing"} ${testExists ? "(test)" : ""} ${windowsExists ? "(windows)" : ""}');
 
           if (fileName == 'sonix_native.dll') {
-            // Main DLL is required
-            expect(exists, isTrue, reason: 'Main native DLL $fileName should exist');
-          } else {
-            // FFMPEG DLLs are optional but recommended
-            if (!exists) {
-              print('    Warning: FFMPEG DLL $fileName not found - FFMPEG features may not work');
-            }
+            mainDllFound = exists;
           }
         }
 
+        expect(mainDllFound, isTrue, reason: 'Main native DLL sonix_native.dll should exist in either test fixtures or windows directory');
+
         // Test that we can actually load the library
         expect(() => SonixNativeBindings.lib, returnsNormally, reason: 'Should be able to load Windows DLL');
+
+        final lib = SonixNativeBindings.lib;
+        expect(lib, isNotNull, reason: 'Windows DLL should be loaded successfully');
 
         print('✅ Windows DLL loading test completed');
       });
@@ -130,8 +159,15 @@ void main() {
         final dllInExecDir = File('$executableDir\\sonix_native.dll');
         print('  DLL in exec dir: ${dllInExecDir.existsSync()}');
 
-        // At least one location should have the DLL
-        expect(dllInCurrentDir.existsSync() || dllInExecDir.existsSync(), isTrue, reason: 'DLL should be found in either current or executable directory');
+        // Check actual DLL locations (where they really are)
+        final dllInTestFixtures = File('$currentDir\\test\\fixtures\\ffmpeg\\sonix_native.dll');
+        print('  DLL in test fixtures: ${dllInTestFixtures.existsSync()}');
+
+        final dllInWindows = File('$currentDir\\windows\\sonix_native.dll');
+        print('  DLL in windows dir: ${dllInWindows.existsSync()}');
+
+        // At least one of the actual build locations should have the DLL
+        expect(dllInTestFixtures.existsSync() || dllInWindows.existsSync(), isTrue, reason: 'DLL should be found in test fixtures or windows build directory');
 
         print('✅ Windows path resolution test completed');
       });
@@ -289,13 +325,13 @@ void main() {
 
     group('Cross-Platform Compatibility', () {
       test('should work consistently across platforms', () {
-        // Test that basic functionality works the same way on all platforms
-
         // Test library loading
         expect(() => SonixNativeBindings.lib, returnsNormally, reason: 'Library loading should work on all platforms');
 
-        // Test function availability
         final lib = SonixNativeBindings.lib;
+        expect(lib, isNotNull, reason: 'Library should be loaded successfully');
+
+        // Test function availability
         expect(() => lib.lookup('sonix_get_backend_type'), returnsNormally, reason: 'Basic functions should be available on all platforms');
 
         // Test backend type query
