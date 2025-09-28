@@ -239,7 +239,7 @@ class FFMPEGSetupHelper {
     return true;
   }
 
-  /// Cleanup after testing (no longer copies files, so minimal cleanup needed)
+  /// Cleanup after testing
   static Future<void> cleanupFFMPEGAfterTesting() async {
     // No files to clean up since we don't copy to root anymore
     print('ℹ️ FFMPEG test cleanup complete');

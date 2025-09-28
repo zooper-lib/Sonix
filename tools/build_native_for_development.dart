@@ -327,8 +327,8 @@ class NativeDevelopmentBuilder {
   List<String> _getRuntimeLibraryLocations(String platform) {
     final locations = <String>[];
 
-    // Root directory for tests
-    locations.add('.');
+    // Test fixtures directory (so native library is co-located with FFMPEG libraries)
+    locations.add('test/fixtures/ffmpeg');
 
     // Example app build directories
     switch (platform) {

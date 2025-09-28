@@ -170,6 +170,18 @@ class SonixNativeBindings {
     if (Platform.isAndroid) {
       _lib = ffi.DynamicLibrary.open('lib$libName.so');
     } else if (Platform.isIOS || Platform.isMacOS) {
+      // Try test fixtures directory first (for tests)
+      try {
+        final currentDir = Directory.current.path;
+        final testFixturesPath = '$currentDir/test/fixtures/ffmpeg/lib$libName.dylib';
+        if (File(testFixturesPath).existsSync()) {
+          _lib = ffi.DynamicLibrary.open(testFixturesPath);
+          return _lib!;
+        }
+      } catch (e) {
+        // Continue to standard approach
+      }
+
       _lib = ffi.DynamicLibrary.open('lib$libName.dylib');
     } else if (Platform.isWindows) {
       // Try multiple locations for Windows DLL loading
@@ -181,6 +193,18 @@ class SonixNativeBindings {
         return _lib!;
       } catch (e) {
         firstException = e;
+      }
+
+      // Try test fixtures directory (for tests)
+      try {
+        final currentDir = Directory.current.path;
+        final testFixturesPath = '$currentDir\\test\\fixtures\\ffmpeg\\$libName.dll';
+        if (File(testFixturesPath).existsSync()) {
+          _lib = ffi.DynamicLibrary.open(testFixturesPath);
+          return _lib!;
+        }
+      } catch (e) {
+        // Continue to next attempt
       }
 
       // Try with full path from current directory
@@ -205,6 +229,18 @@ class SonixNativeBindings {
         throw firstException;
       }
     } else if (Platform.isLinux) {
+      // Try test fixtures directory first (for tests)
+      try {
+        final currentDir = Directory.current.path;
+        final testFixturesPath = '$currentDir/test/fixtures/ffmpeg/lib$libName.so';
+        if (File(testFixturesPath).existsSync()) {
+          _lib = ffi.DynamicLibrary.open(testFixturesPath);
+          return _lib!;
+        }
+      } catch (e) {
+        // Continue to standard approach
+      }
+
       _lib = ffi.DynamicLibrary.open('lib$libName.so');
     } else {
       throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
