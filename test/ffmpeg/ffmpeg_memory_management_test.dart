@@ -18,10 +18,11 @@ void main() {
       ffmpegAvailable = await FFMPEGSetupHelper.setupFFMPEGForTesting();
 
       if (!ffmpegAvailable) {
-        print('⚠️ FFMPEG not available - tests will be skipped');
-        print('   To set up FFMPEG for testing, run:');
-        print('   dart run tools/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
-        return;
+        throw StateError(
+          'FFMPEG not available - required for memory management tests. '
+          'To set up FFMPEG for testing, run: '
+          'dart run tools/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install',
+        );
       }
 
       // Verify test files exist
