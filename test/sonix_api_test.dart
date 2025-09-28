@@ -4,8 +4,14 @@ import 'package:sonix/src/config/sonix_config.dart';
 import 'package:sonix/src/processing/waveform_use_case.dart';
 import 'package:sonix/src/isolate/isolate_config.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
+  setUpAll(() async {
+    // Setup FFMPEG binaries for testing
+    await FFMPEGSetupHelper.setupFFMPEGForTesting();
+  });
+
   group('Sonix', () {
     test('should create with default configuration', () {
       final sonix = Sonix();

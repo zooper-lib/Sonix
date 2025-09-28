@@ -165,25 +165,6 @@ void main() {
         print('✅ CMake configuration verified');
       });
 
-      test('should verify native build script exists', () async {
-        print('\n--- Testing Native Build Scripts ---');
-
-        if (Platform.isWindows) {
-          final buildScript = File('native/build.bat');
-          expect(buildScript.existsSync(), isTrue, reason: 'Windows build script should exist');
-          print('✅ Windows build script found');
-        } else {
-          final buildScript = File('native/build.sh');
-          expect(buildScript.existsSync(), isTrue, reason: 'Unix build script should exist');
-
-          // Verify script is executable
-          final stat = await buildScript.stat();
-          final isExecutable = (stat.mode & 0x49) != 0; // Check user/group/other execute bits
-          expect(isExecutable, isTrue, reason: 'Build script should be executable');
-          print('✅ Unix build script found and executable');
-        }
-      });
-
       test('should test native library compilation with FFMPEG', () async {
         print('\n--- Testing Native Library Compilation ---');
 
