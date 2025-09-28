@@ -267,10 +267,9 @@ void main() {
             // Test chunk processing
             final chunkPtr = malloc<SonixFileChunk>();
             final chunk = chunkPtr.ref;
-            chunk.data = dataPtr;
-            chunk.size = fileBytes.length;
-            chunk.position = 0;
-            chunk.is_last = 1;
+            chunk.start_byte = 0;
+            chunk.end_byte = fileBytes.length - 1;
+            chunk.chunk_index = 0;
 
             try {
               final result = SonixNativeBindings.processFileChunk(decoder, chunkPtr);
@@ -278,7 +277,8 @@ void main() {
               if (result.address != 0) {
                 final resultData = result.ref;
                 // Accept various valid responses for chunk processing
-                expect(resultData.error_code, anyOf([SONIX_OK, SONIX_ERROR_INVALID_DATA, SONIX_ERROR_DECODE_FAILED]));
+                // Check if processing succeeded (success=1) or failed (success=0)
+                expect(resultData.success, anyOf([0, 1]), reason: 'Should return valid success status');
 
                 // Clean up result
                 SonixNativeBindings.freeChunkResult(result);
@@ -387,10 +387,9 @@ void main() {
           try {
             final chunkPtr = malloc<SonixFileChunk>();
             final chunk = chunkPtr.ref;
-            chunk.data = dataPtr;
-            chunk.size = fileBytes.length;
-            chunk.position = 0;
-            chunk.is_last = 1;
+            chunk.start_byte = 0;
+            chunk.end_byte = fileBytes.length - 1;
+            chunk.chunk_index = 0;
 
             try {
               final result = SonixNativeBindings.processFileChunk(decoder, chunkPtr);
@@ -398,7 +397,8 @@ void main() {
               if (result.address != 0) {
                 final resultData = result.ref;
                 // Should return an error for corrupted data
-                expect(resultData.error_code, anyOf([SONIX_ERROR_INVALID_DATA, SONIX_ERROR_DECODE_FAILED, SONIX_ERROR_INVALID_FORMAT]));
+                // Check if processing failed as expected for invalid data
+                expect(resultData.success, equals(0), reason: 'Should fail for invalid data');
 
                 // Clean up result
                 SonixNativeBindings.freeChunkResult(result);

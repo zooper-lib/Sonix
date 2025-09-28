@@ -158,10 +158,7 @@ void main() {
 
             for (int i = 0; i < 3; i++) {
               final chunkPtr = malloc<SonixFileChunk>();
-              chunkPtr.ref.data = ffi.nullptr;
-              chunkPtr.ref.size = 4096; // 4KB chunks
-              chunkPtr.ref.position = i * 4096;
-              chunkPtr.ref.is_last = (i == 2) ? 1 : 0;
+              chunkPtr.ref.chunk_index = i;
 
               try {
                 final result = SonixNativeBindings.processFileChunk(decoder, chunkPtr);
@@ -169,16 +166,17 @@ void main() {
                 if (result != ffi.nullptr) {
                   final chunkResult = result.ref;
 
-                  // Check if error code indicates success or a known condition
+                  // Check if processing was successful
                   expect(
-                    chunkResult.error_code,
-                    anyOf([equals(SONIX_OK), greaterThanOrEqualTo(0), lessThan(0)]),
-                    reason: 'Chunk processing should return valid error code',
+                    chunkResult.success,
+                    equals(1),
+                    reason: 'Chunk processing should succeed',
                   );
 
-                  if (chunkResult.error_code == SONIX_OK && chunkResult.chunks != ffi.nullptr) {
-                    totalAudioChunks += chunkResult.chunk_count;
-                    print('Processed file chunk $i: ${chunkResult.chunk_count} audio chunks');
+                  if (chunkResult.success == 1 && chunkResult.audio_data != ffi.nullptr) {
+                    final audioData = chunkResult.audio_data.ref;
+                    totalAudioChunks += audioData.sample_count;
+                    print('Processed chunk $i: ${audioData.sample_count} samples');
                   }
 
                   // Free chunk result

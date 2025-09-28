@@ -180,10 +180,7 @@ void main() {
               // Process a few chunks to test memory handling
               for (int i = 0; i < 3; i++) {
                 final chunkPtr = malloc<SonixFileChunk>();
-                chunkPtr.ref.data = nullptr;
-                chunkPtr.ref.size = 4096;
-                chunkPtr.ref.position = i * 4096;
-                chunkPtr.ref.is_last = (i == 2) ? 1 : 0;
+                chunkPtr.ref.chunk_index = i;
 
                 try {
                   final result = SonixNativeBindings.processFileChunk(decoder, chunkPtr);
@@ -191,9 +188,10 @@ void main() {
                   if (result != nullptr) {
                     final chunkResult = result.ref;
 
-                    if (chunkResult.error_code == SONIX_OK && chunkResult.chunks != nullptr) {
+                    if (chunkResult.success == 1 && chunkResult.audio_data != nullptr) {
                       // Verify we can access the chunk data
-                      expect(chunkResult.chunk_count, greaterThanOrEqualTo(0), reason: 'Should have valid chunk count');
+                      final audioData = chunkResult.audio_data.ref;
+                      expect(audioData.sample_count, greaterThanOrEqualTo(0), reason: 'Should have valid sample count');
                     }
 
                     // Free chunk result immediately to test memory management
@@ -246,10 +244,7 @@ void main() {
             final decoder = decoders[decoderIndex];
 
             final chunkPtr = malloc<SonixFileChunk>();
-            chunkPtr.ref.data = nullptr;
-            chunkPtr.ref.size = 4096;
-            chunkPtr.ref.position = 0;
-            chunkPtr.ref.is_last = 1;
+            chunkPtr.ref.chunk_index = decoderIndex;
 
             try {
               final result = SonixNativeBindings.processFileChunk(decoder, chunkPtr);
@@ -257,8 +252,9 @@ void main() {
               if (result != nullptr) {
                 final chunkResult = result.ref;
 
-                if (chunkResult.error_code == SONIX_OK) {
-                  expect(chunkResult.chunk_count, greaterThanOrEqualTo(0), reason: 'Decoder $decoderIndex should produce valid chunks');
+                if (chunkResult.success == 1) {
+                  final audioData = chunkResult.audio_data.ref;
+                  expect(audioData.sample_count, greaterThanOrEqualTo(0), reason: 'Decoder $decoderIndex should produce valid chunks');
                 }
 
                 SonixNativeBindings.freeChunkResult(result);
@@ -322,7 +318,7 @@ void main() {
         }
       });
 
-      test('should handle memory allocation under different chunk sizes', () async {
+      test('should handle memory allocation with sequential chunk processing', () async {
         const testFile = 'test/assets/Double-F the King - Your Blessing.wav';
 
         if (!File(testFile).existsSync()) {
@@ -331,22 +327,20 @@ void main() {
         }
 
         final filePathPtr = testFile.toNativeUtf8();
-        final chunkSizes = [1024, 4096, 8192, 16384]; // Different chunk sizes
+        // Test multiple chunk processing cycles (chunk sizes are ignored by native code)
+        final numChunks = [1, 2, 3, 5]; // Different numbers of chunks to process
 
         try {
-          for (final chunkSize in chunkSizes) {
+          for (final chunks in numChunks) {
             final decoder = SonixNativeBindings.initChunkedDecoder(SONIX_FORMAT_WAV, filePathPtr.cast<Char>());
 
             if (decoder != nullptr) {
-              print('Testing chunk size: $chunkSize bytes');
+              print('Testing with $chunks sequential chunk processing calls');
 
-              // Process a few chunks with this size
-              for (int i = 0; i < 3; i++) {
+              // Process chunks sequentially
+              for (int i = 0; i < chunks; i++) {
                 final chunkPtr = malloc<SonixFileChunk>();
-                chunkPtr.ref.data = nullptr;
-                chunkPtr.ref.size = chunkSize;
-                chunkPtr.ref.position = i * chunkSize;
-                chunkPtr.ref.is_last = (i == 2) ? 1 : 0;
+                chunkPtr.ref.chunk_index = i;
 
                 try {
                   final result = SonixNativeBindings.processFileChunk(decoder, chunkPtr);
@@ -354,9 +348,10 @@ void main() {
                   if (result != nullptr) {
                     final chunkResult = result.ref;
 
-                    if (chunkResult.error_code == SONIX_OK && chunkResult.chunks != nullptr) {
+                    if (chunkResult.success == 1 && chunkResult.audio_data != nullptr) {
                       // Verify memory allocation is working properly
-                      expect(chunkResult.chunk_count, greaterThanOrEqualTo(0), reason: 'Should handle chunk size $chunkSize');
+                      final audioData = chunkResult.audio_data.ref;
+                      expect(audioData.sample_count, greaterThanOrEqualTo(0), reason: 'Should handle sequential chunk processing');
                     }
 
                     SonixNativeBindings.freeChunkResult(result);
@@ -370,7 +365,7 @@ void main() {
             }
           }
 
-          print('✅ Chunk size memory allocation test completed successfully');
+          print('✅ Sequential chunk processing memory allocation test completed successfully');
         } finally {
           malloc.free(filePathPtr);
         }

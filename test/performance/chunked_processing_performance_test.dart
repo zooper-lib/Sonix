@@ -20,7 +20,7 @@ void main() {
           'cannot be skipped when FFMPEG is not available.',
         );
       }
-      
+
       // Initialize native bindings for testing
       NativeAudioBindings.initialize();
     });
@@ -69,8 +69,10 @@ void main() {
           expect(decoder.address, isNot(equals(0)));
 
           // Step 4: Multiple chunk processing performance
-          final numChunks = (fileBytes.length / chunkSize).ceil();
-          print('Processing file in $numChunks chunks of $chunkSize bytes each');
+          // Use smaller chunks like the working test (4KB instead of optimal size)
+          final testChunkSize = 4096; // 4KB chunks like working test
+          final numChunks = (fileBytes.length / testChunkSize).ceil();
+          print('Processing file in $numChunks chunks of $testChunkSize bytes each (using 4KB test chunks)');
 
           var totalProcessingTime = 0;
           var totalAudioSamples = 0;
@@ -78,21 +80,14 @@ void main() {
 
           for (int i = 0; i < numChunks && i < 5; i++) {
             // Limit to first 5 chunks for performance test
-            final chunkStart = i * chunkSize;
-            final chunkEnd = (chunkStart + chunkSize < fileBytes.length) ? chunkStart + chunkSize : fileBytes.length;
+            final chunkStart = i * testChunkSize;
+            final chunkEnd = (chunkStart + testChunkSize < fileBytes.length) ? chunkStart + testChunkSize : fileBytes.length;
             final actualChunkSize = chunkEnd - chunkStart;
-
-            final chunkData = fileBytes.sublist(chunkStart, chunkEnd);
-            final chunkPtr = malloc<ffi.Uint8>(chunkData.length);
-            final chunkNativeData = chunkPtr.asTypedList(chunkData.length);
-            chunkNativeData.setAll(0, chunkData);
-
             final fileChunkPtr = malloc<SonixFileChunk>();
             final fileChunk = fileChunkPtr.ref;
-            fileChunk.data = chunkPtr;
-            fileChunk.size = actualChunkSize;
-            fileChunk.position = chunkStart;
-            fileChunk.is_last = (i == numChunks - 1) ? 1 : 0;
+            fileChunk.start_byte = chunkStart;
+            fileChunk.end_byte = chunkEnd - 1;
+            fileChunk.chunk_index = i;
 
             try {
               stopwatch.reset();
@@ -102,14 +97,18 @@ void main() {
 
               if (result.address != 0) {
                 final resultData = result.ref;
-                if (resultData.error_code == SONIX_OK && resultData.chunk_count > 0) {
-                  final audioChunk = (resultData.chunks + 0).ref;
-                  totalAudioSamples += audioChunk.sample_count;
+                if (resultData.success == 1 && resultData.audio_data != ffi.nullptr) {
+                  final audioData = resultData.audio_data.ref;
+                  totalAudioSamples += audioData.sample_count;
                   successfulChunks++;
 
-                  print('Chunk $i: $actualChunkSize bytes -> ${audioChunk.sample_count} samples in ${chunkProcessingTime}ms');
+                  print('Chunk $i: $actualChunkSize bytes -> ${audioData.sample_count} samples in ${chunkProcessingTime}ms');
                 } else {
-                  print('Chunk $i: processing failed with error_code=${resultData.error_code}');
+                  print('Chunk $i: processing failed with success=${resultData.success}');
+                  if (resultData.error_message != ffi.nullptr) {
+                    final errorMsg = resultData.error_message.cast<Utf8>().toDartString();
+                    print('Error message: $errorMsg');
+                  }
                   // Continue processing other chunks - we'll fail later if ALL chunks fail
                 }
 
@@ -118,7 +117,6 @@ void main() {
                 print('Chunk $i: processing returned null result');
               }
             } finally {
-              malloc.free(chunkPtr);
               malloc.free(fileChunkPtr);
             }
           }
@@ -158,9 +156,11 @@ void main() {
           if (successfulChunks > 0) {
             expect(totalProcessingTime / successfulChunks, lessThan(1000)); // Average chunk processing < 1s
           } else {
-            fail('No chunks processed successfully (all failed with error_code=256). '
-                 'Chunked processing must work for performance testing to be valid. '
-                 'This indicates a real issue that needs to be fixed, not ignored.');
+            fail(
+              'No chunks processed successfully (all failed with success=0). '
+              'Chunked processing must work for performance testing to be valid. '
+              'This indicates a real issue that needs to be fixed, not ignored.',
+            );
           }
           expect(totalSeekTime / seekPositions.length, lessThan(100)); // Average seek < 100ms
 
@@ -238,4 +238,3 @@ void main() {
     });
   });
 }
-

@@ -74,31 +74,22 @@ final class SonixMp3DebugStats extends ffi.Struct {
 
 /// Chunked processing structures
 final class SonixFileChunk extends ffi.Struct {
-  external ffi.Pointer<ffi.Uint8> data;
-  @ffi.Size()
-  external int size;
   @ffi.Uint64()
-  external int position;
-  @ffi.Int32()
-  external int is_last;
-}
-
-final class SonixAudioChunk extends ffi.Struct {
-  external ffi.Pointer<ffi.Float> samples;
+  external int start_byte;
+  @ffi.Uint64()
+  external int end_byte;
   @ffi.Uint32()
-  external int sample_count;
-  @ffi.Uint64()
-  external int start_sample;
-  @ffi.Int32()
-  external int is_last;
+  external int chunk_index;
 }
 
 final class SonixChunkResult extends ffi.Struct {
-  external ffi.Pointer<SonixAudioChunk> chunks;
+  external ffi.Pointer<SonixAudioData> audio_data;
   @ffi.Uint32()
-  external int chunk_count;
-  @ffi.Int32()
-  external int error_code;
+  external int chunk_index;
+  @ffi.Uint8()
+  external int is_final_chunk;
+  @ffi.Uint8()
+  external int success;
   external ffi.Pointer<ffi.Char> error_message;
 }
 
