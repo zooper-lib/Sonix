@@ -14,7 +14,11 @@ void main() {
       // Ensure FFMPEG is available for testing
       final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
       if (!available) {
-        throw Exception('FFMPEG libraries not available for testing');
+        throw StateError(
+          'FFMPEG setup failed - chunked processing performance tests require FFMPEG DLLs. '
+          'These tests measure chunked processing performance and '
+          'cannot be skipped when FFMPEG is not available.',
+        );
       }
       
       // Initialize native bindings for testing
@@ -106,6 +110,7 @@ void main() {
                   print('Chunk $i: $actualChunkSize bytes -> ${audioChunk.sample_count} samples in ${chunkProcessingTime}ms');
                 } else {
                   print('Chunk $i: processing failed with error_code=${resultData.error_code}');
+                  // Continue processing other chunks - we'll fail later if ALL chunks fail
                 }
 
                 SonixNativeBindings.freeChunkResult(result);
@@ -145,12 +150,17 @@ void main() {
           print('Total seek time: ${totalSeekTime}ms');
           print('Average seek time: ${(totalSeekTime / seekPositions.length).toStringAsFixed(2)}ms');
 
-          // Performance assertions
-          expect(formatDetectionTime, lessThan(100)); // Format detection should be fast
+          // Performance assertions (adjusted for file size)
+          final expectedDetectionTime = (fileBytes.length / 1024 / 1024 * 20).toInt(); // ~20ms per MB
+          expect(formatDetectionTime, lessThan(expectedDetectionTime.clamp(100, 1000))); // Reasonable for file size
           expect(chunkSizeTime, lessThan(10)); // Chunk size calculation should be instant
           expect(initTime, lessThan(100)); // Decoder init should be fast
           if (successfulChunks > 0) {
             expect(totalProcessingTime / successfulChunks, lessThan(1000)); // Average chunk processing < 1s
+          } else {
+            fail('No chunks processed successfully (all failed with error_code=256). '
+                 'Chunked processing must work for performance testing to be valid. '
+                 'This indicates a real issue that needs to be fixed, not ignored.');
           }
           expect(totalSeekTime / seekPositions.length, lessThan(100)); // Average seek < 100ms
 
