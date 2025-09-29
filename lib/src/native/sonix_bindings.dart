@@ -150,6 +150,10 @@ typedef SonixCleanupFFMPEGNative = ffi.Void Function();
 
 typedef SonixCleanupFFMPEGDart = void Function();
 
+typedef SonixSetFFMPEGLogLevelNative = ffi.Void Function(ffi.Int32 level);
+
+typedef SonixSetFFMPEGLogLevelDart = void Function(int level);
+
 /// Native library bindings
 class SonixNativeBindings {
   static ffi.DynamicLibrary? _lib;
@@ -305,6 +309,11 @@ class SonixNativeBindings {
 
   /// Cleanup FFMPEG backend resources
   static final SonixCleanupFFMPEGDart cleanupFFMPEG = lib.lookup<ffi.NativeFunction<SonixCleanupFFMPEGNative>>('sonix_cleanup_ffmpeg').asFunction();
+
+  /// Set FFMPEG log level (-1=QUIET, 0=PANIC, 1=FATAL, 2=ERROR, 3=WARNING, 4=INFO, 5=VERBOSE, 6=DEBUG)
+  static final SonixSetFFMPEGLogLevelDart setFFMPEGLogLevel = lib
+      .lookup<ffi.NativeFunction<SonixSetFFMPEGLogLevelNative>>('sonix_set_ffmpeg_log_level')
+      .asFunction();
 
   /// Check if FFMPEG backend is available and initialized
   static bool get isFFMPEGAvailable {

@@ -2,7 +2,7 @@
 
 import 'dart:ffi';
 import 'dart:typed_data';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:ffi/ffi.dart';
 
 import 'audio_test_data_manager.dart';

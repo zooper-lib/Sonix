@@ -1,7 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:ffi';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:ffi/ffi.dart';
 
 import 'audio_test_data_manager.dart';

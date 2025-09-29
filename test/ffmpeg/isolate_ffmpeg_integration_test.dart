@@ -1,6 +1,6 @@
 import 'dart:isolate';
 import 'dart:typed_data';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
 import '../ffmpeg/ffmpeg_setup_helper.dart';
 

@@ -1,7 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:io';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import '../../tools/ffmpeg_binary_downloader.dart';
 import '../ffmpeg/ffmpeg_setup_helper.dart';

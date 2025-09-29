@@ -1,4 +1,4 @@
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/config/sonix_config.dart';
 import 'package:sonix/src/utils/sonix_logger.dart';
 

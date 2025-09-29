@@ -102,6 +102,26 @@ class NativeAudioBindings {
     }
   }
 
+  /// Set FFMPEG log level to control verbosity
+  /// 
+  /// Levels:
+  /// * -1 = QUIET (no output)
+  /// * 0 = PANIC (only critical errors) 
+  /// * 1 = FATAL
+  /// * 2 = ERROR (recommended default, suppresses MP3 format warnings)
+  /// * 3 = WARNING (shows all warnings including MP3 format detection)
+  /// * 4 = INFO
+  /// * 5 = VERBOSE
+  /// * 6 = DEBUG
+  static void setLogLevel(int level) {
+    _ensureInitialized();
+    try {
+      SonixNativeBindings.setFFMPEGLogLevel(level);
+    } catch (e) {
+      SonixLogger.native('setLogLevel', 'Failed to set FFMPEG log level: ${e.toString()}', level: SonixLogLevel.warning);
+    }
+  }
+
   /// Set memory pressure threshold for streaming operations
   static void setMemoryPressureThreshold(int bytes) {
     _memoryPressureThreshold = bytes;

@@ -2,7 +2,7 @@
 
 import 'dart:ffi';
 import 'dart:io';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:ffi/ffi.dart';
 
 import 'ffmpeg_setup_helper.dart';

@@ -36,6 +36,19 @@ test/assets/generated/
 test/assets/large_files/
 test/assets/test_file_inventory.json
 
+# Real audio files for integration testing (user-provided, may be copyrighted)
+test/assets/real_audio/*.mp3
+test/assets/real_audio/*.wav
+test/assets/real_audio/*.flac
+test/assets/real_audio/*.ogg
+test/assets/real_audio/*.opus
+test/assets/real_audio/*.aac
+test/assets/real_audio/*.m4a
+test/assets/real_audio/*.wma
+test/assets/real_audio/*.aiff
+# Allow README.md in real_audio folder
+!test/assets/real_audio/README.md
+
 # Generated test files (legacy - can be removed after cleanup)
 test/assets/*_tiny_*.wav
 test/assets/*_tiny_*.mp3

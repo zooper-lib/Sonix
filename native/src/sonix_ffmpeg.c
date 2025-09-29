@@ -2,6 +2,7 @@
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
+#include <libavutil/log.h>
 #include <libswresample/swresample.h>
 #include <libavutil/opt.h>
 #include <libavutil/channel_layout.h>
@@ -151,6 +152,10 @@ int32_t sonix_init_ffmpeg(void)
         return SONIX_ERROR_FFMPEG_INIT_FAILED;
     }
 
+    // Set FFMPEG log level to suppress verbose codec warnings
+    // AV_LOG_ERROR only shows actual errors, filtering out MP3 format detection warnings
+    av_log_set_level(AV_LOG_ERROR);
+
 // Log FFMPEG version information for debugging
 #ifdef DEBUG
     printf("FFMPEG initialized successfully:\n");
@@ -187,6 +192,54 @@ void sonix_cleanup_ffmpeg(void)
         g_ffmpeg_initialized = 0;
         clear_error_message();
     }
+}
+
+// Set FFMPEG log level
+void sonix_set_ffmpeg_log_level(int32_t level)
+{
+    // Map common log levels for easier use from Dart
+    // -1 = QUIET (no output)
+    // 0 = PANIC (only critical errors)
+    // 1 = FATAL
+    // 2 = ERROR (recommended default)
+    // 3 = WARNING
+    // 4 = INFO
+    // 5 = VERBOSE
+    // 6 = DEBUG
+
+    int av_level;
+    switch (level)
+    {
+    case -1:
+        av_level = AV_LOG_QUIET;
+        break;
+    case 0:
+        av_level = AV_LOG_PANIC;
+        break;
+    case 1:
+        av_level = AV_LOG_FATAL;
+        break;
+    case 2:
+        av_level = AV_LOG_ERROR;
+        break;
+    case 3:
+        av_level = AV_LOG_WARNING;
+        break;
+    case 4:
+        av_level = AV_LOG_INFO;
+        break;
+    case 5:
+        av_level = AV_LOG_VERBOSE;
+        break;
+    case 6:
+        av_level = AV_LOG_DEBUG;
+        break;
+    default:
+        av_level = AV_LOG_ERROR;
+        break; // Default to ERROR level
+    }
+
+    av_log_set_level(av_level);
 }
 
 // Get backend type - always FFMPEG
