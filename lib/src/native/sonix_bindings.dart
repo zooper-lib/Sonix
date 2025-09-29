@@ -6,6 +6,8 @@
 import 'dart:ffi' as ffi;
 import 'dart:io';
 
+import 'package:sonix/src/utils/sonix_logger.dart';
+
 /// Audio format constants
 const int SONIX_FORMAT_UNKNOWN = 0;
 const int SONIX_FORMAT_MP3 = 1;
@@ -183,6 +185,7 @@ class SonixNativeBindings {
         _lib = ffi.DynamicLibrary.open('$libName.dll');
         return _lib!;
       } catch (e) {
+        SonixLogger.debug('Standard Windows DLL loading failed: $e');
         firstException = e;
       }
 
@@ -195,6 +198,7 @@ class SonixNativeBindings {
           return _lib!;
         }
       } catch (e) {
+        SonixLogger.debug('Windows test fixtures library not found: $e');
         // Continue to next attempt
       }
 
@@ -205,6 +209,7 @@ class SonixNativeBindings {
         _lib = ffi.DynamicLibrary.open(dllPath);
         return _lib!;
       } catch (e) {
+        SonixLogger.debug('Windows current directory library loading failed: $e');
         // Continue to next attempt
       }
 
@@ -216,6 +221,7 @@ class SonixNativeBindings {
         _lib = ffi.DynamicLibrary.open(dllPath);
         return _lib!;
       } catch (e) {
+        SonixLogger.error('All Windows library loading attempts failed. First error: $firstException');
         // All attempts failed, throw the first exception
         throw firstException;
       }
@@ -229,6 +235,7 @@ class SonixNativeBindings {
           return _lib!;
         }
       } catch (e) {
+        SonixLogger.debug('Linux test fixtures library not found: $e');
         // Continue to standard approach
       }
 
@@ -304,6 +311,7 @@ class SonixNativeBindings {
     try {
       return getBackendType() == SONIX_BACKEND_FFMPEG;
     } catch (e) {
+      SonixLogger.debug('FFMPEG backend availability check failed: $e');
       return false;
     }
   }

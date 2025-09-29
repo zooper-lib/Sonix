@@ -18,6 +18,7 @@ import 'error_serializer.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/utils/memory_manager.dart';
+import 'package:sonix/src/utils/sonix_logger.dart';
 
 import 'isolate_config.dart';
 
@@ -204,8 +205,11 @@ class _ManagedIsolate {
           onMessage(isolateMessage);
         }
       } catch (error) {
-        // Handle message parsing errors
-        // Handle message parsing errors - could use proper logging here
+        SonixLogger.isolate(
+          id,
+          'Failed to parse isolate message: ${error.toString()}',
+          level: SonixLogLevel.warning,
+        );
       }
     });
   }
@@ -243,6 +247,11 @@ class _ManagedIsolate {
         isolate.kill(priority: Isolate.immediate);
       });
     } catch (e) {
+      SonixLogger.isolate(
+        id,
+        'Failed to send shutdown message, proceeding with immediate cleanup: ${e.toString()}',
+        level: SonixLogLevel.debug,
+      );
       // If sending shutdown message fails, proceed with immediate cleanup
       _messageSubscription.cancel();
       receivePort.close();
@@ -410,6 +419,12 @@ class IsolateManager {
       _failedTasks++;
       _activeTasks.remove(task.id);
       _requestToIsolateMap.remove(task.id);
+
+      SonixLogger.isolate(
+        'task_${task.id}',
+        'Task execution failed: ${error.toString()}',
+        level: SonixLogLevel.error,
+      );
 
       // Attempt error recovery if enabled
       if (enableErrorRecovery && _shouldRetryTask(task.id, error)) {

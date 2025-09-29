@@ -6,6 +6,7 @@ import 'sonix_bindings.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/utils/sonix_logger.dart';
 
 /// High-level wrapper for native audio bindings
 class NativeAudioBindings {
@@ -25,6 +26,7 @@ class NativeAudioBindings {
       // Try to initialize FFMPEG backend - REQUIRED for operation
       _initializeFFMPEG();
     } catch (e) {
+      SonixLogger.native('initialization', 'Failed to initialize native audio bindings: ${e.toString()}', level: SonixLogLevel.error);
       throw FFIException(
         'Failed to initialize native audio bindings',
         'Make sure the native library is built and FFMPEG binaries are installed. '
@@ -58,6 +60,7 @@ class NativeAudioBindings {
         rethrow;
       }
       // FFMPEG libraries not found or other critical error
+      SonixLogger.native('ffmpeg_init', 'FFMPEG libraries not available: ${e.toString()}', level: SonixLogLevel.error);
       throw FFIException(
         'FFMPEG libraries not available',
         'FFMPEG libraries are required but not found. '
@@ -93,7 +96,7 @@ class NativeAudioBindings {
       try {
         SonixNativeBindings.cleanupFFMPEG();
       } catch (e) {
-        // Ignore cleanup errors
+        SonixLogger.native('cleanup', 'FFMPEG cleanup error (safe to ignore): ${e.toString()}', level: SonixLogLevel.debug);
       }
       _ffmpegInitialized = false;
     }
@@ -229,6 +232,7 @@ class NativeAudioBindings {
       if (e is SonixException) {
         rethrow;
       }
+      SonixLogger.native('decode', 'Native decoding failed: ${e.toString()}', level: SonixLogLevel.error);
       throw DecodingException(
         'Native decoding failed',
         'Error during FFI operation. Ensure FFMPEG libraries are properly installed.\n'
@@ -254,6 +258,7 @@ class NativeAudioBindings {
       }
       return errorPointer.cast<Utf8>().toDartString();
     } catch (e) {
+      SonixLogger.native('error_message', 'Failed to retrieve native error message: ${e.toString()}', level: SonixLogLevel.debug);
       return 'Failed to get error message: $e';
     }
   }

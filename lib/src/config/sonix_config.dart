@@ -23,6 +23,13 @@ class SonixConfig implements IsolateConfig {
   /// Whether to enable progress reporting
   final bool enableProgressReporting;
 
+  /// Global flag to enable debug logging
+  ///
+  /// When true, debug messages will be logged even in release builds.
+  /// This is useful for package developers or when debugging issues.
+  /// End users typically should leave this false.
+  static bool enableDebugLogging = false;
+
   const SonixConfig({
     this.maxConcurrentOperations = 3,
     this.isolatePoolSize = 2,
@@ -48,6 +55,21 @@ class SonixConfig implements IsolateConfig {
     isolatePoolSize: 3,
     maxMemoryUsage: 200 * 1024 * 1024, // 200MB
   );
+
+  /// Enable debug logging for the entire package
+  ///
+  /// This will cause debug messages to be logged even in release builds.
+  /// Useful for debugging issues or package development.
+  static void enableDebugLogs() {
+    enableDebugLogging = true;
+  }
+
+  /// Disable debug logging for the entire package
+  ///
+  /// This is the default state. Only error messages will be logged.
+  static void disableDebugLogs() {
+    enableDebugLogging = false;
+  }
 
   @override
   String toString() {

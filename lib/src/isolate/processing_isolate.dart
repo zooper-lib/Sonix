@@ -1,11 +1,3 @@
-/// Background isolate entry point for audio processing
-///
-/// This module provides the main entry point and processing logic for
-/// background isolates that handle audio decoding and waveform generation.
-// ignore_for_file: avoid_print
-
-library;
-
 import 'dart:async';
 import 'dart:isolate';
 import 'dart:io';
@@ -23,6 +15,12 @@ import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/processing/downsampling_algorithm.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
+import 'package:sonix/src/utils/sonix_logger.dart';
+
+/// Background isolate entry point for audio processing
+///
+/// This module provides the main entry point and processing logic for
+/// background isolates that handle audio decoding and waveform generation.
 
 /// Entry point for background processing isolates
 ///
@@ -174,7 +172,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       }
 
       decoder = AudioDecoderFactory.createDecoder(request.filePath);
-      print('ProcessingIsolate: Created decoder: ${decoder.runtimeType}');
+      SonixLogger.debug('Created decoder: ${decoder.runtimeType}');
     } catch (error) {
       // Handle decoder creation errors immediately
       _sendErrorResponse(mainSendPort, request.id, error);
@@ -183,7 +181,7 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
 
     try {
       // Step 2: Check file size and determine processing strategy
-      print('ProcessingIsolate: Starting file analysis and decoding...');
+      SonixLogger.debug('Starting file analysis and decoding...');
 
       // Check for cancellation before file analysis
       if (operation.isCancelled) {
@@ -221,17 +219,17 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
 
       if (fileSize > chunkThreshold && decoder is ChunkedAudioDecoder) {
         // Use file-level chunked processing for large files (memory-efficient)
-        print('ProcessingIsolate: Using chunked processing for large file');
+        SonixLogger.debug('Using chunked processing for large file');
         audioData = await _processWithSelectiveDecoding(decoder, request.filePath, request.config, mainSendPort, request.id, operation);
       } else {
         // Use in-memory processing for smaller files (performance-optimized)
-        print('ProcessingIsolate: Using in-memory processing for smaller file');
-        print('ProcessingIsolate: About to call decoder.decode()...');
+        SonixLogger.debug('Using in-memory processing for smaller file');
+        SonixLogger.trace('About to call decoder.decode()...');
         try {
           audioData = await decoder.decode(request.filePath);
-          print('ProcessingIsolate: decoder.decode() completed successfully');
+          SonixLogger.debug('decoder.decode() completed successfully');
         } catch (decodeError) {
-          print('ProcessingIsolate: decoder.decode() failed with error: $decodeError');
+          SonixLogger.error('decoder.decode() failed', decodeError);
           rethrow; // Re-throw to be handled by outer catch block
         }
       }
@@ -272,8 +270,8 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       // Always dispose of the decoder to free resources
       decoder.dispose();
     }
-  } catch (error) {
-    print('ProcessingIsolate: Caught error in main processing: $error');
+  } catch (error, stackTrace) {
+    SonixLogger.error('Caught error in main processing', error, stackTrace);
     // Send error response only if not cancelled
     if (!operation.isCancelled) {
       _sendErrorResponse(mainSendPort, request.id, error);
