@@ -279,8 +279,19 @@ class FFMPEGBinaryDownloader {
           }
 
           if (targetFile.isFile) {
-            final outputPath = '$targetPath/$libraryName';
+            // Preserve directory structure from archive
+            // If the path contains 'lib/', extract it into a lib/ subdirectory
+            String outputPath;
+            if (pathInArchive.contains('/lib/')) {
+              // Extract to lib/ subdirectory to match CMake expectations
+              outputPath = '$targetPath/lib/$libraryName';
+            } else {
+              // Extract directly for other files (like include directories)
+              outputPath = '$targetPath/$libraryName';
+            }
+            
             final outputFile = File(outputPath);
+            await outputFile.parent.create(recursive: true);
             await outputFile.writeAsBytes(targetFile.content as List<int>);
 
             downloadedFiles.add(libraryName);
@@ -372,8 +383,8 @@ class FFMPEGBinaryDownloader {
 
   /// Linux FFMPEG binary configuration
   FFMPEGBinaryConfig _getLinuxConfig() {
-    // Using static builds from johnvansickle.com
-    const archiveUrl = 'https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz';
+    // Using shared builds from BtbN/FFmpeg-Builds
+    const archiveUrl = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz';
 
     return FFMPEGBinaryConfig(
       platform: 'linux',
@@ -381,11 +392,18 @@ class FFMPEGBinaryDownloader {
       version: '6.0',
       archiveUrl: archiveUrl,
       libraryPaths: {
-        // Static builds include everything in the main binary
-        'libavformat.so': 'ffmpeg-*-amd64-static/ffmpeg',
-        'libavcodec.so': 'ffmpeg-*-amd64-static/ffmpeg',
-        'libavutil.so': 'ffmpeg-*-amd64-static/ffmpeg',
-        'libswresample.so': 'ffmpeg-*-amd64-static/ffmpeg',
+        // Shared builds have separate library files (using versioned names that match native library expectations)
+        'libavformat.so.62': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100',
+        'libavcodec.so.62': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.16.100',
+        'libavutil.so.60': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.13.100',
+        'libswresample.so.6': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.2.100',
+        // Also provide generic names for CMake find_library
+        'libavformat.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100',
+        'libavcodec.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.16.100',
+        'libavutil.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.13.100',
+        'libswresample.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.2.100',
+        // Development files (headers)
+        'include': 'ffmpeg-master-latest-linux64-gpl-shared/include/',
       },
       requiredSymbols: ['avformat_open_input', 'avcodec_find_decoder', 'swr_alloc'],
     );

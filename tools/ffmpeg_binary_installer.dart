@@ -78,7 +78,12 @@ class FFMPEGBinaryInstaller {
 
         // Copy each library file
         for (final libraryName in expectedLibraries) {
-          final sourceFile = File('$sourcePath/$libraryName');
+          // Try lib/ subdirectory first (new structure), then direct path (legacy)
+          File sourceFile = File('$sourcePath/lib/$libraryName');
+          if (!await sourceFile.exists()) {
+            sourceFile = File('$sourcePath/$libraryName');
+          }
+          
           final targetFile = File('$buildDir/$libraryName');
 
           if (await sourceFile.exists()) {
@@ -149,7 +154,12 @@ class FFMPEGBinaryInstaller {
     final expectedLibraries = platformInfo.getExpectedLibraryNames();
 
     for (final libraryName in expectedLibraries) {
-      final sourceFile = File('$sourcePath/$libraryName');
+      // Try lib/ subdirectory first (new structure), then direct path (legacy)
+      File sourceFile = File('$sourcePath/lib/$libraryName');
+      if (!await sourceFile.exists()) {
+        sourceFile = File('$sourcePath/$libraryName');
+      }
+      
       final targetFile = File('$testDir/$libraryName');
 
       if (await sourceFile.exists()) {
@@ -195,7 +205,12 @@ class FFMPEGBinaryInstaller {
 
       // Copy each library file
       for (final libraryName in expectedLibraries) {
-        final sourceFile = File('$sourcePath/$libraryName');
+        // Try lib/ subdirectory first (new structure), then direct path (legacy)
+        File sourceFile = File('$sourcePath/lib/$libraryName');
+        if (!await sourceFile.exists()) {
+          sourceFile = File('$sourcePath/$libraryName');
+        }
+        
         final targetFile = File('$targetPath/$libraryName');
 
         if (await sourceFile.exists()) {

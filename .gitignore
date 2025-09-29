@@ -70,8 +70,14 @@ test/assets/mismatched_*
 native/windows/*
 test/assets/ffmpeg/*
 
-# FFMPEG DLLs should never be committed to maintain MIT compliance
-# Users must provide their own FFMPEG binaries in test/fixtures/ffmpeg/
+# FFMPEG binaries and build artifacts should never be committed
+# Users must download their own FFMPEG binaries using the provided tools
+
+# FFMPEG binary directories (all platforms)
+build/ffmpeg/
+test/fixtures/ffmpeg/
+
+# FFMPEG library files (Windows)
 avcodec-*.dll
 avdevice-*.dll
 avfilter-*.dll
@@ -80,5 +86,37 @@ avutil-*.dll
 swresample-*.dll
 swscale-*.dll
 postproc-*.dll
-# Keep sonix_native.dll as it's our own library
-!sonix_native.dll
+
+# FFMPEG library files (Linux)
+libavcodec.so*
+libavformat.so*
+libavutil.so*
+libswresample.so*
+libswscale.so*
+libavfilter.so*
+libavdevice.so*
+
+# FFMPEG library files (macOS)
+libavcodec.dylib*
+libavformat.dylib*
+libavutil.dylib*
+libswresample.dylib*
+libswscale.dylib*
+libavfilter.dylib*
+libavdevice.dylib*
+
+# Native library build directories (temporary build artifacts)
+build/sonix/
+
+# But allow our native libraries in platform directories (these are our code)
+# linux/libsonix_native.so - ALLOWED
+# windows/sonix_native.dll - ALLOWED  
+# macos/libsonix_native.dylib - ALLOWED
+
+# FFmpeg libraries in Flutter bundles (deployed automatically, but not ours)
+**/bundle/lib/libav*.so*
+**/bundle/lib/libsw*.so*
+**/bundle/lib/avcodec-*.dll
+**/bundle/lib/avformat-*.dll
+**/bundle/lib/avutil-*.dll
+**/bundle/lib/swresample-*.dll

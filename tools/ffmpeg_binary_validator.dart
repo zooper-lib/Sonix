@@ -88,7 +88,11 @@ class PlatformInfo {
       case 'macos':
         return ['libavformat.dylib', 'libavcodec.dylib', 'libavutil.dylib', 'libswresample.dylib'];
       case 'linux':
-        return ['libavformat.so', 'libavcodec.so', 'libavutil.so', 'libswresample.so'];
+        // Include both generic names (for CMake) and versioned names (for runtime)
+        return [
+          'libavformat.so', 'libavcodec.so', 'libavutil.so', 'libswresample.so',
+          'libavformat.so.62', 'libavcodec.so.62', 'libavutil.so.60', 'libswresample.so.6'
+        ];
       default:
         return [];
     }
@@ -354,7 +358,12 @@ class FFMPEGBinaryValidator {
     final expectedLibraries = platformInfo.getExpectedLibraryNames();
 
     for (final libraryName in expectedLibraries) {
-      final binaryPath = '$basePath/$libraryName';
+      // Try lib/ subdirectory first (new structure), then direct path (legacy)
+      String binaryPath = '$basePath/lib/$libraryName';
+      if (!await File(binaryPath).exists()) {
+        binaryPath = '$basePath/$libraryName';
+      }
+      
       results[libraryName] = await validateBinary(binaryPath);
     }
 
