@@ -182,7 +182,7 @@ class NativeDistributionBuilder {
 
   /// Builds Windows DLL
   Future<void> _buildWindows() async {
-    final tempBuildDir = 'build/windows_native';
+    final tempBuildDir = 'build/sonix/windows';
     await _createBuildDirectory(tempBuildDir);
 
     // Configure with CMake
@@ -221,13 +221,12 @@ class NativeDistributionBuilder {
       throw Exception('Built library not found: ${sourceFile.path}');
     }
 
-    // Clean up temp build directory
-    await Directory(tempBuildDir).delete(recursive: true);
+    // Build directory preserved for incremental builds
   }
 
   /// Builds Linux shared library
   Future<void> _buildLinux() async {
-    final tempBuildDir = 'build/linux_native';
+    final tempBuildDir = 'build/sonix/linux';
     await _createBuildDirectory(tempBuildDir);
 
     // Configure with CMake
@@ -255,13 +254,12 @@ class NativeDistributionBuilder {
       throw Exception('Built library not found: ${sourceFile.path}');
     }
 
-    // Clean up temp build directory
-    await Directory(tempBuildDir).delete(recursive: true);
+    // Build directory preserved for incremental builds
   }
 
   /// Builds macOS dynamic library
   Future<void> _buildMacOS() async {
-    final tempBuildDir = 'build/macos_native';
+    final tempBuildDir = 'build/sonix/macos';
     await _createBuildDirectory(tempBuildDir);
 
     // Configure with CMake - output directly to macos/ directory
@@ -295,13 +293,12 @@ class NativeDistributionBuilder {
       throw Exception('Built library not found: ${sourceFile.path}');
     }
 
-    // Clean up temp build directory
-    await Directory(tempBuildDir).delete(recursive: true);
+    // Build directory preserved for incremental builds
   }
 
   /// Builds iOS static library
   Future<void> _buildIOS() async {
-    final tempBuildDir = 'build/ios_native';
+    final tempBuildDir = 'build/sonix/ios';
     await _createBuildDirectory(tempBuildDir);
 
     // Configure with CMake for iOS - output directly to ios/ directory
@@ -336,8 +333,7 @@ class NativeDistributionBuilder {
       throw Exception('Built library not found: ${sourceFile.path}');
     }
 
-    // Clean up temp build directory
-    await Directory(tempBuildDir).delete(recursive: true);
+    // Build directory preserved for incremental builds
   }
 
   /// Builds Android libraries for all architectures
@@ -402,17 +398,18 @@ class NativeDistributionBuilder {
       throw Exception('Built library not found: ${sourceFile.path}');
     }
 
-    // Clean up temp build directory
-    await Directory(tempBuildDir).delete(recursive: true);
+    // Build directory preserved for incremental builds
   }
 
   /// Creates build directory
   Future<void> _createBuildDirectory(String path) async {
     final dir = Directory(path);
-    if (await dir.exists()) {
-      await dir.delete(recursive: true);
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+      print('Created build directory: $path');
+    } else {
+      print('Using existing build directory: $path');
     }
-    await dir.create(recursive: true);
   }
 
   /// Cleans build artifacts
@@ -421,10 +418,10 @@ class NativeDistributionBuilder {
 
     // Clean build directories (these are gitignored anyway)
     final buildDirsToClean = [
-      'build/windows_native',
-      'build/linux_native',
-      'build/macos_native',
-      'build/ios_native',
+      'build/sonix/windows',
+      'build/sonix/linux',
+      'build/sonix/macos',
+      'build/sonix/ios',
       ...androidArchs.map((arch) => 'build/android_$arch'),
     ];
 

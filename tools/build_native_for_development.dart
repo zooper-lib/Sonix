@@ -64,8 +64,8 @@ class NativeDevelopmentBuilder {
     print('✅ Build environment validated');
     print('');
 
-    // Create build directory
-    final buildDir = 'build/sonix';
+    // Create platform-specific build directory
+    final buildDir = 'build/sonix/$platform';
     await _createBuildDirectory(buildDir);
 
     // Configure with CMake
@@ -167,7 +167,7 @@ class NativeDevelopmentBuilder {
 
   /// Gets CMake configuration arguments for the platform
   List<String> _getCMakeConfigArgs(String platform, String buildType) {
-    final args = ['-S', 'native', '-B', 'build/sonix', '-DCMAKE_BUILD_TYPE=$buildType'];
+    final args = ['-S', 'native', '-B', 'build/sonix/$platform', '-DCMAKE_BUILD_TYPE=$buildType'];
 
     // Add platform-specific configuration
     switch (platform) {
@@ -191,7 +191,7 @@ class NativeDevelopmentBuilder {
 
   /// Gets CMake build arguments for the platform
   List<String> _getCMakeBuildArgs(String platform, String buildType) {
-    final args = ['--build', 'build/sonix'];
+    final args = ['--build', 'build/sonix/$platform'];
 
     // Add platform-specific build options
     switch (platform) {
@@ -402,12 +402,21 @@ class NativeDevelopmentBuilder {
   Future<void> _cleanBuild() async {
     print('Cleaning development build...');
 
-    final buildDir = Directory('build/sonix');
-    if (await buildDir.exists()) {
-      await buildDir.delete(recursive: true);
-      print('✅ Removed: ${buildDir.path}');
-    } else {
-      print('Build directory does not exist: ${buildDir.path}');
+    // Clean all platform-specific build directories
+    final platforms = ['windows', 'linux', 'macos'];
+    bool anyDeleted = false;
+
+    for (final platform in platforms) {
+      final buildDir = Directory('build/sonix/$platform');
+      if (await buildDir.exists()) {
+        await buildDir.delete(recursive: true);
+        print('✅ Removed: ${buildDir.path}');
+        anyDeleted = true;
+      }
+    }
+
+    if (!anyDeleted) {
+      print('No platform build directories found to clean');
     }
 
     print('✅ Clean completed');
@@ -487,9 +496,9 @@ Examples:
   dart run tools/build_native_for_development.dart --clean
 
 Build Output:
-  - Windows: build/sonix/Release/sonix_native.dll
-  - Linux: build/sonix/libsonix_native.so
-  - macOS: build/sonix/libsonix_native.dylib
+  - Windows: build/sonix/windows/Release/sonix_native.dll
+  - Linux: build/sonix/linux/libsonix_native.so
+  - macOS: build/sonix/macos/libsonix_native.dylib
 
 Note: This is for development only. For package distribution builds, use:
   dart run tools/build_native_for_distribution.dart
