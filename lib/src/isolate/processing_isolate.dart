@@ -197,23 +197,23 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
       //
       // The isolate automatically selects between two processing approaches:
       //
-      // 1. File-Level Chunked Processing (files > 50MB):
+      // 1. File-Level Chunked Processing (files > 5MB):
       //    - Uses _processWithSelectiveDecoding() for memory efficiency
       //    - Reads audio file in chunks without loading entirely into memory
       //    - Samples specific time positions from the file
       //    - Memory usage stays low and controlled
-      //    - Best for large files where loading entire file would use too much RAM
+      //    - Best for typical audio files where loading entire file would use too much RAM
       //
-      // 2. In-Memory Processing (files ≤ 50MB):
+      // 2. In-Memory Processing (files ≤ 5MB):
       //    - Uses standard decoder.decode() to load entire file
       //    - Then processes with WaveformGenerator.generateInMemory()
       //    - Faster processing but higher memory usage
-      //    - Best for small to medium files where speed is prioritized
+      //    - Best for very small files where speed is prioritized
       //
       // Both strategies ultimately use logical chunking (downsampling) for waveform
       // generation, but differ in how they manage memory during audio loading.
       //
-      const chunkThreshold = 50 * 1024 * 1024; // 50MB threshold
+      const chunkThreshold = 5 * 1024 * 1024; // 5MB threshold - use chunked processing for files > 5MB
 
       final AudioData audioData;
 

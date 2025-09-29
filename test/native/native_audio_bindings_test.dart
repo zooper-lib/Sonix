@@ -14,7 +14,7 @@ void main() {
       if (!available) {
         throw Exception('FFMPEG libraries not available for testing');
       }
-      
+
       // Initialize native bindings before running tests
       NativeAudioBindings.initialize();
     });
