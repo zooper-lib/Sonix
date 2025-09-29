@@ -6,6 +6,7 @@ import 'mp3_decoder.dart';
 import 'wav_decoder.dart';
 import 'flac_decoder.dart';
 import 'vorbis_decoder.dart';
+import 'opus_decoder.dart';
 import 'mp4_decoder.dart';
 import '../exceptions/sonix_exceptions.dart';
 import '../native/native_audio_bindings.dart';
@@ -25,6 +26,8 @@ class AudioDecoderFactory {
         return FLACDecoder();
       case AudioFormat.ogg:
         return VorbisDecoder();
+      case AudioFormat.opus:
+        return OpusDecoder();
       case AudioFormat.mp4:
         return MP4Decoder();
       case AudioFormat.unknown:
@@ -46,6 +49,8 @@ class AudioDecoderFactory {
         return AudioFormat.flac;
       case 'ogg':
         return AudioFormat.ogg;
+      case 'opus':
+        return AudioFormat.opus;
       case 'mp4':
       case 'm4a':
         return AudioFormat.mp4;
@@ -197,13 +202,14 @@ class AudioDecoderFactory {
       ...AudioFormat.wav.extensions,
       ...AudioFormat.flac.extensions,
       ...AudioFormat.ogg.extensions,
+      ...AudioFormat.opus.extensions,
       ...AudioFormat.mp4.extensions,
     ];
   }
 
   /// Get list of supported formats
   static List<AudioFormat> getSupportedFormats() {
-    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg, AudioFormat.mp4];
+    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg, AudioFormat.opus, AudioFormat.mp4];
   }
 
   /// Get human-readable list of supported formats

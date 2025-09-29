@@ -221,6 +221,69 @@ void sonix_debug_memory_status(void)
 }
 #endif
 
+// Helper function to detect Opus codec within OGG container
+static int32_t detect_opus_in_ogg(const unsigned char *buffer, size_t size, const AVInputFormat *input_format)
+{
+    AVFormatContext *probe_ctx = avformat_alloc_context();
+    if (!probe_ctx)
+    {
+        return SONIX_FORMAT_OGG; // Fallback to OGG
+    }
+
+    // Create buffer for probing with padding
+    const size_t buffer_size = size + AV_INPUT_BUFFER_PADDING_SIZE;
+    unsigned char *probe_buffer = (unsigned char *)av_malloc(buffer_size);
+    if (!probe_buffer)
+    {
+        avformat_free_context(probe_ctx);
+        return SONIX_FORMAT_OGG;
+    }
+
+    // Copy data and add padding
+    memcpy(probe_buffer, buffer, size);
+    memset(probe_buffer + size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+
+    // Create AVIO context for probing
+    AVIOContext *probe_avio = avio_alloc_context(probe_buffer, size, 0, NULL, NULL, NULL, NULL);
+    if (!probe_avio)
+    {
+        av_free(probe_buffer);
+        avformat_free_context(probe_ctx);
+        return SONIX_FORMAT_OGG;
+    }
+
+    probe_ctx->pb = probe_avio;
+
+    // Try to open and analyze the stream
+    int32_t detected_format = SONIX_FORMAT_OGG;
+    if (avformat_open_input(&probe_ctx, NULL, input_format, NULL) == 0)
+    {
+        if (avformat_find_stream_info(probe_ctx, NULL) >= 0)
+        {
+            // Look for Opus codec in audio streams
+            for (unsigned int i = 0; i < probe_ctx->nb_streams; i++)
+            {
+                AVStream *stream = probe_ctx->streams[i];
+                if (stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO &&
+                    stream->codecpar->codec_id == AV_CODEC_ID_OPUS)
+                {
+                    detected_format = SONIX_FORMAT_OPUS;
+                    break;
+                }
+            }
+        }
+        avformat_close_input(&probe_ctx);
+    }
+    else
+    {
+        // Manual cleanup if avformat_open_input failed
+        avio_context_free(&probe_avio);
+        avformat_free_context(probe_ctx);
+    }
+
+    return detected_format;
+}
+
 // Detect audio format using FFMPEG probe
 int32_t sonix_detect_format(const uint8_t *data, size_t size)
 {
@@ -302,7 +365,8 @@ int32_t sonix_detect_format(const uint8_t *data, size_t size)
         }
         else if (strstr(format_name, "ogg"))
         {
-            detected_format = SONIX_FORMAT_OGG;
+            // For OGG files, probe deeper to check for Opus codec
+            detected_format = detect_opus_in_ogg(buffer, size, input_format);
         }
         else if (strstr(format_name, "opus"))
         {
@@ -454,26 +518,61 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
     uint32_t sample_rate = codec_ctx->sample_rate;
     uint32_t channels = codec_ctx->ch_layout.nb_channels;
 
-    // Use a more conservative approach for buffer allocation
-    // Estimate based on file size and typical compression ratios
+    // Use very generous buffer allocation to avoid overflow issues
     size_t estimated_samples;
-    if (size < 1024 * 1024)
+
+    // Try to get duration from the stream for better estimation
+    int64_t duration = audio_stream->duration;
+    if (duration != AV_NOPTS_VALUE && audio_stream->time_base.den > 0)
     {
-        // Small files: allocate generously
-        estimated_samples = size * 8; // Very conservative for small files
+        // Calculate from stream duration with very generous margins
+        double duration_seconds = (double)duration * audio_stream->time_base.num / audio_stream->time_base.den;
+        estimated_samples = (size_t)(duration_seconds * sample_rate * channels * 3.0); // 200% safety margin
     }
     else
     {
-        // Large files: use compression ratio estimates
-        // WAV: ~1:1 ratio, MP3: ~10:1 ratio, FLAC: ~2:1 ratio
-        estimated_samples = size * 4; // Conservative middle ground
+        // Fallback: use file size with very generous multipliers
+        size_t compression_multiplier;
+        switch (format)
+        {
+        case SONIX_FORMAT_WAV:
+            compression_multiplier = 2; // Even uncompressed gets extra safety
+            break;
+        case SONIX_FORMAT_FLAC:
+            compression_multiplier = 4;
+            break;
+        case SONIX_FORMAT_MP3:
+            compression_multiplier = 20;
+            break;
+        case SONIX_FORMAT_OGG:
+            compression_multiplier = 25; // Very generous for OGG Vorbis
+            break;
+        case SONIX_FORMAT_OPUS:
+            compression_multiplier = 30; // Very generous for Opus
+            break;
+        case SONIX_FORMAT_MP4:
+            compression_multiplier = 20;
+            break;
+        default:
+            compression_multiplier = 20; // Default generous
+            break;
+        }
+
+        estimated_samples = size * compression_multiplier;
     }
 
-    // Ensure minimum reasonable size
-    const size_t min_samples = sample_rate * channels * 10; // At least 10 seconds worth
+    // Ensure minimum reasonable size (30 seconds worth)
+    const size_t min_samples = sample_rate * channels * 30;
     if (estimated_samples < min_samples)
     {
         estimated_samples = min_samples;
+    }
+
+    // Add final safety buffer (minimum 10MB worth of samples)
+    const size_t min_buffer_samples = 10 * 1024 * 1024 / sizeof(float);
+    if (estimated_samples < min_buffer_samples)
+    {
+        estimated_samples = min_buffer_samples;
     }
 
     // Allocate audio data structure
@@ -496,8 +595,8 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
         goto cleanup;
     }
 
-    // Store the buffer capacity for overflow checking
-    const uint64_t max_samples = estimated_samples;
+    // Store the buffer capacity for dynamic resizing
+    uint64_t max_samples = estimated_samples;
 
     // Initialize resampler to convert to float
     swr_ctx = swr_alloc();
@@ -558,12 +657,29 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
                     goto cleanup;
                 }
 
-                // Check buffer bounds before conversion
+                // Check if we need to expand the buffer dynamically
                 uint64_t required_samples = sample_index + (frame->nb_samples * channels);
                 if (required_samples > max_samples)
                 {
-                    set_error_message("Sample buffer overflow detected");
-                    goto cleanup;
+                    // Expand buffer by 50% or required size + safety margin, whichever is larger
+                    uint64_t new_max_samples = max_samples + (max_samples / 2);
+                    uint64_t required_with_margin = required_samples + (sample_rate * channels); // Add 1 second buffer
+                    if (new_max_samples < required_with_margin)
+                    {
+                        new_max_samples = required_with_margin;
+                    }
+
+                    // Reallocate the buffer
+                    size_t new_buffer_size = new_max_samples * sizeof(float);
+                    float *new_buffer = (float *)realloc(audio_data->samples, new_buffer_size);
+                    if (!new_buffer)
+                    {
+                        set_error_message("Failed to expand sample buffer during decoding");
+                        goto cleanup;
+                    }
+
+                    audio_data->samples = new_buffer;
+                    max_samples = new_max_samples;
                 }
 
                 // Convert to float samples
@@ -1061,6 +1177,12 @@ uint32_t sonix_get_optimal_chunk_size(int32_t format, uint64_t file_size)
         return (uint32_t)(file_size / 50); // 2% chunks for WAV
     case SONIX_FORMAT_FLAC:
         return (uint32_t)(file_size / 80); // 1.25% chunks for FLAC
+    case SONIX_FORMAT_OGG:
+        return (uint32_t)(file_size / 120); // 0.83% chunks for OGG (smaller due to compression)
+    case SONIX_FORMAT_OPUS:
+        return (uint32_t)(file_size / 150); // 0.67% chunks for Opus (smaller due to high compression)
+    case SONIX_FORMAT_MP4:
+        return (uint32_t)(file_size / 100); // 1% chunks for MP4
     default:
         return (uint32_t)(file_size / 100); // Default 1% chunks
     }

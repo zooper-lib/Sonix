@@ -355,6 +355,8 @@ class NativeAudioBindings {
         return SONIX_FORMAT_FLAC;
       case AudioFormat.ogg:
         return SONIX_FORMAT_OGG;
+      case AudioFormat.opus:
+        return SONIX_FORMAT_OPUS;
       case AudioFormat.mp4:
         return SONIX_FORMAT_MP4;
       case AudioFormat.unknown:
@@ -373,6 +375,8 @@ class NativeAudioBindings {
         return AudioFormat.flac;
       case SONIX_FORMAT_OGG:
         return AudioFormat.ogg;
+      case SONIX_FORMAT_OPUS:
+        return AudioFormat.opus;
       case SONIX_FORMAT_MP4:
         return AudioFormat.mp4;
       case SONIX_FORMAT_UNKNOWN:

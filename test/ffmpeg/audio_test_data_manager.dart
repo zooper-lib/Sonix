@@ -55,7 +55,7 @@ class AudioTestDataManager {
     },
     'opus_sample': {
       'filename': 'Double-F the King - Your Blessing.opus',
-      'format': 4, // SONIX_FORMAT_OGG (Opus is contained in OGG container)
+      'format': 5, // SONIX_FORMAT_OPUS (Enhanced detection now correctly identifies Opus codec)
       'expectedSampleRate': 48000, // Opus typically uses 48kHz
       'expectedChannels': 2,
       'minDurationMs': 1000,

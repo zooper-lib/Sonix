@@ -4,14 +4,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
+import 'package:sonix/src/decoders/opus_decoder.dart';
 import 'package:sonix/src/decoders/mp4_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 void main() {
   group('AudioDecoderFactory Tests', () {
-    // Format detection tests moved to test/core/format_detection_test.dart
-
     group('Decoder Creation', () {
+      test('should create OpusDecoder for Opus files', () {
+        final decoder = AudioDecoderFactory.createDecoder('test.opus');
+        expect(decoder, isA<OpusDecoder>());
+        decoder.dispose();
+      });
+
       test('should create MP4Decoder for MP4 files', () {
         final decoder1 = AudioDecoderFactory.createDecoder('test.mp4');
         final decoder2 = AudioDecoderFactory.createDecoder('test.m4a');
