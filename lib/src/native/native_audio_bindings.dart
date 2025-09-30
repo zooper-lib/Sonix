@@ -122,6 +122,19 @@ class NativeAudioBindings {
     }
   }
 
+  /// Enable or disable forwarding of FFmpeg logs to the console (stderr).
+  ///
+  /// Defaults to false (disabled) to prevent noisy FFmpeg logs from leaking
+  /// into consuming applications. Enable only when debugging native issues.
+  static void setFFMPEGConsoleLogging(bool enabled) {
+    _ensureInitialized();
+    try {
+      SonixNativeBindings.setFFMPEGConsoleLogging(enabled ? 1 : 0);
+    } catch (e) {
+      SonixLogger.native('setFFMPEGConsoleLogging', 'Failed to update FFmpeg console logging: ${e.toString()}', level: SonixLogLevel.warning);
+    }
+  }
+
   /// Set memory pressure threshold for streaming operations
   static void setMemoryPressureThreshold(int bytes) {
     _memoryPressureThreshold = bytes;

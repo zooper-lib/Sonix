@@ -10,10 +10,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 // Global error message buffer
 static char g_error_message[512] = {0};
 static int g_ffmpeg_initialized = 0;
+// Controls whether FFmpeg logs are forwarded to stderr (console).
+// Default is disabled to prevent noisy logs from leaking to consuming apps.
+static int g_forward_ffmpeg_logs = 0;
 
 // Memory management tracking for debugging
 #ifdef DEBUG
@@ -127,6 +131,21 @@ static char *safe_strdup(const char *str, const char *context)
     return dup;
 }
 
+// Custom FFmpeg log callback. Swallows logs by default to avoid
+// polluting consuming app consoles. When forwarding is enabled,
+// delegates to FFmpeg's default logger.
+static void sonix_ffmpeg_log_callback(void *ptr, int level, const char *fmt, va_list vl)
+{
+    if (!g_forward_ffmpeg_logs)
+    {
+        // Swallow all FFmpeg logs when forwarding is disabled
+        return;
+    }
+
+    // Forward to the default FFmpeg logger
+    av_log_default_callback(ptr, level, fmt, vl);
+}
+
 // Initialize FFMPEG - FAIL FAST if not available
 int32_t sonix_init_ffmpeg(void)
 {
@@ -151,6 +170,9 @@ int32_t sonix_init_ffmpeg(void)
         set_ffmpeg_error(ret, "Failed to initialize FFMPEG network components");
         return SONIX_ERROR_FFMPEG_INIT_FAILED;
     }
+
+    // Install custom log callback that swallows logs by default
+    av_log_set_callback(sonix_ffmpeg_log_callback);
 
     // Set FFMPEG log level to suppress verbose codec warnings
     // AV_LOG_ERROR only shows actual errors, filtering out MP3 format detection warnings
@@ -240,6 +262,18 @@ void sonix_set_ffmpeg_log_level(int32_t level)
     }
 
     av_log_set_level(av_level);
+}
+
+// Enable/disable forwarding FFmpeg logs to the console (stderr).
+// When disabled (default), logs are swallowed by our custom callback.
+void sonix_set_ffmpeg_console_logging(int32_t enabled)
+{
+    g_forward_ffmpeg_logs = enabled ? 1 : 0;
+    // Optionally reduce duplicate messages if forwarding is enabled
+    if (g_forward_ffmpeg_logs)
+    {
+        av_log_set_flags(AV_LOG_SKIP_REPEATED);
+    }
 }
 
 // Get backend type - always FFMPEG

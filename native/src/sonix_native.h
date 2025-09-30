@@ -100,6 +100,10 @@ extern "C"
   SONIX_EXPORT int32_t sonix_init_ffmpeg(void);
   SONIX_EXPORT void sonix_cleanup_ffmpeg(void);
   SONIX_EXPORT void sonix_set_ffmpeg_log_level(int32_t level);
+  // Control whether FFmpeg logs are forwarded to stderr (console).
+  // By default, Sonix intercepts FFmpeg logs and prevents them from reaching
+  // the consuming application's console. Enable this only for debugging.
+  SONIX_EXPORT void sonix_set_ffmpeg_console_logging(int32_t enabled);
 
   // MP3 debug functions
   SONIX_EXPORT SonixMp3DebugStats *sonix_get_last_mp3_debug_stats(void);

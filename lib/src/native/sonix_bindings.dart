@@ -154,6 +154,10 @@ typedef SonixSetFFMPEGLogLevelNative = ffi.Void Function(ffi.Int32 level);
 
 typedef SonixSetFFMPEGLogLevelDart = void Function(int level);
 
+typedef SonixSetFFMPEGConsoleLoggingNative = ffi.Void Function(ffi.Int32 enabled);
+
+typedef SonixSetFFMPEGConsoleLoggingDart = void Function(int enabled);
+
 /// Native library bindings
 class SonixNativeBindings {
   static ffi.DynamicLibrary? _lib;
@@ -314,6 +318,11 @@ class SonixNativeBindings {
   static final SonixSetFFMPEGLogLevelDart setFFMPEGLogLevel = lib
       .lookup<ffi.NativeFunction<SonixSetFFMPEGLogLevelNative>>('sonix_set_ffmpeg_log_level')
       .asFunction();
+
+  /// Enable/disable forwarding FFmpeg logs to the console (stderr). Disabled by default.
+  static final SonixSetFFMPEGConsoleLoggingDart setFFMPEGConsoleLogging = lib
+    .lookup<ffi.NativeFunction<SonixSetFFMPEGConsoleLoggingNative>>('sonix_set_ffmpeg_console_logging')
+    .asFunction();
 
   /// Check if FFMPEG backend is available and initialized
   static bool get isFFMPEGAvailable {
