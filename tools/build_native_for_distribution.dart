@@ -262,13 +262,35 @@ class NativeDistributionBuilder {
     final tempBuildDir = 'build/sonix/macos';
     await _createBuildDirectory(tempBuildDir);
 
-    // Configure with CMake - output directly to macos/ directory
+    // Decide architectures to build based on available FFmpeg dylibs
+    final ffmpegRoot = 'build/ffmpeg/macos';
+    final ffmpegLibDir = Directory('$ffmpegRoot/lib');
+    final hostArch = _detectHostMacArch();
+    final ffmpegArchs = await _detectMacOSArchitecturesForFFmpeg(ffmpegLibDir.path);
+    String cmakeArchArg;
+
+    if (ffmpegArchs.contains('arm64') && ffmpegArchs.contains('x86_64')) {
+      // Universal FFmpeg libs available
+      cmakeArchArg = 'x86_64;arm64';
+      print('Detected universal FFmpeg libraries; building universal binary (x86_64;arm64)');
+    } else if (ffmpegArchs.isNotEmpty) {
+      // Constrain to whatever FFmpeg supports, preferring host arch if present
+      final chosen = ffmpegArchs.contains(hostArch) ? hostArch : ffmpegArchs.first;
+      cmakeArchArg = chosen;
+      print('FFMPEG libs are ${ffmpegArchs.join(', ')}; building for: $chosen');
+    } else {
+      // Could not detect, default to host arch
+      cmakeArchArg = hostArch;
+      print('Could not detect FFmpeg architectures; defaulting to host arch: $hostArch');
+    }
+
+    // Configure with CMake
     final configResult = await Process.run('cmake', [
       '-S', 'native',
       '-B', tempBuildDir,
       '-DCMAKE_BUILD_TYPE=Release',
-      '-DFFMPEG_ROOT=build/ffmpeg/macos',
-      '-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64', // Universal binary
+      '-DFFMPEG_ROOT=$ffmpegRoot',
+      '-DCMAKE_OSX_ARCHITECTURES=$cmakeArchArg',
     ]);
 
     if (configResult.exitCode != 0) {
@@ -294,6 +316,63 @@ class NativeDistributionBuilder {
     }
 
     // Build directory preserved for incremental builds
+  }
+
+  /// Detect host macOS CPU architecture (arm64 or x86_64)
+  String _detectHostMacArch() {
+    try {
+      final res = Process.runSync('uname', ['-m']);
+      if (res.exitCode == 0) {
+        final m = (res.stdout as String).trim().toLowerCase();
+        if (m.contains('arm64') || m.contains('aarch64')) return 'arm64';
+        if (m.contains('x86_64') || m.contains('amd64')) return 'x86_64';
+      }
+    } catch (_) {}
+    // Fallback: infer from Dart version string
+    final v = Platform.version.toLowerCase();
+    if (v.contains('arm64') || v.contains('aarch64')) return 'arm64';
+    return 'x86_64';
+  }
+
+  /// Detect architectures present in FFmpeg dylibs within the given directory
+  Future<Set<String>> _detectMacOSArchitecturesForFFmpeg(String libDir) async {
+    final archs = <String>{};
+    try {
+      final candidates = [
+        'libavformat.dylib',
+        'libavcodec.dylib',
+        'libavutil.dylib',
+        'libswresample.dylib',
+      ];
+
+      for (final name in candidates) {
+        final f = File('$libDir/$name');
+        if (await f.exists()) {
+          // Prefer lipo -info; fall back to file
+          ProcessResult res = await Process.run('lipo', ['-info', f.path]);
+          String out = '';
+          if (res.exitCode == 0) {
+            out = (res.stdout as String).toLowerCase();
+            if (out.contains('architectures in the fat file')) {
+              if (out.contains('arm64')) archs.add('arm64');
+              if (out.contains('x86_64')) archs.add('x86_64');
+            } else if (out.contains('non-fat file')) {
+              if (out.contains('arm64')) archs.add('arm64');
+              if (out.contains('x86_64')) archs.add('x86_64');
+            }
+          }
+          if (archs.isEmpty) {
+            res = await Process.run('file', [f.path]);
+            if (res.exitCode == 0) {
+              out = (res.stdout as String).toLowerCase();
+              if (out.contains('arm64')) archs.add('arm64');
+              if (out.contains('x86_64')) archs.add('x86_64');
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    return archs;
   }
 
   /// Builds iOS static library

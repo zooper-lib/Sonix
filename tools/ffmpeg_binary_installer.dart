@@ -133,7 +133,17 @@ class FFMPEGBinaryInstaller {
       case 'windows':
         return ['example/build/windows/x64/runner/Debug', 'example/build/windows/x64/runner/Release'];
       case 'macos':
-        return ['example/build/macos/Build/Products/Debug', 'example/build/macos/Build/Products/Release'];
+        return [
+          // Root products dirs (legacy)
+          'example/build/macos/Build/Products/Debug',
+          'example/build/macos/Build/Products/Release',
+          // App bundle Frameworks dirs (preferred at runtime)
+          'example/build/macos/Build/Products/Debug/example.app/Contents/Frameworks',
+          'example/build/macos/Build/Products/Release/example.app/Contents/Frameworks',
+          // Also allow placing next to the executable in a pinch
+          'example/build/macos/Build/Products/Debug/example.app/Contents/MacOS',
+          'example/build/macos/Build/Products/Release/example.app/Contents/MacOS',
+        ];
       case 'linux':
         return ['example/build/linux/x64/debug/bundle/lib', 'example/build/linux/x64/release/bundle/lib'];
       default:

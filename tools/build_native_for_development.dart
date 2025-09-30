@@ -284,6 +284,16 @@ class NativeDevelopmentBuilder {
         final size = _formatFileSize(await sourceFile.length());
         print('  ✅ Copied to: $targetLocation ($size)');
         anySuccess = true;
+
+        // On macOS, fix up install names so FFmpeg dylibs resolve within the bundle
+        if (platform == 'macos') {
+          // Ensure FFmpeg dylibs are present in the same directory
+          await _copyMacOSFFmpegLibs(targetLocation);
+          // Then fix install names for both libsonix_native and ffmpeg dylibs
+          await _fixMacOSInstallNames(targetLocation, libraryName);
+          // Finally, code-sign the modified binaries and app bundle
+          await _codesignMacOSArtifacts(targetLocation);
+        }
       } catch (e) {
         print('  ⚠️  Failed to copy to $targetLocation: $e');
       }
@@ -293,6 +303,423 @@ class NativeDevelopmentBuilder {
       print('✅ Native library deployed to runtime locations');
     } else {
       print('⚠️  Failed to deploy native library to any runtime location');
+    }
+  }
+
+  /// Code-sign dylibs we modified and the enclosing app bundle (ad-hoc), to satisfy macOS dyld
+  Future<void> _codesignMacOSArtifacts(String targetDir) async {
+    try {
+      // Ensure codesign exists
+      final which = Process.runSync('which', ['codesign']);
+      if (which.exitCode != 0) return;
+
+      // Find app bundle root from targetDir (look upwards for *.app)
+      String? appBundlePath;
+      var dir = Directory(targetDir).absolute;
+      for (int i = 0; i < 8; i++) {
+        final name = dir.path.split('/').last;
+        if (name.endsWith('.app')) {
+          appBundlePath = dir.path;
+          break;
+        }
+        final parent = dir.parent;
+        if (parent.path == dir.path) break;
+        dir = parent;
+      }
+
+      // First, sign all dylibs inside targetDir
+      final d = Directory(targetDir);
+      await for (final entity in d.list()) {
+        if (entity is File && entity.path.endsWith('.dylib')) {
+          await Process.run('codesign', ['--force', '--timestamp=none', '--sign', '-', entity.path]);
+        }
+      }
+
+      // Then, sign the app bundle (deep) so its code signature reflects nested changes
+      if (appBundlePath != null) {
+        await Process.run('codesign', ['--force', '--deep', '--timestamp=none', '--sign', '-', appBundlePath]);
+      }
+    } catch (e) {
+      print('  ⚠️  Failed to code-sign macOS artifacts in $targetDir: $e');
+    }
+  }
+
+  /// Copy FFmpeg dylibs into the specified macOS target directory
+  Future<void> _copyMacOSFFmpegLibs(String targetDir) async {
+    final sourceLibDir = Directory('build/ffmpeg/macos/lib');
+    if (!await sourceLibDir.exists()) return;
+
+    final bases = ['libavformat', 'libavcodec', 'libavutil', 'libswresample'];
+    for (final base in bases) {
+      // Prefer generic name
+      File src = File('${sourceLibDir.path}/$base.dylib');
+      if (!await src.exists()) {
+        // Pick first versioned dylib
+        final match = sourceLibDir
+            .listSync()
+            .whereType<File>()
+            .firstWhere((f) => f.path.split('/').last.startsWith(base) && f.path.endsWith('.dylib'), orElse: () => File(''));
+        if (match.path.isNotEmpty) {
+          src = match;
+        }
+      }
+      if (await src.exists()) {
+        final dst = File('$targetDir/$base.dylib');
+        await src.copy(dst.path);
+      }
+    }
+  }
+
+  /// macOS: Use install_name_tool to rewrite absolute Homebrew paths to @rpath and set IDs
+  Future<void> _fixMacOSInstallNames(String targetDir, String libraryName) async {
+    try {
+      // Ensure tool exists
+      final which = Process.runSync('which', ['install_name_tool']);
+      if (which.exitCode != 0) return;
+
+      final dylibPath = '$targetDir/$libraryName';
+      final dylibFile = File(dylibPath);
+      if (!await dylibFile.exists()) return;
+
+      // Helper to parse dependencies from otool -L
+      Future<List<String>> depsOf(String path) async {
+        final res = await Process.run('otool', ['-L', path]);
+        if (res.exitCode != 0) return [];
+        final lines = res.stdout.toString().split('\n');
+        final deps = <String>[];
+        for (final line in lines.skip(1)) {
+          final trimmed = line.trim();
+          if (trimmed.isEmpty) continue;
+          final space = trimmed.indexOf(' ');
+          final name = space > 0 ? trimmed.substring(0, space) : trimmed;
+          if (name.endsWith('.dylib')) deps.add(name);
+        }
+        return deps;
+      }
+
+      // Discover Homebrew prefix if available (used to replace @@HOMEBREW_PREFIX@@)
+      String? brewPrefix;
+      try {
+        var bp = Process.runSync('brew', ['--prefix']);
+        if (bp.exitCode == 0) {
+          brewPrefix = (bp.stdout as String).trim();
+        }
+        if (brewPrefix == null || brewPrefix.isEmpty) {
+          // Try common path on Apple Silicon
+          bp = Process.runSync('/opt/homebrew/bin/brew', ['--prefix']);
+          if (bp.exitCode == 0) {
+            brewPrefix = (bp.stdout as String).trim();
+          }
+        }
+      } catch (_) {}
+      // Fallback defaults
+      if (brewPrefix == null || brewPrefix.isEmpty) {
+        // Detect arch to choose default Homebrew location
+        final uname = Process.runSync('uname', ['-m']);
+        final m = uname.exitCode == 0 ? (uname.stdout as String).trim().toLowerCase() : '';
+        if (m.contains('arm64') || m.contains('aarch64')) {
+          brewPrefix = '/opt/homebrew';
+        } else {
+          brewPrefix = '/usr/local';
+        }
+      }
+
+      bool _isSystemLib(String p) {
+        return p.startsWith('/usr/lib/') ||
+            p.startsWith('/System/Library/') ||
+            p.startsWith('/System/Volumes/Preboot/');
+      }
+
+      bool _isFfmpegLibBase(String base) {
+        return base.startsWith('libav') || base.startsWith('libswresample');
+      }
+
+      // Fix libsonix_native dependencies to @rpath for FFmpeg libs; replace Homebrew placeholders when present.
+      final deps = await depsOf(dylibPath);
+      for (final dep in deps) {
+        // If a core system lib was accidentally rewritten to @rpath, correct it back
+        if (dep.endsWith('libSystem.B.dylib') && !dep.startsWith('/usr/lib/')) {
+          await Process.run('install_name_tool', ['-change', dep, '/usr/lib/libSystem.B.dylib', dylibPath]);
+          continue;
+        }
+        if (dep.endsWith('libobjc.A.dylib') && !dep.startsWith('/usr/lib/')) {
+          await Process.run('install_name_tool', ['-change', dep, '/usr/lib/libobjc.A.dylib', dylibPath]);
+          continue;
+        }
+        // Skip already-correct rpath/system libs
+        if (dep.startsWith('@rpath') || _isSystemLib(dep)) continue;
+
+        final base = dep.split('/').last;
+        final genericBase = base.replaceAll(RegExp(r"\.[0-9]+(?=\.dylib$)"), '');
+
+        if (_isFfmpegLibBase(genericBase)) {
+          // FFmpeg deps should resolve via @rpath within the bundle
+          final newName = '@rpath/$genericBase';
+          await Process.run('install_name_tool', ['-change', dep, newName, dylibPath]);
+          continue;
+        }
+
+        if (dep.contains('@@HOMEBREW_PREFIX@@') && brewPrefix.isNotEmpty) {
+          // Replace placeholder with actual Homebrew prefix for dev machine
+          final newName = dep.replaceAll('@@HOMEBREW_PREFIX@@', brewPrefix);
+          await Process.run('install_name_tool', ['-change', dep, newName, dylibPath]);
+          continue;
+        }
+
+        // Otherwise, leave dependency as-is (do not accidentally rewrite system libs like libSystem.B.dylib)
+      }
+
+      // Also patch FFmpeg dylibs in same directory
+      final dir = Directory(targetDir);
+      await for (final entity in dir.list()) {
+        if (entity is File && entity.path.endsWith('.dylib') && entity.path.contains(RegExp('libav|libswresample'))) {
+          final path = entity.path;
+          // Set their ID to @rpath/<basename>
+          final base = path.split('/').last;
+          final genericBase = base.replaceAll(RegExp(r"\.[0-9]+(?=\.dylib$)"), '');
+          await Process.run('install_name_tool', ['-id', '@rpath/$genericBase', path]);
+          // Rewrite any ffmpeg deps inside them to @rpath as well; replace Homebrew placeholders if needed
+          final innerDeps = await depsOf(path);
+          for (final dep in innerDeps) {
+            // Correct core system libs if they were rewritten to @rpath
+            if (dep.endsWith('libSystem.B.dylib') && !dep.startsWith('/usr/lib/')) {
+              await Process.run('install_name_tool', ['-change', dep, '/usr/lib/libSystem.B.dylib', path]);
+              continue;
+            }
+            if (dep.endsWith('libobjc.A.dylib') && !dep.startsWith('/usr/lib/')) {
+              await Process.run('install_name_tool', ['-change', dep, '/usr/lib/libobjc.A.dylib', path]);
+              continue;
+            }
+            if (dep.startsWith('@rpath') || _isSystemLib(dep)) continue;
+
+            final depBase = dep.split('/').last;
+            final depGeneric = depBase.replaceAll(RegExp(r"\.[0-9]+(?=\.dylib$)"), '');
+
+            if (_isFfmpegLibBase(depGeneric)) {
+              final newDep = '@rpath/$depGeneric';
+              await Process.run('install_name_tool', ['-change', dep, newDep, path]);
+              continue;
+            }
+
+            if (dep.contains('@@HOMEBREW_PREFIX@@') && brewPrefix.isNotEmpty) {
+              final newDep = dep.replaceAll('@@HOMEBREW_PREFIX@@', brewPrefix);
+              await Process.run('install_name_tool', ['-change', dep, newDep, path]);
+              continue;
+            }
+
+            // Otherwise leave as-is
+          }
+        }
+      }
+
+      // After normalizing, bundle Homebrew-linked dependencies for FFmpeg libs so the app is self-contained
+  await _bundleMacOSHomebrewDeps(targetDir, brewPrefix);
+    } catch (e) {
+      print('  ⚠️  Failed to fix macOS install names in $targetDir: $e');
+    }
+  }
+
+  /// Recursively bundle Homebrew-installed dylibs referenced by FFmpeg libs into targetDir
+  Future<void> _bundleMacOSHomebrewDeps(String targetDir, String brewPrefix) async {
+    try {
+      final dir = Directory(targetDir);
+      final ffmpegLibs = <String>[];
+      await for (final entity in dir.list()) {
+        if (entity is File && entity.path.endsWith('.dylib') && entity.path.contains(RegExp('libav|libswresample'))) {
+          ffmpegLibs.add(entity.path);
+        }
+      }
+
+      final visited = <String>{};
+      for (final lib in ffmpegLibs) {
+        print('  🔧 Bundling Homebrew deps for ${lib.split('/').last}');
+        await _bundleDepsForFile(lib, targetDir, brewPrefix, visited);
+      }
+    } catch (e) {
+      print('  ⚠️  Failed to bundle Homebrew dependencies in $targetDir: $e');
+    }
+  }
+
+  Future<void> _bundleDepsForFile(
+    String filePath,
+    String targetDir,
+    String brewPrefix,
+    Set<String> visited,
+  ) async {
+    // Helper: parse deps
+    Future<List<String>> depsOf(String path) async {
+      final res = await Process.run('otool', ['-L', path]);
+      if (res.exitCode != 0) return [];
+      final lines = res.stdout.toString().split('\n');
+      final deps = <String>[];
+      for (final line in lines.skip(1)) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) continue;
+        final space = trimmed.indexOf(' ');
+        final name = space > 0 ? trimmed.substring(0, space) : trimmed;
+        if (name.endsWith('.dylib')) deps.add(name);
+      }
+      return deps;
+    }
+
+  bool isSystem(String p) => p.startsWith('/usr/lib/') || p.startsWith('/System/');
+  bool isRpath(String p) => p.startsWith('@rpath');
+
+    final deps = await depsOf(filePath);
+    for (final dep in deps) {
+      // Debug: show each dependency discovered
+      print('    • Found dep: $dep');
+      if (isSystem(dep)) {
+        print('      ↳ Skipping (rpath/system)');
+        continue;
+      }
+
+      // If the dependency is already an @rpath reference, ensure the target exists in our bundle.
+      if (isRpath(dep)) {
+        final baseName = dep.split('/').last; // e.g. libsharpyuv.0.dylib
+        final destPath = '$targetDir/$baseName';
+        final destFile = File(destPath);
+        if (await destFile.exists()) {
+          print('      ↳ @rpath target already present in bundle');
+        } else {
+          final located = await _locateHomebrewLibrary(brewPrefix, baseName);
+          if (located != null) {
+            // Copy into bundle and set ID to @rpath/<basename>, then recurse
+            try {
+              print('      ↳ Resolving @rpath via Homebrew: $located');
+              if (!visited.add(baseName) && await destFile.exists()) {
+                // Already handled
+              } else {
+                await File(located).copy(destPath);
+                final idRes = await Process.run('install_name_tool', ['-id', '@rpath/$baseName', destPath]);
+                if (idRes.exitCode != 0) {
+                  print('      ⚠️  Failed to set install name for $baseName: ${idRes.stderr}');
+                }
+              }
+              // Recurse to bundle this dependency's deps
+              await _bundleDepsForFile(destPath, targetDir, brewPrefix, visited);
+            } catch (e) {
+              print('      ⚠️  Failed to copy @rpath lib $baseName from $located: $e');
+            }
+          } else {
+            print('      ⚠️  Could not locate $baseName under Homebrew to satisfy @rpath');
+          }
+        }
+        continue;
+      }
+
+      // Only bundle Homebrew/local deps
+      if (dep.contains('@@HOMEBREW_PREFIX@@')) {
+        // Replace placeholder with actual prefix
+        final real = dep.replaceAll('@@HOMEBREW_PREFIX@@', brewPrefix);
+        print('      ↳ Homebrew placeholder -> $real');
+        await _copyAndRewriteDep(filePath, real, targetDir, brewPrefix, visited);
+      } else if (dep.startsWith(brewPrefix) || dep.startsWith('/usr/local/')) {
+        print('      ↳ Homebrew/local dep, will bundle');
+        await _copyAndRewriteDep(filePath, dep, targetDir, brewPrefix, visited);
+      } else {
+        print('      ↳ Not a Homebrew/local dep; leaving as-is');
+      }
+    }
+  }
+
+  /// Try to locate a Homebrew-provided dylib by basename, under typical paths
+  Future<String?> _locateHomebrewLibrary(String brewPrefix, String baseName) async {
+    // Quick heuristics for common libraries to avoid scanning everything
+    final heuristics = <String>[
+      // webp/sharpyuv
+      '$brewPrefix/opt/webp/lib/$baseName',
+      // jpeg-xl
+      '$brewPrefix/opt/jpeg-xl/lib/$baseName',
+      // brotli
+      '$brewPrefix/opt/brotli/lib/$baseName',
+      // libpng
+      '$brewPrefix/opt/libpng/lib/$baseName',
+      // zlib/xz
+      '$brewPrefix/opt/xz/lib/$baseName',
+      // fallback plain lib dir (rare)
+      '$brewPrefix/lib/$baseName',
+    ];
+    for (final p in heuristics) {
+      final f = File(p);
+      if (await f.exists()) return p;
+    }
+    // Scan opt/*/lib for the file (bounded scan to opt only)
+    final optDir = Directory('$brewPrefix/opt');
+    if (await optDir.exists()) {
+      try {
+        await for (final pkg in optDir.list(followLinks: false)) {
+          if (pkg is Directory) {
+            final candidate = File('${pkg.path}/lib/$baseName');
+            if (await candidate.exists()) return candidate.path;
+          }
+        }
+      } catch (_) {}
+    }
+    // As a last resort, scan Cellar/*/*/lib
+    final cellarDir = Directory('$brewPrefix/Cellar');
+    if (await cellarDir.exists()) {
+      try {
+        await for (final pkg in cellarDir.list(followLinks: false)) {
+          if (pkg is Directory) {
+            await for (final ver in pkg.list(followLinks: false)) {
+              if (ver is Directory) {
+                final candidate = File('${ver.path}/lib/$baseName');
+                if (await candidate.exists()) return candidate.path;
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<void> _copyAndRewriteDep(
+    String refererPath,
+    String sourceDepPath,
+    String targetDir,
+    String brewPrefix,
+    Set<String> visited,
+  ) async {
+    try {
+      final srcFile = File(sourceDepPath);
+      if (!await srcFile.exists()) return;
+
+      // Resolve symlinks to get the real file, but keep the basename from the reference
+      String realPath;
+      try {
+        realPath = await srcFile.resolveSymbolicLinks();
+      } catch (_) {
+        realPath = sourceDepPath;
+      }
+
+      final baseName = sourceDepPath.split('/').last; // keep version suffix if any
+      final destPath = '$targetDir/$baseName';
+      if (!visited.add(baseName) && await File(destPath).exists()) {
+        // Already processed
+      } else {
+        print('    📦 Copying dependency $baseName from $realPath');
+        await File(realPath).copy(destPath);
+        // Set the ID of the copied dylib to @rpath/<basename>
+        final idRes = await Process.run('install_name_tool', ['-id', '@rpath/$baseName', destPath]);
+        if (idRes.exitCode != 0) {
+          print('    ⚠️  Failed to set install name for $baseName: ${idRes.stderr}');
+        }
+      }
+
+      // Rewrite the reference in the referer to point to @rpath/<basename>
+      final chRes = await Process.run('install_name_tool', ['-change', sourceDepPath, '@rpath/$baseName', refererPath]);
+      if (chRes.exitCode != 0) {
+        print('    ⚠️  Failed to rewrite reference in ${refererPath.split('/').last} for $baseName: ${chRes.stderr}');
+      } else {
+        print('    🔗 Rewrote ${refererPath.split('/').last}: $sourceDepPath -> @rpath/$baseName');
+      }
+
+      // Recurse to bundle this dependency's own deps
+  await _bundleDepsForFile(destPath, targetDir, brewPrefix, visited);
+    } catch (e) {
+      print('    ⚠️  Failed to copy/rewrite $sourceDepPath for $refererPath: $e');
     }
   }
 
@@ -339,7 +766,17 @@ class NativeDevelopmentBuilder {
         locations.addAll(['example/build/linux/x64/debug/bundle/lib', 'example/build/linux/x64/release/bundle/lib']);
         break;
       case 'macos':
-        locations.addAll(['example/build/macos/Build/Products/Debug', 'example/build/macos/Build/Products/Release']);
+        locations.addAll([
+          // Product roots (legacy fallback)
+          'example/build/macos/Build/Products/Debug',
+          'example/build/macos/Build/Products/Release',
+          // Inside app bundle so dyld can find it
+          'example/build/macos/Build/Products/Debug/example.app/Contents/Frameworks',
+          'example/build/macos/Build/Products/Release/example.app/Contents/Frameworks',
+          // Also allow placement next to executable as a fallback
+          'example/build/macos/Build/Products/Debug/example.app/Contents/MacOS',
+          'example/build/macos/Build/Products/Release/example.app/Contents/MacOS',
+        ]);
         break;
     }
 

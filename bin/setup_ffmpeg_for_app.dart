@@ -239,7 +239,7 @@ class FFMPEGAppSetupTool {
   /// Installs binaries to app build directories
   Future<bool> _installToAppBuildDirs(String sourcePath, PlatformInfo platformInfo) async {
     try {
-      final buildDirs = _getAppBuildDirectories(platformInfo);
+      final buildDirs = await _expandDirectories(_getAppBuildDirectories(platformInfo));
       final expectedLibraries = platformInfo.getExpectedLibraryNames();
 
       for (final buildDir in buildDirs) {
@@ -252,7 +252,11 @@ class FFMPEGAppSetupTool {
 
         // Copy each library file
         for (final libraryName in expectedLibraries) {
-          final sourceFile = File('$sourcePath/$libraryName');
+          // Prefer new structure with lib/ subdir, fall back to legacy
+          File sourceFile = File('$sourcePath/lib/$libraryName');
+          if (!await sourceFile.exists()) {
+            sourceFile = File('$sourcePath/$libraryName');
+          }
           final targetFile = File('$buildDir/$libraryName');
 
           if (await sourceFile.exists()) {
@@ -272,13 +276,48 @@ class FFMPEGAppSetupTool {
     }
   }
 
+  /// Expands any directories containing wildcard segments (e.g. */Contents/Frameworks)
+  Future<List<String>> _expandDirectories(List<String> dirs) async {
+    final results = <String>[];
+    for (final dir in dirs) {
+      if (dir.contains('*')) {
+        final prefix = dir.split('*').first;
+        final suffix = dir.substring(prefix.length + 1); // drop the '*'
+        final base = Directory(prefix);
+        if (await base.exists()) {
+          await for (final entity in base.list()) {
+            if (entity is Directory) {
+              final candidate = Directory(entity.path + suffix);
+              if (await candidate.exists()) {
+                results.add(candidate.path);
+              }
+            }
+          }
+        }
+      } else {
+        results.add(dir);
+      }
+    }
+    return results.toSet().toList();
+  }
+
   /// Gets build directories for the current app
   List<String> _getAppBuildDirectories(PlatformInfo platformInfo) {
     switch (platformInfo.platform) {
       case 'windows':
         return ['build/windows/x64/runner/Debug', 'build/windows/x64/runner/Release'];
       case 'macos':
-        return ['build/macos/Build/Products/Debug', 'build/macos/Build/Products/Release'];
+        return [
+          // Root products directories (legacy)
+          'build/macos/Build/Products/Debug',
+          'build/macos/Build/Products/Release',
+          // App bundle Frameworks (preferred for dylib discovery)
+          'build/macos/Build/Products/Debug/*/Contents/Frameworks',
+          'build/macos/Build/Products/Release/*/Contents/Frameworks',
+          // Next to executable as fallback
+          'build/macos/Build/Products/Debug/*/Contents/MacOS',
+          'build/macos/Build/Products/Release/*/Contents/MacOS',
+        ];
       case 'linux':
         return ['build/linux/x64/debug/bundle/lib', 'build/linux/x64/release/bundle/lib'];
       default:
