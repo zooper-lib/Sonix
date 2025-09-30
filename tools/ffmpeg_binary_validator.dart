@@ -90,8 +90,14 @@ class PlatformInfo {
       case 'linux':
         // Include both generic names (for CMake) and versioned names (for runtime)
         return [
-          'libavformat.so', 'libavcodec.so', 'libavutil.so', 'libswresample.so',
-          'libavformat.so.62', 'libavcodec.so.62', 'libavutil.so.60', 'libswresample.so.6'
+          'libavformat.so',
+          'libavcodec.so',
+          'libavutil.so',
+          'libswresample.so',
+          'libavformat.so.62',
+          'libavcodec.so.62',
+          'libavutil.so.60',
+          'libswresample.so.6',
         ];
       default:
         return [];
@@ -276,8 +282,8 @@ class FFMPEGBinaryValidator {
         result = await Process.run('dumpbin', ['/exports', binaryPath]);
         break;
       case 'macos':
-        // Use nm to get symbols on macOS
-        result = await Process.run('nm', ['-D', binaryPath]);
+        // Use nm to get exported symbols on macOS (-g = external only)
+        result = await Process.run('nm', ['-g', binaryPath]);
         break;
       case 'linux':
         // Use readelf to get symbols on Linux
@@ -363,7 +369,7 @@ class FFMPEGBinaryValidator {
       if (!await File(binaryPath).exists()) {
         binaryPath = '$basePath/$libraryName';
       }
-      
+
       results[libraryName] = await validateBinary(binaryPath);
     }
 
