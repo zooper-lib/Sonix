@@ -127,7 +127,7 @@ class NativeDevelopmentBuilder {
     print('🎉 Development build completed!');
     print('');
     print('Next steps:');
-    print('1. Test your changes with the example app');
+    print('1. Test your changes with the example app (build the app to deploy libraries)');
     print('2. Run unit tests: flutter test');
     print('3. For distribution builds: dart run tools/build_native_for_distribution.dart');
   }
@@ -757,28 +757,8 @@ class NativeDevelopmentBuilder {
     // Test fixtures directory (so native library is co-located with FFMPEG libraries)
     locations.add('test/fixtures/ffmpeg');
 
-    // Example app build directories
-    switch (platform) {
-      case 'windows':
-        locations.addAll(['example/build/windows/x64/runner/Debug', 'example/build/windows/x64/runner/Release']);
-        break;
-      case 'linux':
-        locations.addAll(['example/build/linux/x64/debug/bundle/lib', 'example/build/linux/x64/release/bundle/lib']);
-        break;
-      case 'macos':
-        locations.addAll([
-          // Product roots (legacy fallback)
-          'example/build/macos/Build/Products/Debug',
-          'example/build/macos/Build/Products/Release',
-          // Inside app bundle so dyld can find it
-          'example/build/macos/Build/Products/Debug/example.app/Contents/Frameworks',
-          'example/build/macos/Build/Products/Release/example.app/Contents/Frameworks',
-          // Also allow placement next to executable as a fallback
-          'example/build/macos/Build/Products/Debug/example.app/Contents/MacOS',
-          'example/build/macos/Build/Products/Release/example.app/Contents/MacOS',
-        ]);
-        break;
-    }
+    // Note: Example app build directories are excluded since the needed DLL files
+    // are deployed automatically when the app is built
 
     return locations;
   }
