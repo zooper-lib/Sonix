@@ -284,8 +284,8 @@ class _AudioDecoderPageState extends State<AudioDecoderPage> {
   @override
   void initState() {
     super.initState();
-    // Initialize Sonix instance with mobile configuration for better performance
-    _sonix = Sonix(SonixConfig.mobile());
+    // Initialize Sonix instance with desktop configuration for better performance
+    _sonix = Sonix(SonixConfig.desktop());
   }
 
   @override

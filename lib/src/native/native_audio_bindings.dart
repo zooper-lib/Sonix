@@ -26,7 +26,7 @@ class NativeAudioBindings {
       // Try to initialize FFMPEG backend - REQUIRED for operation
       _initializeFFMPEG();
     } catch (e) {
-      SonixLogger.native('initialization', 'Failed to initialize native audio bindings: ${e.toString()}', level: SonixLogLevel.error);
+      SonixLogger.native('initialization', 'Failed to initialize native audio bindings: ${e.toString()}', level: 2);
       throw FFIException(
         'Failed to initialize native audio bindings',
         'Make sure the native library is built and FFMPEG binaries are installed. '
@@ -60,7 +60,7 @@ class NativeAudioBindings {
         rethrow;
       }
       // FFMPEG libraries not found or other critical error
-      SonixLogger.native('ffmpeg_init', 'FFMPEG libraries not available: ${e.toString()}', level: SonixLogLevel.error);
+      SonixLogger.native('ffmpeg_init', 'FFMPEG libraries not available: ${e.toString()}', level: 2);
       throw FFIException(
         'FFMPEG libraries not available',
         'FFMPEG libraries are required but not found. '
@@ -96,17 +96,17 @@ class NativeAudioBindings {
       try {
         SonixNativeBindings.cleanupFFMPEG();
       } catch (e) {
-        SonixLogger.native('cleanup', 'FFMPEG cleanup error (safe to ignore): ${e.toString()}', level: SonixLogLevel.debug);
+        SonixLogger.native('cleanup', 'FFMPEG cleanup error (safe to ignore): ${e.toString()}', level: 6);
       }
       _ffmpegInitialized = false;
     }
   }
 
   /// Set FFMPEG log level to control verbosity
-  /// 
+  ///
   /// Levels:
   /// * -1 = QUIET (no output)
-  /// * 0 = PANIC (only critical errors) 
+  /// * 0 = PANIC (only critical errors)
   /// * 1 = FATAL
   /// * 2 = ERROR (recommended default, suppresses MP3 format warnings)
   /// * 3 = WARNING (shows all warnings including MP3 format detection)
@@ -118,7 +118,7 @@ class NativeAudioBindings {
     try {
       SonixNativeBindings.setFFMPEGLogLevel(level);
     } catch (e) {
-      SonixLogger.native('setLogLevel', 'Failed to set FFMPEG log level: ${e.toString()}', level: SonixLogLevel.warning);
+      SonixLogger.native('setLogLevel', 'Failed to set FFMPEG log level: ${e.toString()}', level: 3);
     }
   }
 
@@ -131,7 +131,7 @@ class NativeAudioBindings {
     try {
       SonixNativeBindings.setFFMPEGConsoleLogging(enabled ? 1 : 0);
     } catch (e) {
-      SonixLogger.native('setFFMPEGConsoleLogging', 'Failed to update FFmpeg console logging: ${e.toString()}', level: SonixLogLevel.warning);
+      SonixLogger.native('setFFMPEGConsoleLogging', 'Failed to update FFmpeg console logging: ${e.toString()}', level: 3);
     }
   }
 
@@ -265,7 +265,7 @@ class NativeAudioBindings {
       if (e is SonixException) {
         rethrow;
       }
-      SonixLogger.native('decode', 'Native decoding failed: ${e.toString()}', level: SonixLogLevel.error);
+      SonixLogger.native('decode', 'Native decoding failed: ${e.toString()}', level: 2);
       throw DecodingException(
         'Native decoding failed',
         'Error during FFI operation. Ensure FFMPEG libraries are properly installed.\n'
@@ -291,7 +291,7 @@ class NativeAudioBindings {
       }
       return errorPointer.cast<Utf8>().toDartString();
     } catch (e) {
-      SonixLogger.native('error_message', 'Failed to retrieve native error message: ${e.toString()}', level: SonixLogLevel.debug);
+      SonixLogger.native('error_message', 'Failed to retrieve native error message: ${e.toString()}', level: 6);
       return 'Failed to get error message: $e';
     }
   }

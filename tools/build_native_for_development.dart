@@ -424,13 +424,13 @@ class NativeDevelopmentBuilder {
         }
       }
 
-      bool _isSystemLib(String p) {
+      bool isSystemLib(String p) {
         return p.startsWith('/usr/lib/') ||
             p.startsWith('/System/Library/') ||
             p.startsWith('/System/Volumes/Preboot/');
       }
 
-      bool _isFfmpegLibBase(String base) {
+      bool isFfmpegLibBase(String base) {
         return base.startsWith('libav') || base.startsWith('libswresample');
       }
 
@@ -447,12 +447,12 @@ class NativeDevelopmentBuilder {
           continue;
         }
         // Skip already-correct rpath/system libs
-        if (dep.startsWith('@rpath') || _isSystemLib(dep)) continue;
+        if (dep.startsWith('@rpath') || isSystemLib(dep)) continue;
 
         final base = dep.split('/').last;
         final genericBase = base.replaceAll(RegExp(r"\.[0-9]+(?=\.dylib$)"), '');
 
-        if (_isFfmpegLibBase(genericBase)) {
+        if (isFfmpegLibBase(genericBase)) {
           // FFmpeg deps should resolve via @rpath within the bundle
           final newName = '@rpath/$genericBase';
           await Process.run('install_name_tool', ['-change', dep, newName, dylibPath]);
@@ -490,12 +490,12 @@ class NativeDevelopmentBuilder {
               await Process.run('install_name_tool', ['-change', dep, '/usr/lib/libobjc.A.dylib', path]);
               continue;
             }
-            if (dep.startsWith('@rpath') || _isSystemLib(dep)) continue;
+            if (dep.startsWith('@rpath') || isSystemLib(dep)) continue;
 
             final depBase = dep.split('/').last;
             final depGeneric = depBase.replaceAll(RegExp(r"\.[0-9]+(?=\.dylib$)"), '');
 
-            if (_isFfmpegLibBase(depGeneric)) {
+            if (isFfmpegLibBase(depGeneric)) {
               final newDep = '@rpath/$depGeneric';
               await Process.run('install_name_tool', ['-change', dep, newDep, path]);
               continue;

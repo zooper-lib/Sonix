@@ -89,4 +89,4 @@ export 'src/utils/benchmark_result.dart';
 export 'src/utils/platform_validator.dart' show PlatformValidator;
 
 // Logging utilities (for advanced usage and debugging)
-export 'src/utils/sonix_logger.dart' show SonixLogger, SonixLogLevel;
+export 'src/utils/sonix_logger.dart' show SonixLogger;

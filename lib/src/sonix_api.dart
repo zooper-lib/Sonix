@@ -17,6 +17,7 @@ import 'processing/waveform_use_case.dart';
 import 'decoders/audio_decoder_factory.dart';
 import 'exceptions/sonix_exceptions.dart';
 import 'native/native_audio_bindings.dart';
+import 'utils/sonix_logger.dart';
 
 /// Main API class for the Sonix package
 ///
@@ -60,6 +61,8 @@ class Sonix {
   Sonix([SonixConfig? config]) : config = config ?? SonixConfig.defaultConfig() {
     // Configure FFmpeg log level based on config
     _configureLogLevel(this.config.logLevel);
+    // Configure Dart logger to use the same log level
+    SonixLogger.setLogLevel(this.config.logLevel);
     _isolateManager = createIsolateManager();
   }
 
