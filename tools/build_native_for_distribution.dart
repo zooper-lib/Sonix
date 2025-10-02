@@ -185,16 +185,14 @@ class NativeDistributionBuilder {
     final tempBuildDir = 'build/sonix/windows';
     await _createBuildDirectory(tempBuildDir);
 
-    // Configure with CMake
+    // Configure with CMake - use NMake Makefiles for GitHub Actions compatibility
     final configResult = await Process.run('cmake', [
       '-S',
       'native',
       '-B',
       tempBuildDir,
       '-G',
-      'Visual Studio 17 2022',
-      '-A',
-      'x64',
+      'NMake Makefiles',
       '-DCMAKE_BUILD_TYPE=Release',
       '-DFFMPEG_ROOT=build/ffmpeg/windows',
     ]);
@@ -210,8 +208,8 @@ class NativeDistributionBuilder {
       throw Exception('Build failed: ${buildResult.stderr}');
     }
 
-    // Copy from build directory to plugin directory
-    final sourceFile = File('$tempBuildDir/Release/sonix_native.dll');
+    // Copy from build directory to plugin directory (NMake puts output directly in build dir)
+    final sourceFile = File('$tempBuildDir/sonix_native.dll');
     final targetFile = File('windows/sonix_native.dll');
 
     if (await sourceFile.exists()) {
@@ -286,8 +284,10 @@ class NativeDistributionBuilder {
 
     // Configure with CMake
     final configResult = await Process.run('cmake', [
-      '-S', 'native',
-      '-B', tempBuildDir,
+      '-S',
+      'native',
+      '-B',
+      tempBuildDir,
       '-DCMAKE_BUILD_TYPE=Release',
       '-DFFMPEG_ROOT=$ffmpegRoot',
       '-DCMAKE_OSX_ARCHITECTURES=$cmakeArchArg',
@@ -338,12 +338,7 @@ class NativeDistributionBuilder {
   Future<Set<String>> _detectMacOSArchitecturesForFFmpeg(String libDir) async {
     final archs = <String>{};
     try {
-      final candidates = [
-        'libavformat.dylib',
-        'libavcodec.dylib',
-        'libavutil.dylib',
-        'libswresample.dylib',
-      ];
+      final candidates = ['libavformat.dylib', 'libavcodec.dylib', 'libavutil.dylib', 'libswresample.dylib'];
 
       for (final name in candidates) {
         final f = File('$libDir/$name');
