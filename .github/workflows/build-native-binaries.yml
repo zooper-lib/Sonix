@@ -66,15 +66,9 @@ jobs:
           # Fetch full history for proper commits
           fetch-depth: 0
 
-      - name: Setup Dart SDK
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: beta
-
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
           channel: 'stable'
 
       - name: Setup CMake
@@ -107,7 +101,7 @@ jobs:
 
       # Download FFMPEG binaries for the target platform
       - name: Download FFMPEG binaries
-        run: dart run tools/download_ffmpeg_binaries.dart --force
+        run: flutter dart run tools/download_ffmpeg_binaries.dart --force
 
       # Verify FFMPEG installation
       - name: Verify FFMPEG installation
