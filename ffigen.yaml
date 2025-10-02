@@ -1,0 +1,69 @@
+name: SonixNativeBindings
+description: "Native audio decoding bindings for Sonix Flutter package"
+output: "lib/src/native/sonix_bindings.dart"
+
+headers:
+  entry-points:
+    - "native/src/sonix_native.h"
+  include-directives:
+    - "native/src/sonix_native.h"
+
+compiler-opts:
+  - "-Inative/src"
+
+preamble: |
+  // Generated FFI bindings for Sonix native audio library
+  // ignore_for_file: always_specify_types
+  // ignore_for_file: camel_case_types
+  // ignore_for_file: non_constant_identifier_names
+
+comments:
+  style: any
+  length: full
+
+structs:
+  include:
+    - SonixAudioData
+    - SonixFileChunk
+    - SonixAudioChunk
+    - SonixChunkResult
+
+functions:
+  include:
+    - sonix_detect_format
+    - sonix_decode_audio
+    - sonix_free_audio_data
+    - sonix_get_error_message
+    - sonix_init_chunked_decoder
+    - sonix_process_file_chunk
+    - sonix_seek_to_time
+    - sonix_get_optimal_chunk_size
+    - sonix_cleanup_chunked_decoder
+    - sonix_free_chunk_result
+
+enums:
+  include: []
+
+globals:
+  include: []
+
+macros:
+  include:
+    - SONIX_FORMAT_UNKNOWN
+    - SONIX_FORMAT_MP3
+    - SONIX_FORMAT_FLAC
+    - SONIX_FORMAT_WAV
+    - SONIX_FORMAT_OGG
+    - SONIX_FORMAT_OPUS
+    - SONIX_OK
+    - SONIX_ERROR_INVALID_FORMAT
+    - SONIX_ERROR_DECODE_FAILED
+    - SONIX_ERROR_OUT_OF_MEMORY
+    - SONIX_ERROR_INVALID_DATA
+
+type-map:
+  "native-types":
+    "char":
+      "lib": "ffi"
+      "c-type": "Char"
+      "dart-type": "int"

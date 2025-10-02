@@ -1,0 +1,201 @@
+name: Build Native Binaries
+
+on:
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      commit_binaries:
+        description: 'Commit built binaries to repository'
+        required: false
+        default: 'true'
+        type: boolean
+  
+  # Also trigger on pushes to main/development branches
+  push:
+    branches: [main, master, develop, development]
+    paths:
+      - 'native/**'
+      - 'tool/**'
+      - '.github/workflows/build-native-binaries.yml'
+  
+  # And on pull requests to main branches
+  pull_request:
+    branches: [main, master, develop, development]
+    paths:
+      - 'native/**'
+      - 'tool/**'
+      - '.github/workflows/build-native-binaries.yml'
+
+env:
+  # Use the latest stable Dart version that satisfies the project requirements
+  DART_VERSION: 'stable'
+
+jobs:
+  build-native:
+    name: Build ${{ matrix.platform }} binary
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+            binary_name: sonix_native.dll
+            binary_path: windows/sonix_native.dll
+            cmake_generator: "Visual Studio 17 2022"
+            cmake_arch: x64
+            
+          - platform: linux
+            os: ubuntu-latest
+            binary_name: libsonix_native.so
+            binary_path: linux/libsonix_native.so
+            cmake_generator: "Unix Makefiles"
+            
+          - platform: macos
+            os: macos-latest
+            binary_name: libsonix_native.dylib
+            binary_path: macos/libsonix_native.dylib
+            cmake_generator: "Unix Makefiles"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Fetch full history for proper commits
+          fetch-depth: 0
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.16'
+
+      # Platform-specific toolchain setup
+      - name: Setup MSVC (Windows)
+        if: matrix.platform == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install build dependencies (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config
+
+      - name: Setup Xcode (macOS)
+        if: matrix.platform == 'macos'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      # Install Flutter dependencies for the project
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      # Download FFMPEG binaries for the target platform
+      - name: Download FFMPEG binaries
+        run: dart run tool/download_ffmpeg_binaries.dart --force
+
+      # Build the native library for distribution
+      - name: Build native library for distribution
+        run: dart run tool/build_native_for_distribution.dart --platforms current
+
+      # Upload the binary as an artifact (for debugging and manual download)
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonix-native-${{ matrix.platform }}
+          path: ${{ matrix.binary_path }}
+          retention-days: 30
+
+  # Job to commit all built binaries back to the repository
+  commit-binaries:
+    name: Commit built binaries
+    needs: build-native
+    runs-on: ubuntu-latest
+    
+    # Only run if this is a push to main branch or manual trigger with commit enabled
+    if: |
+      (github.event_name == 'push' && contains(fromJson('["main", "master", "develop", "development"]'), github.ref_name)) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.commit_binaries == 'true')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      # Download all the built binaries
+      - name: Download Windows binary
+        uses: actions/download-artifact@v4
+        with:
+          name: sonix-native-windows
+          path: windows/
+
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: sonix-native-linux
+          path: linux/
+
+      - name: Download macOS binary
+        uses: actions/download-artifact@v4
+        with:
+          name: sonix-native-macos
+          path: macos/
+
+      # Verify all binaries are present
+      - name: Verify binaries
+        run: |
+          echo "Checking downloaded binaries..."
+          ls -la windows/sonix_native.dll
+          ls -la linux/libsonix_native.so
+          ls -la macos/libsonix_native.dylib
+          
+          echo "Binary sizes:"
+          du -h windows/sonix_native.dll
+          du -h linux/libsonix_native.so
+          du -h macos/libsonix_native.dylib
+
+      # Configure git for committing
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      # Commit the binaries
+      - name: Commit binaries
+        run: |
+          echo "Checking for changes..."
+          git status
+          
+          echo "Adding binary files..."
+          git add windows/sonix_native.dll
+          git add linux/libsonix_native.so
+          git add macos/libsonix_native.dylib
+          
+          echo "Checking staged changes..."
+          git status
+          git diff --staged --name-only
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit - binaries are already up to date"
+          else
+            echo "Changes detected, committing..."
+            git commit -m "🤖 Update native binaries [skip ci]
+            
+            Built from commit: ${{ github.sha }}
+            Workflow: ${{ github.workflow }}
+            Run: ${{ github.run_id }}"
+            
+            git push
+            echo "✅ Binaries committed and pushed"
+          fi

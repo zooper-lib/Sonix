@@ -1,0 +1,176 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2024-01-01",
+  "platforms": {
+    "windows": {
+      "architecture": "x64",
+      "ffmpeg_version": "6.0",
+      "source": "BtbN/FFmpeg-Builds",
+      "base_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest",
+      "archive_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip",
+      "libraries": {
+        "avformat-60.dll": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip",
+          "checksum": "placeholder_sha256_checksum_1",
+          "size": 1048576,
+          "extract_path": "bin/avformat-60.dll"
+        },
+        "avcodec-60.dll": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip",
+          "checksum": "placeholder_sha256_checksum_2",
+          "size": 8388608,
+          "extract_path": "bin/avcodec-60.dll"
+        },
+        "avutil-58.dll": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip",
+          "checksum": "placeholder_sha256_checksum_3",
+          "size": 524288,
+          "extract_path": "bin/avutil-58.dll"
+        },
+        "swresample-4.dll": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip",
+          "checksum": "placeholder_sha256_checksum_4",
+          "size": 262144,
+          "extract_path": "bin/swresample-4.dll"
+        }
+      },
+      "required_symbols": [
+        "avformat_open_input",
+        "avformat_find_stream_info",
+        "avformat_close_input",
+        "avcodec_find_decoder",
+        "avcodec_alloc_context3",
+        "avcodec_open2",
+        "avcodec_receive_frame",
+        "avcodec_send_packet",
+        "swr_alloc",
+        "swr_init",
+        "swr_convert",
+        "swr_free"
+      ]
+    },
+    "macos": {
+      "architecture": "x64",
+      "ffmpeg_version": "6.0",
+      "source": "evermeet.cx",
+      "base_url": "https://evermeet.cx/ffmpeg",
+      "archive_url": "https://evermeet.cx/ffmpeg/ffmpeg-6.0.zip",
+      "libraries": {
+        "libavformat.dylib": {
+          "url": "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip",
+          "checksum": "placeholder_sha256_checksum_1",
+          "size": 1048576,
+          "extract_path": "libavformat.dylib"
+        },
+        "libavcodec.dylib": {
+          "url": "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip",
+          "checksum": "placeholder_sha256_checksum_2",
+          "size": 8388608,
+          "extract_path": "libavcodec.dylib"
+        },
+        "libavutil.dylib": {
+          "url": "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip",
+          "checksum": "placeholder_sha256_checksum_3",
+          "size": 524288,
+          "extract_path": "libavutil.dylib"
+        },
+        "libswresample.dylib": {
+          "url": "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip",
+          "checksum": "placeholder_sha256_checksum_4",
+          "size": 262144,
+          "extract_path": "libswresample.dylib"
+        }
+      },
+      "required_symbols": [
+        "avformat_open_input",
+        "avformat_find_stream_info",
+        "avformat_close_input",
+        "avcodec_find_decoder",
+        "avcodec_alloc_context3",
+        "avcodec_open2",
+        "avcodec_receive_frame",
+        "avcodec_send_packet",
+        "swr_alloc",
+        "swr_init",
+        "swr_convert",
+        "swr_free"
+      ]
+    },
+    "linux": {
+      "architecture": "x64",
+      "ffmpeg_version": "6.0",
+      "source": "BtbN/FFmpeg-Builds",
+      "base_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest",
+      "archive_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+      "libraries": {
+        "libavformat.so.62": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_1",
+          "size": 1048576,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100"
+        },
+        "libavcodec.so.62": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_2",
+          "size": 8388608,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.16.100"
+        },
+        "libavutil.so.60": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_3",
+          "size": 524288,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.13.100"
+        },
+        "libswresample.so.6": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_4",
+          "size": 262144,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.2.100"
+        },
+        "libavformat.so": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_1",
+          "size": 1048576,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100"
+        },
+        "libavcodec.so": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_2",
+          "size": 8388608,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.16.100"
+        },
+        "libavutil.so": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_3",
+          "size": 524288,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.13.100"
+        },
+        "libswresample.so": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_4",
+          "size": 262144,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.2.100"
+        }
+      },
+      "required_symbols": [
+        "avformat_open_input",
+        "avformat_find_stream_info",
+        "avformat_close_input",
+        "avcodec_find_decoder",
+        "avcodec_alloc_context3",
+        "avcodec_open2",
+        "avcodec_receive_frame",
+        "avcodec_send_packet",
+        "swr_alloc",
+        "swr_init",
+        "swr_convert",
+        "swr_free"
+      ]
+    }
+  },
+  "notes": {
+    "checksum_update": "Checksums should be updated when new binary versions are released",
+    "url_stability": "URLs may change - monitor source repositories for updates",
+    "testing": "All binary sources should be tested before updating this configuration"
+  }
+}
