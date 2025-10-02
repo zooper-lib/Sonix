@@ -138,19 +138,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: sonix-native-windows
-          path: ./
+          path: windows/
 
       - name: Download Linux binary
         uses: actions/download-artifact@v4
         with:
           name: sonix-native-linux
-          path: ./
+          path: linux/
 
       - name: Download macOS binary
         uses: actions/download-artifact@v4
         with:
           name: sonix-native-macos
-          path: ./
+          path: macos/
 
       # Verify all binaries are present
       - name: Verify binaries
