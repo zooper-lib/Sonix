@@ -185,14 +185,14 @@ class NativeDistributionBuilder {
     final tempBuildDir = 'build/sonix/windows';
     await _createBuildDirectory(tempBuildDir);
 
-    // Configure with CMake
+    // Configure with CMake - use Visual Studio 2019 for GitHub Actions compatibility
     final configResult = await Process.run('cmake', [
       '-S',
       'native',
       '-B',
       tempBuildDir,
       '-G',
-      'Visual Studio 17 2022',
+      'Visual Studio 16 2019',
       '-A',
       'x64',
       '-DCMAKE_BUILD_TYPE=Release',
@@ -286,8 +286,10 @@ class NativeDistributionBuilder {
 
     // Configure with CMake
     final configResult = await Process.run('cmake', [
-      '-S', 'native',
-      '-B', tempBuildDir,
+      '-S',
+      'native',
+      '-B',
+      tempBuildDir,
       '-DCMAKE_BUILD_TYPE=Release',
       '-DFFMPEG_ROOT=$ffmpegRoot',
       '-DCMAKE_OSX_ARCHITECTURES=$cmakeArchArg',
@@ -338,12 +340,7 @@ class NativeDistributionBuilder {
   Future<Set<String>> _detectMacOSArchitecturesForFFmpeg(String libDir) async {
     final archs = <String>{};
     try {
-      final candidates = [
-        'libavformat.dylib',
-        'libavcodec.dylib',
-        'libavutil.dylib',
-        'libswresample.dylib',
-      ];
+      final candidates = ['libavformat.dylib', 'libavcodec.dylib', 'libavutil.dylib', 'libswresample.dylib'];
 
       for (final name in candidates) {
         final f = File('$libDir/$name');
