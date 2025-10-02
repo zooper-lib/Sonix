@@ -38,7 +38,7 @@ void main() {
       // Ensure test data is available
       final hasSmallFile = await TestDataLoader.assetExists('mono_44100.wav');
       if (!hasSmallFile) {
-        fail('Test data not found. Please run: dart run tools/test_data_generator.dart --essential');
+        fail('Test data not found. Please run: dart run tool/test_data_generator.dart --essential');
       }
     });
 
@@ -49,7 +49,7 @@ void main() {
       // Check required files
       for (final file in requiredFiles) {
         final exists = await TestDataLoader.assetExists(file);
-        expect(exists, isTrue, reason: 'Required test file $file not found. Run: dart run tools/test_data_generator.dart --essential');
+        expect(exists, isTrue, reason: 'Required test file $file not found. Run: dart run tool/test_data_generator.dart --essential');
       }
 
       // Report on optional files

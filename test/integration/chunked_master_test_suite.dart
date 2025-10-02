@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 // Import all test suites
-import '../../tools/test_data_generator.dart';
+import '../../tool/test_data_generator.dart';
 
 /// Master integration test suite for chunked audio processing testing
 ///
@@ -453,4 +453,3 @@ class QualityResult {
 
   QualityResult({required this.testReliability, required this.testMaintainability});
 }
-

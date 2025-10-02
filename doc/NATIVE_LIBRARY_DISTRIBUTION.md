@@ -75,8 +75,8 @@ Pre-compiled `sonix_native` libraries are placed in platform-specific locations:
 
 ### For Package Developers
 
-1. **Download FFMPEG**: `dart run tools/download_ffmpeg_binaries.dart`
-2. **Build Native Libraries**: `dart run tools/build_native_for_distribution.dart --platforms all`
+1. **Download FFMPEG**: `dart run tool/download_ffmpeg_binaries.dart`
+2. **Build Native Libraries**: `dart run tool/build_native_for_distribution.dart --platforms all`
 3. **Publish Package**: Libraries are automatically included
 
 ### For End Users
@@ -160,13 +160,13 @@ cd sonix
 flutter pub get
 
 # Download FFMPEG for development
-dart run tools/download_ffmpeg_binaries.dart
+dart run tool/download_ffmpeg_binaries.dart
 
 # Quick development build (for testing)
-dart run tools/build_native_for_development.dart
+dart run tool/build_native_for_development.dart
 
 # OR build for distribution (for releases)
-dart run tools/build_native_for_distribution.dart --platforms all
+dart run tool/build_native_for_distribution.dart --platforms all
 ```
 
 ### Testing

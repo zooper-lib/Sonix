@@ -550,14 +550,14 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 1. Clone the repository
 2. Run `flutter pub get`
-3. **Install FFMPEG binaries for development**: `dart run tools/download_ffmpeg_binaries.dart`
-4. **Build native library for testing**: `dart run tools/build_native_for_development.dart`
+3. **Install FFMPEG binaries for development**: `dart run tool/download_ffmpeg_binaries.dart`
+4. **Build native library for testing**: `dart run tool/build_native_for_development.dart`
 5. Run tests: `flutter test`
 6. Run example: `cd example && flutter run`
 
 **Note for Contributors**: 
-- Use `dart run tools/build_native_for_development.dart` for quick development builds
-- Use `dart run tools/build_native_for_distribution.dart` for release builds
+- Use `dart run tool/build_native_for_development.dart` for quick development builds
+- Use `dart run tool/build_native_for_distribution.dart` for release builds
 - End users should use `dart run sonix:setup_ffmpeg_for_app` in their own apps
 
 ## License

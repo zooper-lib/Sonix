@@ -2,7 +2,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import '../../tools/ffmpeg_binary_downloader.dart';
+import '../../tool/ffmpeg_binary_downloader.dart';
 
 void main() {
   group('FFMPEG Download Integration Tests', () {

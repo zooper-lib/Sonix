@@ -21,7 +21,7 @@ void main() {
         throw StateError(
           'FFMPEG not available - required for chunked processing tests. '
           'To set up FFMPEG for testing, run: '
-          'dart run tools/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install',
+          'dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install',
         );
       }
 
@@ -167,11 +167,7 @@ void main() {
                   final chunkResult = result.ref;
 
                   // Check if processing was successful
-                  expect(
-                    chunkResult.success,
-                    equals(1),
-                    reason: 'Chunk processing should succeed',
-                  );
+                  expect(chunkResult.success, equals(1), reason: 'Chunk processing should succeed');
 
                   if (chunkResult.success == 1 && chunkResult.audio_data != ffi.nullptr) {
                     final audioData = chunkResult.audio_data.ref;

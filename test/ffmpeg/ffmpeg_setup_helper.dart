@@ -53,7 +53,7 @@ class FFMPEGSetupHelper {
       print('⚠️ FFMPEG fixtures directory not found: ${fixturesDir.path}');
       print('   FFMPEG tests will be skipped.');
       print('   To set up FFMPEG for testing, run:');
-      print('   dart run tools/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
+      print('   dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
       return false;
     }
 
@@ -104,7 +104,7 @@ class FFMPEGSetupHelper {
         print('   Available core: ${availableCoreFiles.join(', ')}');
       }
       print('   To download missing libraries, run:');
-      print('   dart run tools/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
+      print('   dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
     }
 
     _setupComplete = true;
@@ -256,7 +256,7 @@ class FFMPEGSetupHelper {
     if (!available) {
       print('');
       print('To set up FFMPEG for testing:');
-      print('1. Run: dart run tools/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
+      print('1. Run: dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
       print('2. Or manually place the following libraries in test/fixtures/ffmpeg/:');
       for (final library in requiredLibraries) {
         print('   - $library');

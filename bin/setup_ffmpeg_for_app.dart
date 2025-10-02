@@ -3,8 +3,8 @@
 
 import 'dart:io';
 import 'dart:async';
-import '../tools/ffmpeg_binary_downloader.dart';
-import '../tools/ffmpeg_binary_validator.dart';
+import '../tool/ffmpeg_binary_downloader.dart';
+import '../tool/ffmpeg_binary_validator.dart';
 
 /// FFMPEG Setup Tool for Sonix End Users
 ///

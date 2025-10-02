@@ -3,7 +3,7 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
-import '../../tools/ffmpeg_binary_downloader.dart';
+import '../../tool/ffmpeg_binary_downloader.dart';
 import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 /// Integration tests for Flutter build system with FFMPEG binary integration
@@ -172,7 +172,7 @@ void main() {
         final ffmpegAvailable = FFMPEGSetupHelper.areFFMPEGLibrariesAvailable();
         if (!ffmpegAvailable) {
           print('⚠️ Skipping compilation test - FFMPEG libraries not available');
-          print('   Run: dart run tools/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
+          print('   Run: dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
           return;
         }
 
@@ -447,7 +447,7 @@ Future<Map<String, dynamic>> _testFFMPEGInitialization() async {
     if (ffmpegAvailable) {
       return {'success': true};
     } else {
-      return {'success': false, 'error': 'FFMPEG libraries not found. Please run: dart run tools/download_ffmpeg_binaries.dart'};
+      return {'success': false, 'error': 'FFMPEG libraries not found. Please run: dart run tool/download_ffmpeg_binaries.dart'};
     }
   } catch (e) {
     return {'success': false, 'error': 'FFMPEG initialization failed: $e'};

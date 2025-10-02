@@ -2,7 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import '../../tools/test_data_generator.dart';
+import '../../tool/test_data_generator.dart';
 
 /// Integration test suite for chunked audio processing
 ///
@@ -277,4 +277,3 @@ void main() {
     });
   });
 }
-

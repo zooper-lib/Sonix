@@ -5,7 +5,7 @@ import 'package:sonix/src/processing/waveform_use_case.dart';
 import 'package:sonix/src/processing/downsampling_algorithm.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/models/waveform_type.dart';
-import '../../tools/test_data_generator.dart';
+import '../../tool/test_data_generator.dart';
 import 'dart:math' as math;
 
 void main() {
