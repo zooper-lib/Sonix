@@ -95,11 +95,13 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      # Install Dart dependencies for the project
+      - name: Install Dart dependencies
+        run: dart pub get
+
       # Download FFMPEG binaries for the target platform
       - name: Download FFMPEG binaries
-        run: |
-          cd tools
-          dart download_ffmpeg_binaries.dart --platform ${{ matrix.platform }} --verbose
+        run: dart run tools/download_ffmpeg_binaries.dart --force
 
       # Verify FFMPEG installation
       - name: Verify FFMPEG installation
