@@ -103,47 +103,9 @@ jobs:
       - name: Download FFMPEG binaries
         run: dart run tools/download_ffmpeg_binaries.dart --force
 
-      # Build the native library
-      - name: Build native library
-        run: |
-          cd native
-          mkdir -p build/${{ matrix.platform }}
-          cd build/${{ matrix.platform }}
-          
-          # Configure CMake with platform-specific settings
-          cmake ../.. \
-            -G "${{ matrix.cmake_generator }}" \
-            ${{ matrix.cmake_arch && format('-A {0}', matrix.cmake_arch) || '' }} \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DFFMPEG_ROOT=../../${{ matrix.platform }}
-          
-          # Build the library
-          cmake --build . --config Release
-        shell: bash
-
-      # Copy the built binary to the correct location
-      - name: Copy binary to platform directory
-        run: |
-          # Find and copy the built binary
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            # Windows builds typically output to Release subfolder
-            find native/build/${{ matrix.platform }} -name "${{ matrix.binary_name }}" -exec cp {} ${{ matrix.binary_path }} \;
-          else
-            # Unix-like systems
-            find native/build/${{ matrix.platform }} -name "${{ matrix.binary_name }}" -exec cp {} ${{ matrix.binary_path }} \;
-          fi
-          
-          # Verify the binary was copied
-          if [ -f "${{ matrix.binary_path }}" ]; then
-            echo "✅ Binary built successfully: ${{ matrix.binary_path }}"
-            ls -la ${{ matrix.binary_path }}
-          else
-            echo "❌ Binary not found at expected location: ${{ matrix.binary_path }}"
-            echo "Contents of build directory:"
-            find native/build/${{ matrix.platform }} -type f -name "*sonix*" || true
-            exit 1
-          fi
-        shell: bash
+      # Build the native library for distribution
+      - name: Build native library for distribution
+        run: dart run tools/build_native_for_distribution.dart --platforms current
 
       # Upload the binary as an artifact (for debugging and manual download)
       - name: Upload binary artifact
