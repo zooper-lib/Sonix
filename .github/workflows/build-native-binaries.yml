@@ -101,7 +101,7 @@ jobs:
 
       # Download FFMPEG binaries for the target platform
       - name: Download FFMPEG binaries
-        run: flutter dart run tools/download_ffmpeg_binaries.dart --force
+        run: dart run tools/download_ffmpeg_binaries.dart --force
 
       # Verify FFMPEG installation
       - name: Verify FFMPEG installation
