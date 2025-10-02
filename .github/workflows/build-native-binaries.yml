@@ -103,19 +103,6 @@ jobs:
       - name: Download FFMPEG binaries
         run: dart run tools/download_ffmpeg_binaries.dart --force
 
-      # Verify FFMPEG installation
-      - name: Verify FFMPEG installation
-        run: |
-          echo "Checking FFMPEG installation for ${{ matrix.platform }}..."
-          ls -la native/${{ matrix.platform }}/
-          if [ -d "native/${{ matrix.platform }}/lib" ]; then
-            ls -la native/${{ matrix.platform }}/lib/
-          fi
-          if [ -d "native/${{ matrix.platform }}/include" ]; then
-            ls -la native/${{ matrix.platform }}/include/
-          fi
-        shell: bash
-
       # Build the native library
       - name: Build native library
         run: |
