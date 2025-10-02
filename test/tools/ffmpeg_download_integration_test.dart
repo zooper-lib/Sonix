@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_print
 
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import '../../tools/ffmpeg_binary_downloader.dart';
 

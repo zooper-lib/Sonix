@@ -1,12 +1,24 @@
 // ignore_for_file: avoid_print
 
 import 'dart:ffi';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:ffi/ffi.dart';
 
 import 'package:sonix/src/native/sonix_bindings.dart';
+import 'ffmpeg_setup_helper.dart';
 
 void main() {
+  setUpAll(() async {
+    // Setup FFMPEG libraries and native library in test fixtures
+    final ffmpegReady = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+    if (!ffmpegReady) {
+      print('⚠️ FFMPEG libraries not available - some tests may be skipped');
+    }
+  });
+
+  tearDownAll(() async {
+    await FFMPEGSetupHelper.cleanupFFMPEGAfterTesting();
+  });
   group('FFMPEG Initialization Tests', () {
     test('should initialize FFMPEG successfully', () {
       print('Attempting to initialize FFMPEG...');

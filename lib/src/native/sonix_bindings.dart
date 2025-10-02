@@ -6,6 +6,8 @@
 import 'dart:ffi' as ffi;
 import 'dart:io';
 
+import 'package:sonix/src/utils/sonix_logger.dart';
+
 /// Audio format constants
 const int SONIX_FORMAT_UNKNOWN = 0;
 const int SONIX_FORMAT_MP3 = 1;
@@ -74,31 +76,22 @@ final class SonixMp3DebugStats extends ffi.Struct {
 
 /// Chunked processing structures
 final class SonixFileChunk extends ffi.Struct {
-  external ffi.Pointer<ffi.Uint8> data;
-  @ffi.Size()
-  external int size;
   @ffi.Uint64()
-  external int position;
-  @ffi.Int32()
-  external int is_last;
-}
-
-final class SonixAudioChunk extends ffi.Struct {
-  external ffi.Pointer<ffi.Float> samples;
+  external int start_byte;
+  @ffi.Uint64()
+  external int end_byte;
   @ffi.Uint32()
-  external int sample_count;
-  @ffi.Uint64()
-  external int start_sample;
-  @ffi.Int32()
-  external int is_last;
+  external int chunk_index;
 }
 
 final class SonixChunkResult extends ffi.Struct {
-  external ffi.Pointer<SonixAudioChunk> chunks;
+  external ffi.Pointer<SonixAudioData> audio_data;
   @ffi.Uint32()
-  external int chunk_count;
-  @ffi.Int32()
-  external int error_code;
+  external int chunk_index;
+  @ffi.Uint8()
+  external int is_final_chunk;
+  @ffi.Uint8()
+  external int success;
   external ffi.Pointer<ffi.Char> error_message;
 }
 
@@ -157,6 +150,14 @@ typedef SonixCleanupFFMPEGNative = ffi.Void Function();
 
 typedef SonixCleanupFFMPEGDart = void Function();
 
+typedef SonixSetFFMPEGLogLevelNative = ffi.Void Function(ffi.Int32 level);
+
+typedef SonixSetFFMPEGLogLevelDart = void Function(int level);
+
+typedef SonixSetFFMPEGConsoleLoggingNative = ffi.Void Function(ffi.Int32 enabled);
+
+typedef SonixSetFFMPEGConsoleLoggingDart = void Function(int enabled);
+
 /// Native library bindings
 class SonixNativeBindings {
   static ffi.DynamicLibrary? _lib;
@@ -170,6 +171,18 @@ class SonixNativeBindings {
     if (Platform.isAndroid) {
       _lib = ffi.DynamicLibrary.open('lib$libName.so');
     } else if (Platform.isIOS || Platform.isMacOS) {
+      // Try test fixtures directory first (for tests)
+      try {
+        final currentDir = Directory.current.path;
+        final testFixturesPath = '$currentDir/test/fixtures/ffmpeg/lib$libName.dylib';
+        if (File(testFixturesPath).existsSync()) {
+          _lib = ffi.DynamicLibrary.open(testFixturesPath);
+          return _lib!;
+        }
+      } catch (e) {
+        // Continue to standard approach
+      }
+
       _lib = ffi.DynamicLibrary.open('lib$libName.dylib');
     } else if (Platform.isWindows) {
       // Try multiple locations for Windows DLL loading
@@ -180,7 +193,21 @@ class SonixNativeBindings {
         _lib = ffi.DynamicLibrary.open('$libName.dll');
         return _lib!;
       } catch (e) {
+        SonixLogger.debug('Standard Windows DLL loading failed: $e');
         firstException = e;
+      }
+
+      // Try test fixtures directory (for tests)
+      try {
+        final currentDir = Directory.current.path;
+        final testFixturesPath = '$currentDir\\test\\fixtures\\ffmpeg\\$libName.dll';
+        if (File(testFixturesPath).existsSync()) {
+          _lib = ffi.DynamicLibrary.open(testFixturesPath);
+          return _lib!;
+        }
+      } catch (e) {
+        SonixLogger.debug('Windows test fixtures library not found: $e');
+        // Continue to next attempt
       }
 
       // Try with full path from current directory
@@ -190,6 +217,7 @@ class SonixNativeBindings {
         _lib = ffi.DynamicLibrary.open(dllPath);
         return _lib!;
       } catch (e) {
+        SonixLogger.debug('Windows current directory library loading failed: $e');
         // Continue to next attempt
       }
 
@@ -201,10 +229,24 @@ class SonixNativeBindings {
         _lib = ffi.DynamicLibrary.open(dllPath);
         return _lib!;
       } catch (e) {
+        SonixLogger.error('All Windows library loading attempts failed. First error: $firstException');
         // All attempts failed, throw the first exception
         throw firstException;
       }
     } else if (Platform.isLinux) {
+      // Try test fixtures directory first (for tests)
+      try {
+        final currentDir = Directory.current.path;
+        final testFixturesPath = '$currentDir/test/fixtures/ffmpeg/lib$libName.so';
+        if (File(testFixturesPath).existsSync()) {
+          _lib = ffi.DynamicLibrary.open(testFixturesPath);
+          return _lib!;
+        }
+      } catch (e) {
+        SonixLogger.debug('Linux test fixtures library not found: $e');
+        // Continue to standard approach
+      }
+
       _lib = ffi.DynamicLibrary.open('lib$libName.so');
     } else {
       throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
@@ -272,11 +314,22 @@ class SonixNativeBindings {
   /// Cleanup FFMPEG backend resources
   static final SonixCleanupFFMPEGDart cleanupFFMPEG = lib.lookup<ffi.NativeFunction<SonixCleanupFFMPEGNative>>('sonix_cleanup_ffmpeg').asFunction();
 
+  /// Set FFMPEG log level (-1=QUIET, 0=PANIC, 1=FATAL, 2=ERROR, 3=WARNING, 4=INFO, 5=VERBOSE, 6=DEBUG)
+  static final SonixSetFFMPEGLogLevelDart setFFMPEGLogLevel = lib
+      .lookup<ffi.NativeFunction<SonixSetFFMPEGLogLevelNative>>('sonix_set_ffmpeg_log_level')
+      .asFunction();
+
+  /// Enable/disable forwarding FFmpeg logs to the console (stderr). Disabled by default.
+  static final SonixSetFFMPEGConsoleLoggingDart setFFMPEGConsoleLogging = lib
+    .lookup<ffi.NativeFunction<SonixSetFFMPEGConsoleLoggingNative>>('sonix_set_ffmpeg_console_logging')
+    .asFunction();
+
   /// Check if FFMPEG backend is available and initialized
   static bool get isFFMPEGAvailable {
     try {
       return getBackendType() == SONIX_BACKEND_FFMPEG;
     } catch (e) {
+      SonixLogger.debug('FFMPEG backend availability check failed: $e');
       return false;
     }
   }

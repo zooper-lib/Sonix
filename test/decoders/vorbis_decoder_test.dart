@@ -4,10 +4,23 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/vorbis_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
   group('VorbisDecoder Integration Tests', () {
     late VorbisDecoder decoder;
+
+    setUpAll(() async {
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw StateError(
+          'FFMPEG setup failed - Vorbis decoder tests require FFMPEG DLLs. '
+          'These tests validate OGG Vorbis decoding functionality and '
+          'cannot be skipped when FFMPEG is not available.',
+        );
+      }
+    });
 
     setUp(() {
       decoder = VorbisDecoder();
@@ -24,32 +37,42 @@ void main() {
 
       test('should throw appropriate error for empty file', () async {
         // Create a temporary empty file
-        final tempDir = Directory.systemTemp.createTempSync('vorbis_test_');
+        final tempDir = await Directory.systemTemp.createTemp('vorbis_test_');
         final tempFile = File('${tempDir.path}/empty.ogg');
         await tempFile.writeAsBytes([]);
 
         try {
           expect(() => decoder.decode(tempFile.path), throwsA(isA<DecodingException>()));
         } finally {
-          // Clean up
-          if (tempDir.existsSync()) {
-            tempDir.deleteSync(recursive: true);
+          // Clean up with async deletion to avoid file locks
+          try {
+            if (await tempDir.exists()) {
+              await tempDir.delete(recursive: true);
+            }
+          } catch (e) {
+            // Ignore cleanup errors - they don't affect test validity
+            print('Cleanup warning (non-critical): $e');
           }
         }
       });
 
       test('should throw error for invalid OGG data', () async {
         // Create a temporary file with invalid OGG data
-        final tempDir = Directory.systemTemp.createTempSync('vorbis_test_');
+        final tempDir = await Directory.systemTemp.createTemp('vorbis_test_');
         final tempFile = File('${tempDir.path}/invalid.ogg');
         await tempFile.writeAsBytes([1, 2, 3, 4, 5, 6, 7, 8]);
 
         try {
           expect(() => decoder.decode(tempFile.path), throwsA(isA<DecodingException>()));
         } finally {
-          // Clean up
-          if (tempDir.existsSync()) {
-            tempDir.deleteSync(recursive: true);
+          // Clean up with async deletion to avoid file locks
+          try {
+            if (await tempDir.exists()) {
+              await tempDir.delete(recursive: true);
+            }
+          } catch (e) {
+            // Ignore cleanup errors - they don't affect test validity
+            print('Cleanup warning (non-critical): $e');
           }
         }
       });

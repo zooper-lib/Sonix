@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'sonix_logger.dart';
+
 /// Callback function type for memory pressure events
 typedef MemoryPressureCallback = void Function();
 
@@ -160,7 +162,7 @@ class MemoryManager {
       try {
         callback();
       } catch (e) {
-        // Ignore callback errors to prevent cascading failures
+        SonixLogger.debug('Memory pressure callback failed: ${e.toString()}');
       }
     }
   }
@@ -171,7 +173,7 @@ class MemoryManager {
       try {
         callback();
       } catch (e) {
-        // Ignore callback errors to prevent cascading failures
+        SonixLogger.debug('Critical memory callback failed: ${e.toString()}');
       }
     }
   }

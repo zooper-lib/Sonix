@@ -2,7 +2,7 @@
 
 import 'dart:ffi';
 import 'dart:typed_data';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:ffi/ffi.dart';
 
 import 'audio_test_data_manager.dart';
@@ -168,6 +168,31 @@ void main() {
 
           expect(detectedFormat, equals(expected['format']), reason: 'MP4 format should be detected correctly');
           expect(detectedFormat, equals(SONIX_FORMAT_MP4), reason: 'Should return MP4 format constant');
+        } finally {
+          malloc.free(dataPtr);
+        }
+      });
+
+      test('should detect Opus format correctly', () async {
+        const testKey = 'opus_sample';
+
+        if (!await AudioTestDataManager.testFileExists(testKey)) {
+          print('Skipping Opus format detection test - file not found');
+          return;
+        }
+
+        final opusData = await AudioTestDataManager.loadTestFile(testKey);
+        final expected = AudioTestDataManager.getExpectedResults(testKey);
+
+        final dataPtr = malloc<Uint8>(opusData.length);
+        final dataList = dataPtr.asTypedList(opusData.length);
+        dataList.setAll(0, opusData);
+
+        try {
+          final detectedFormat = SonixNativeBindings.detectFormat(dataPtr, opusData.length);
+
+          expect(detectedFormat, equals(expected['format']), reason: 'Opus format should be detected correctly');
+          expect(detectedFormat, equals(SONIX_FORMAT_OPUS), reason: 'Should return OPUS format constant (enhanced detection identifies Opus codec)');
         } finally {
           malloc.free(dataPtr);
         }

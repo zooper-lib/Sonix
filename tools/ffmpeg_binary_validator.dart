@@ -74,11 +74,35 @@ class PlatformInfo {
   }
 
   static String _detectArchitecture() {
-    // Simple architecture detection - can be enhanced
-    if (Platform.environment['PROCESSOR_ARCHITECTURE'] == 'AMD64' || Platform.environment['PROCESSOR_ARCHITEW6432'] == 'AMD64') {
-      return 'x64';
+    try {
+      // Windows: use environment variables
+      if (Platform.isWindows) {
+        final env = Platform.environment;
+        final arch = (env['PROCESSOR_ARCHITECTURE'] ?? env['PROCESSOR_ARCHITEW6432'] ?? '').toLowerCase();
+        if (arch.contains('arm64') || arch.contains('aarch64')) return 'arm64';
+        if (arch.contains('amd64') || arch.contains('x86_64') || arch.contains('x64')) return 'x64';
+        if (arch.contains('x86') || arch.contains('i386') || arch.contains('i686')) return 'x86';
+      }
+
+      // macOS/Linux: use uname -m
+      if (Platform.isMacOS || Platform.isLinux) {
+        final result = Process.runSync('uname', ['-m']);
+        if (result.exitCode == 0) {
+          final m = (result.stdout as String).trim().toLowerCase();
+          if (m.contains('arm64') || m.contains('aarch64')) return 'arm64';
+          if (m.contains('x86_64') || m.contains('amd64')) return 'x64';
+          if (m.contains('i386') || m.contains('i686') || m == 'x86') return 'x86';
+        }
+      }
+    } catch (_) {
+      // ignore and fall through to fallback
     }
-    return 'x64'; // Default assumption
+
+    // Fallback: try to infer from Dart runtime string, else default to x64
+    final v = Platform.version.toLowerCase();
+    if (v.contains('arm64') || v.contains('aarch64')) return 'arm64';
+    if (v.contains('x86_64') || v.contains('amd64')) return 'x64';
+    return 'x64';
   }
 
   List<String> getExpectedLibraryNames() {
@@ -88,7 +112,17 @@ class PlatformInfo {
       case 'macos':
         return ['libavformat.dylib', 'libavcodec.dylib', 'libavutil.dylib', 'libswresample.dylib'];
       case 'linux':
-        return ['libavformat.so', 'libavcodec.so', 'libavutil.so', 'libswresample.so'];
+        // Include both generic names (for CMake) and versioned names (for runtime)
+        return [
+          'libavformat.so',
+          'libavcodec.so',
+          'libavutil.so',
+          'libswresample.so',
+          'libavformat.so.62',
+          'libavcodec.so.62',
+          'libavutil.so.60',
+          'libswresample.so.6',
+        ];
       default:
         return [];
     }
@@ -272,8 +306,8 @@ class FFMPEGBinaryValidator {
         result = await Process.run('dumpbin', ['/exports', binaryPath]);
         break;
       case 'macos':
-        // Use nm to get symbols on macOS
-        result = await Process.run('nm', ['-D', binaryPath]);
+        // Use nm to get exported symbols on macOS (-g = external only)
+        result = await Process.run('nm', ['-g', binaryPath]);
         break;
       case 'linux':
         // Use readelf to get symbols on Linux
@@ -354,7 +388,12 @@ class FFMPEGBinaryValidator {
     final expectedLibraries = platformInfo.getExpectedLibraryNames();
 
     for (final libraryName in expectedLibraries) {
-      final binaryPath = '$basePath/$libraryName';
+      // Try lib/ subdirectory first (new structure), then direct path (legacy)
+      String binaryPath = '$basePath/lib/$libraryName';
+      if (!await File(binaryPath).exists()) {
+        binaryPath = '$basePath/$libraryName';
+      }
+
       results[libraryName] = await validateBinary(binaryPath);
     }
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:sonix/src/native/native_audio_bindings.dart';
+import 'package:sonix/src/utils/sonix_logger.dart';
 
 /// Validates cross-platform compatibility and native library availability
 class PlatformValidator {
@@ -61,6 +62,7 @@ class PlatformValidator {
         issues.add(ValidationIssue(type: ValidationIssueType.ffiError, message: 'FFI functionality test failed', severity: ValidationSeverity.critical));
       }
     } catch (e) {
+      SonixLogger.error('FFI validation failed', e);
       issues.add(ValidationIssue(type: ValidationIssueType.ffiError, message: 'FFI not available: $e', severity: ValidationSeverity.critical));
     }
 
@@ -104,6 +106,7 @@ class PlatformValidator {
 
       return FormatSupportResult(format: format, isSupported: true, reason: 'Format fully supported');
     } catch (e) {
+      SonixLogger.warning('Format support validation failed for $format: $e');
       return FormatSupportResult(format: format, isSupported: false, reason: 'Validation error: $e');
     }
   }
@@ -187,6 +190,7 @@ class PlatformValidator {
         }
       }
     } catch (e) {
+      SonixLogger.error('Native library validation failed', e);
       issues.add(ValidationIssue(type: ValidationIssueType.libraryError, message: 'Error testing native libraries: $e', severity: ValidationSeverity.high));
     }
 
@@ -234,6 +238,7 @@ class PlatformValidator {
       // Clean up
       await testFile.delete();
     } catch (e) {
+      SonixLogger.warning('File system access test failed: $e');
       issues.add(ValidationIssue(type: ValidationIssueType.fileSystemError, message: 'File system access test failed: $e', severity: ValidationSeverity.high));
     }
 
@@ -249,6 +254,7 @@ class PlatformValidator {
       final supportedFormats = ['mp3', 'wav', 'flac', 'ogg', 'opus'];
       return supportedFormats.contains(format);
     } catch (e) {
+      SonixLogger.debug('Format decoder validation failed for $format: $e');
       return false;
     }
   }

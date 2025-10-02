@@ -56,6 +56,11 @@ void main() {
           expect(AudioDecoderFactory.detectFormat('test.OGG'), equals(AudioFormat.ogg));
         });
 
+        test('should detect Opus format by extension', () {
+          expect(AudioDecoderFactory.detectFormat('test.opus'), equals(AudioFormat.opus));
+          expect(AudioDecoderFactory.detectFormat('test.OPUS'), equals(AudioFormat.opus));
+        });
+
         test('should detect MP4/M4A format by extension', () {
           expect(AudioDecoderFactory.detectFormat('test.mp4'), equals(AudioFormat.mp4));
           expect(AudioDecoderFactory.detectFormat('test.MP4'), equals(AudioFormat.mp4));
@@ -103,6 +108,11 @@ void main() {
         test('should detect supported OGG formats', () {
           expect(AudioDecoderFactory.isFormatSupported('test.ogg'), isTrue);
           expect(AudioDecoderFactory.isFormatSupported('test.OGG'), isTrue);
+        });
+
+        test('should detect supported Opus formats', () {
+          expect(AudioDecoderFactory.isFormatSupported('test.opus'), isTrue);
+          expect(AudioDecoderFactory.isFormatSupported('test.OPUS'), isTrue);
         });
 
         test('should detect supported MP4/M4A formats', () {
@@ -171,6 +181,7 @@ void main() {
           expect(supportedFormats, contains(AudioFormat.wav));
           expect(supportedFormats, contains(AudioFormat.flac));
           expect(supportedFormats, contains(AudioFormat.ogg));
+          expect(supportedFormats, contains(AudioFormat.opus));
           expect(supportedFormats, contains(AudioFormat.mp4));
         });
 
@@ -180,6 +191,7 @@ void main() {
           expect(supportedExtensions, contains('wav'));
           expect(supportedExtensions, contains('flac'));
           expect(supportedExtensions, contains('ogg'));
+          expect(supportedExtensions, contains('opus'));
           expect(supportedExtensions, contains('mp4'));
           expect(supportedExtensions, contains('m4a'));
         });
@@ -192,6 +204,7 @@ void main() {
           expect(supportedFormats, contains('WAV'));
           expect(supportedFormats, contains('FLAC'));
           expect(supportedFormats, contains('OGG Vorbis'));
+          expect(supportedFormats, contains('Opus'));
           expect(supportedFormats, contains('MP4/AAC'));
         });
       });

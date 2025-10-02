@@ -11,8 +11,14 @@ import 'package:sonix/src/sonix_api.dart';
 import 'package:sonix/src/config/sonix_config.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import '../test_helpers/test_sonix_instance.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
+  setUpAll(() async {
+    // Setup FFMPEG binaries for testing
+    await FFMPEGSetupHelper.setupFFMPEGForTesting();
+  });
+
   group('Isolate Infrastructure Tests', () {
     late Sonix sonix;
 

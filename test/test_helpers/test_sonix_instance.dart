@@ -17,6 +17,7 @@ class TestSonixConfig extends SonixConfig {
     super.isolateIdleTimeout = const Duration(seconds: 5),
     super.maxMemoryUsage = 50 * 1024 * 1024,
     super.enableProgressReporting = true,
+    super.logLevel = 2, // ERROR level for testing
   });
 }
 

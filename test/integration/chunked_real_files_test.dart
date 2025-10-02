@@ -5,9 +5,22 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
   group('Chunked Processing Real Files Tests', () {
+    setUpAll(() async {
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw Exception('FFMPEG libraries not available for testing');
+      }
+
+      // Initialize native bindings for testing
+      NativeAudioBindings.initialize();
+    });
+
     test('should process real MP3 file with chunked decoder', () async {
       final mp3File = File('test/assets/Double-F the King - Your Blessing.mp3');
 
@@ -65,34 +78,21 @@ void main() {
 
           final fileChunkPtr = malloc<SonixFileChunk>();
           final fileChunk = fileChunkPtr.ref;
-          fileChunk.data = chunkPtr;
-          fileChunk.size = chunkData.length;
-          fileChunk.position = audioStart;
-          fileChunk.is_last = chunkEnd == fileBytes.length ? 1 : 0;
+          fileChunk.chunk_index = 0;
 
           try {
             final result = SonixNativeBindings.processFileChunk(decoder, fileChunkPtr);
 
             if (result.address != 0) {
               final resultData = result.ref;
-              print('MP3 chunk processing result: error_code=${resultData.error_code}, chunk_count=${resultData.chunk_count}');
+              print('MP3 chunk processing result: success=${resultData.success}');
 
-              if (resultData.error_code == SONIX_OK && resultData.chunk_count > 0) {
-                // Verify audio chunks
-                var totalSamples = 0;
-                for (int i = 0; i < resultData.chunk_count; i++) {
-                  final audioChunk = (resultData.chunks + i).ref;
-                  expect(audioChunk.sample_count, greaterThan(0));
-                  totalSamples += audioChunk.sample_count;
-
-                  // Print details for first few and last few chunks
-                  if (i < 3 || i >= resultData.chunk_count - 3) {
-                    print('Audio chunk $i: ${audioChunk.sample_count} samples, start=${audioChunk.start_sample}');
-                  } else if (i == 3) {
-                    print('... (${resultData.chunk_count - 6} more chunks) ...');
-                  }
-                }
-                print('Total samples decoded: $totalSamples');
+              if (resultData.success == 1 && resultData.audio_data.address != 0) {
+                // Verify audio data
+                expect(resultData.audio_data.address, isNot(equals(0)));
+                final audioData = resultData.audio_data.ref;
+                expect(audioData.sample_count, greaterThan(0));
+                print('MP3 decoded ${audioData.sample_count} samples');
               }
 
               SonixNativeBindings.freeChunkResult(result);
@@ -149,17 +149,14 @@ void main() {
 
             final fileChunkPtr = malloc<SonixFileChunk>();
             final fileChunk = fileChunkPtr.ref;
-            fileChunk.data = chunkPtr;
-            fileChunk.size = headerChunk.length;
-            fileChunk.position = 0;
-            fileChunk.is_last = 0;
+            fileChunk.chunk_index = 0;
 
             try {
               final result = SonixNativeBindings.processFileChunk(decoder, fileChunkPtr);
 
               if (result.address != 0) {
                 final resultData = result.ref;
-                print('WAV chunk processing result: error_code=${resultData.error_code}, chunk_count=${resultData.chunk_count}');
+                print('WAV chunk processing result: success=${resultData.success}, has_audio=${resultData.audio_data.address != 0}');
                 SonixNativeBindings.freeChunkResult(result);
               }
             } finally {
@@ -213,17 +210,14 @@ void main() {
 
           final fileChunkPtr = malloc<SonixFileChunk>();
           final fileChunk = fileChunkPtr.ref;
-          fileChunk.data = chunkPtr;
-          fileChunk.size = chunkData.length;
-          fileChunk.position = 0;
-          fileChunk.is_last = 0;
+          fileChunk.chunk_index = 0;
 
           try {
             final result = SonixNativeBindings.processFileChunk(decoder, fileChunkPtr);
 
             if (result.address != 0) {
               final resultData = result.ref;
-              print('FLAC chunk processing result: error_code=${resultData.error_code}, chunk_count=${resultData.chunk_count}');
+              print('FLAC chunk processing result: success=${resultData.success}, has_audio=${resultData.audio_data.address != 0}');
               SonixNativeBindings.freeChunkResult(result);
             }
           } finally {
@@ -272,23 +266,19 @@ void main() {
             // Process entire small file as one chunk
             final fileChunkPtr = malloc<SonixFileChunk>();
             final fileChunk = fileChunkPtr.ref;
-            fileChunk.data = dataPtr;
-            fileChunk.size = fileBytes.length;
-            fileChunk.position = 0;
-            fileChunk.is_last = 1;
+            fileChunk.chunk_index = 0;
 
             try {
               final result = SonixNativeBindings.processFileChunk(decoder, fileChunkPtr);
 
               if (result.address != 0) {
                 final resultData = result.ref;
-                print('Small WAV processing result: error_code=${resultData.error_code}, chunk_count=${resultData.chunk_count}');
+                print('Small WAV processing result: success=${resultData.success}, has_audio=${resultData.audio_data.address != 0}');
 
-                if (resultData.error_code == SONIX_OK && resultData.chunk_count > 0) {
-                  final firstChunk = (resultData.chunks + 0).ref;
-                  expect(firstChunk.sample_count, greaterThan(0));
-                  expect(firstChunk.is_last, equals(1));
-                  print('Small WAV audio: ${firstChunk.sample_count} samples');
+                if (resultData.success == 1 && resultData.audio_data.address != 0) {
+                  final audioData = resultData.audio_data.ref;
+                  expect(audioData.sample_count, greaterThan(0));
+                  print('Small WAV audio: ${audioData.sample_count} samples, is_final=${resultData.is_final_chunk}');
                 }
 
                 SonixNativeBindings.freeChunkResult(result);
@@ -362,17 +352,14 @@ void main() {
 
                 final fileChunkPtr = malloc<SonixFileChunk>();
                 final fileChunk = fileChunkPtr.ref;
-                fileChunk.data = chunkPtr;
-                fileChunk.size = chunkData.length;
-                fileChunk.position = 0;
-                fileChunk.is_last = 1;
+                fileChunk.chunk_index = 0;
 
                 try {
                   final result = SonixNativeBindings.processFileChunk(decoder, fileChunkPtr);
 
                   if (result.address != 0) {
                     final resultData = result.ref;
-                    print('Corrupted file processing: error_code=${resultData.error_code}');
+                    print('Corrupted file processing: success=${resultData.success}');
                     SonixNativeBindings.freeChunkResult(result);
                   }
                 } finally {
@@ -467,4 +454,3 @@ void main() {
     });
   });
 }
-

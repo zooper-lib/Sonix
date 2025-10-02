@@ -21,6 +21,9 @@ void main() {
         final oggDecoder = AudioDecoderFactory.createDecoder('test.ogg');
         expect(oggDecoder.runtimeType.toString(), contains('Vorbis'));
 
+        final opusDecoder = AudioDecoderFactory.createDecoder('test.opus');
+        expect(opusDecoder.runtimeType.toString(), contains('Opus'));
+
         final mp4Decoder = AudioDecoderFactory.createDecoder('test.mp4');
         expect(mp4Decoder.runtimeType.toString(), contains('MP4'));
 
@@ -46,6 +49,7 @@ void main() {
         expect(extensions, contains('wav'));
         expect(extensions, contains('flac'));
         expect(extensions, contains('ogg'));
+        expect(extensions, contains('opus'));
         expect(extensions, contains('mp4'));
         expect(extensions, contains('m4a'));
         expect(extensions.length, greaterThanOrEqualTo(6));
@@ -57,8 +61,9 @@ void main() {
         expect(formats, contains(AudioFormat.wav));
         expect(formats, contains(AudioFormat.flac));
         expect(formats, contains(AudioFormat.ogg));
+        expect(formats, contains(AudioFormat.opus));
         expect(formats, contains(AudioFormat.mp4));
-        expect(formats.length, equals(5));
+        expect(formats.length, equals(6));
       });
 
       test('should return human-readable format names', () {
@@ -67,8 +72,9 @@ void main() {
         expect(formatNames, contains('WAV'));
         expect(formatNames, contains('FLAC'));
         expect(formatNames, contains('OGG Vorbis'));
+        expect(formatNames, contains('Opus'));
         expect(formatNames, contains('MP4/AAC'));
-        expect(formatNames.length, equals(5));
+        expect(formatNames.length, equals(6));
       });
     });
 
@@ -78,6 +84,7 @@ void main() {
         expect(AudioFormat.wav.extensions, equals(['wav']));
         expect(AudioFormat.flac.extensions, equals(['flac']));
         expect(AudioFormat.ogg.extensions, equals(['ogg']));
+        expect(AudioFormat.opus.extensions, equals(['opus']));
         expect(AudioFormat.mp4.extensions, equals(['mp4', 'm4a']));
         expect(AudioFormat.unknown.extensions, isEmpty);
       });
@@ -87,6 +94,7 @@ void main() {
         expect(AudioFormat.wav.name, equals('WAV'));
         expect(AudioFormat.flac.name, equals('FLAC'));
         expect(AudioFormat.ogg.name, equals('OGG Vorbis'));
+        expect(AudioFormat.opus.name, equals('Opus'));
         expect(AudioFormat.mp4.name, equals('MP4/AAC'));
         expect(AudioFormat.unknown.name, equals('Unknown'));
       });
@@ -95,6 +103,7 @@ void main() {
         expect(AudioFormat.wav.supportsChunkedProcessing, isTrue);
         expect(AudioFormat.flac.supportsChunkedProcessing, isTrue);
         expect(AudioFormat.ogg.supportsChunkedProcessing, isTrue);
+        expect(AudioFormat.opus.supportsChunkedProcessing, isTrue);
         expect(AudioFormat.mp4.supportsChunkedProcessing, isTrue);
         expect(AudioFormat.unknown.supportsChunkedProcessing, isFalse);
       });
@@ -102,6 +111,7 @@ void main() {
       test('should provide compression ratios', () {
         expect(AudioFormat.mp3.typicalCompressionRatio, equals(10.0));
         expect(AudioFormat.ogg.typicalCompressionRatio, equals(8.0));
+        expect(AudioFormat.opus.typicalCompressionRatio, equals(12.0));
         expect(AudioFormat.mp4.typicalCompressionRatio, equals(10.0));
         expect(AudioFormat.flac.typicalCompressionRatio, equals(2.0));
         expect(AudioFormat.wav.typicalCompressionRatio, equals(1.0));

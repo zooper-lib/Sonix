@@ -99,33 +99,57 @@
     "linux": {
       "architecture": "x64",
       "ffmpeg_version": "6.0",
-      "source": "johnvansickle.com",
-      "base_url": "https://johnvansickle.com/ffmpeg/releases",
-      "archive_url": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz",
+      "source": "BtbN/FFmpeg-Builds",
+      "base_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest",
+      "archive_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
       "libraries": {
-        "libavformat.so": {
-          "url": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz",
+        "libavformat.so.62": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
           "checksum": "placeholder_sha256_checksum_1",
           "size": 1048576,
-          "extract_path": "ffmpeg-*-amd64-static/libavformat.so"
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100"
         },
-        "libavcodec.so": {
-          "url": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz",
+        "libavcodec.so.62": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
           "checksum": "placeholder_sha256_checksum_2",
           "size": 8388608,
-          "extract_path": "ffmpeg-*-amd64-static/libavcodec.so"
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.16.100"
         },
-        "libavutil.so": {
-          "url": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz",
+        "libavutil.so.60": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
           "checksum": "placeholder_sha256_checksum_3",
           "size": 524288,
-          "extract_path": "ffmpeg-*-amd64-static/libavutil.so"
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.13.100"
         },
-        "libswresample.so": {
-          "url": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz",
+        "libswresample.so.6": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
           "checksum": "placeholder_sha256_checksum_4",
           "size": 262144,
-          "extract_path": "ffmpeg-*-amd64-static/libswresample.so"
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.2.100"
+        },
+        "libavformat.so": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_1",
+          "size": 1048576,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100"
+        },
+        "libavcodec.so": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_2",
+          "size": 8388608,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.16.100"
+        },
+        "libavutil.so": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_3",
+          "size": 524288,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.13.100"
+        },
+        "libswresample.so": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz",
+          "checksum": "placeholder_sha256_checksum_4",
+          "size": 262144,
+          "extract_path": "ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.2.100"
         }
       },
       "required_symbols": [

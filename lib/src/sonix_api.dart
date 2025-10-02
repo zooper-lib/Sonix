@@ -16,6 +16,8 @@ import 'processing/waveform_config.dart';
 import 'processing/waveform_use_case.dart';
 import 'decoders/audio_decoder_factory.dart';
 import 'exceptions/sonix_exceptions.dart';
+import 'native/native_audio_bindings.dart';
+import 'utils/sonix_logger.dart';
 
 /// Main API class for the Sonix package
 ///
@@ -57,6 +59,10 @@ class Sonix {
   /// ));
   /// ```
   Sonix([SonixConfig? config]) : config = config ?? SonixConfig.defaultConfig() {
+    // Configure FFmpeg log level based on config
+    _configureLogLevel(this.config.logLevel);
+    // Configure Dart logger to use the same log level
+    SonixLogger.setLogLevel(this.config.logLevel);
     _isolateManager = createIsolateManager();
   }
 
@@ -353,6 +359,28 @@ class Sonix {
   /// or batch operation planning.
   static bool isFormatSupported(String filePath) {
     return AudioDecoderFactory.isFormatSupported(filePath);
+  }
+
+  /// Configure FFmpeg log level based on the current config
+  ///
+  /// This is called automatically during Sonix initialization to set up
+  /// FFmpeg logging according to the logLevel specified in SonixConfig.
+  ///
+  /// **Available log levels:**
+  /// * `-1` = `QUIET` - No output at all
+  /// * `0` = `PANIC` - Only critical errors
+  /// * `1` = `FATAL` - Fatal errors
+  /// * `2` = `ERROR` - Error conditions (recommended - suppresses MP3 warnings)
+  /// * `3` = `WARNING` - Warning messages including MP3 format detection
+  /// * `4` = `INFO` - Informational messages
+  /// * `5` = `VERBOSE` - Verbose informational messages
+  /// * `6` = `DEBUG` - Debug messages with maximum verbosity
+  void _configureLogLevel(int level) {
+    try {
+      NativeAudioBindings.setLogLevel(level);
+    } catch (e) {
+      throw ConfigurationException('Failed to configure FFmpeg log level: $e');
+    }
   }
 
   /// Returns a list of human-readable audio format names supported by the library.

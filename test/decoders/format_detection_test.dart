@@ -4,21 +4,7 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
 import '../test_helpers/test_data_loader.dart';
-
-/// Helper function to check if native library is available
-bool _isNativeLibraryAvailable() {
-  try {
-    final testPtr = malloc<ffi.Uint8>(4);
-    try {
-      SonixNativeBindings.detectFormat(testPtr, 0);
-      return true;
-    } finally {
-      malloc.free(testPtr);
-    }
-  } catch (e) {
-    return false;
-  }
-}
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 /// Helper function to test format detection with byte data
 int _testFormatDetection(List<int> bytes) {
@@ -35,21 +21,20 @@ int _testFormatDetection(List<int> bytes) {
 
 void main() {
   group('Format Detection Tests', () {
-    late bool nativeLibAvailable;
-
     setUpAll(() async {
-      nativeLibAvailable = _isNativeLibraryAvailable();
-
-      if (!nativeLibAvailable) {
-        // ignore: avoid_print
-        print('Native library not available - format detection tests will be skipped');
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw StateError(
+          'FFMPEG setup failed - Format detection tests require FFMPEG DLLs. '
+          'These tests validate audio format detection functionality and '
+          'cannot be skipped when FFMPEG is not available.',
+        );
       }
     });
 
     group('Synthetic Format Detection', () {
       test('should detect WAV format from RIFF header', () {
-        if (!nativeLibAvailable) return;
-
         // Create minimal WAV header
         final wavHeader = [
           0x52, 0x49, 0x46, 0x46, // "RIFF"
@@ -72,8 +57,6 @@ void main() {
       });
 
       test('should detect MP3 format from sync frame', () {
-        if (!nativeLibAvailable) return;
-
         // Create MP3 sync frame header
         final mp3Header = [
           0xFF, 0xFB, // MP3 sync word (11 bits set)
@@ -89,8 +72,6 @@ void main() {
       });
 
       test('should detect MP3 format from ID3 tag', () {
-        if (!nativeLibAvailable) return;
-
         // Create ID3v2 header
         final id3Header = [
           0x49, 0x44, 0x33, // "ID3"
@@ -107,8 +88,6 @@ void main() {
       });
 
       test('should detect FLAC format from signature', () {
-        if (!nativeLibAvailable) return;
-
         // Create FLAC signature and minimal metadata
         final flacHeader = [
           0x66, 0x4C, 0x61, 0x43, // "fLaC"
@@ -131,8 +110,6 @@ void main() {
       });
 
       test('should detect OGG format from page header', () {
-        if (!nativeLibAvailable) return;
-
         // Create OGG page header
         final oggHeader = [
           0x4F, 0x67, 0x67, 0x53, // "OggS"
@@ -152,9 +129,41 @@ void main() {
         expect(detectedFormat, equals(SONIX_FORMAT_OGG), reason: 'Should detect OGG format from OggS signature');
       });
 
-      test('should detect MP4 format from ftyp box', () {
-        if (!nativeLibAvailable) return;
+      test('should detect OGG format from synthetic OGG container (Opus uses OGG)', () {
+        // Create synthetic OGG page header - this is what we can reliably detect from headers
+        // Note: Opus codec detection requires full stream analysis, so header-only detection
+        // will correctly identify the OGG container format
+        final oggHeader = [
+          0x4F, 0x67, 0x67, 0x53, // "OggS"
+          0x00, // Version
+          0x02, // Header type (first page of logical bitstream)
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Granule position
+          0x01, 0x02, 0x03, 0x04, // Serial number
+          0x00, 0x00, 0x00, 0x00, // Page sequence number
+          0x00, 0x00, 0x00, 0x00, // CRC checksum (simplified for synthetic test)
+          0x01, // Number of page segments
+          0x13, // Segment table (19 bytes)
+          // Generic OGG content (OpusHead would be here in real files)
+          0x4F, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64, // "OpusHead"
+          0x01, // Version
+          0x02, // Channel count
+          0x00, 0x0F, // Pre-skip
+          0x80, 0xBB, 0x00, 0x00, // Input sample rate (48000)
+          0x00, 0x00, // Output gain
+          0x00, // Channel mapping family
+        ];
 
+        final detectedFormat = _testFormatDetection(oggHeader);
+        // Synthetic headers can only detect OGG container format
+        // Full Opus codec detection requires complete stream analysis with valid CRC
+        expect(
+          detectedFormat,
+          equals(SONIX_FORMAT_OGG),
+          reason: 'Should detect OGG container format from synthetic header (Opus codec detection requires full stream analysis)',
+        );
+      });
+
+      test('should detect MP4 format from ftyp box', () {
         // Create MP4 ftyp box (based on real file structure)
         final mp4Header = [
           0x00, 0x00, 0x00, 0x20, // Box size (32 bytes)
@@ -177,8 +186,6 @@ void main() {
       });
 
       test('should return unknown for invalid data', () {
-        if (!nativeLibAvailable) return;
-
         // Create completely invalid data
         final invalidData = [0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
 
@@ -187,8 +194,6 @@ void main() {
       });
 
       test('should handle edge cases safely', () {
-        if (!nativeLibAvailable) return;
-
         // Test with very small buffer
         final smallData = [0xFF, 0xFB];
         final smallResult = _testFormatDetection(smallData);
@@ -211,13 +216,12 @@ void main() {
 
     group('Real File Format Detection', () {
       test('should detect formats from real test files', () async {
-        if (!nativeLibAvailable) return;
-
         final testFiles = [
           {'file': 'Double-F the King - Your Blessing.wav', 'expected': SONIX_FORMAT_WAV, 'format': 'WAV'},
           {'file': 'Double-F the King - Your Blessing.mp3', 'expected': SONIX_FORMAT_MP3, 'format': 'MP3'},
           {'file': 'Double-F the King - Your Blessing.flac', 'expected': SONIX_FORMAT_FLAC, 'format': 'FLAC'},
           {'file': 'Double-F the King - Your Blessing.ogg', 'expected': SONIX_FORMAT_OGG, 'format': 'OGG'},
+          {'file': 'Double-F the King - Your Blessing.opus', 'expected': SONIX_FORMAT_OPUS, 'format': 'OPUS'},
           {'file': 'Double-F the King - Your Blessing.mp4', 'expected': SONIX_FORMAT_MP4, 'format': 'MP4'},
         ];
 
@@ -268,13 +272,12 @@ void main() {
       });
 
       test('should detect formats from file headers only', () async {
-        if (!nativeLibAvailable) return;
-
         final testFiles = [
           {'file': 'Double-F the King - Your Blessing.wav', 'expected': SONIX_FORMAT_WAV, 'format': 'WAV'},
           {'file': 'Double-F the King - Your Blessing.mp3', 'expected': SONIX_FORMAT_MP3, 'format': 'MP3'},
           {'file': 'Double-F the King - Your Blessing.flac', 'expected': SONIX_FORMAT_FLAC, 'format': 'FLAC'},
           {'file': 'Double-F the King - Your Blessing.ogg', 'expected': SONIX_FORMAT_OGG, 'format': 'OGG'},
+          {'file': 'Double-F the King - Your Blessing.opus', 'expected': SONIX_FORMAT_OGG, 'format': 'OPUS'},
           {'file': 'Double-F the King - Your Blessing.mp4', 'expected': SONIX_FORMAT_MP4, 'format': 'MP4'},
         ];
 
@@ -314,8 +317,6 @@ void main() {
       });
 
       test('should handle corrupted files gracefully', () async {
-        if (!nativeLibAvailable) return;
-
         final corruptedFiles = ['corrupted_header.mp3', 'corrupted_riff.wav', 'corrupted_signature.flac', 'empty_file.mp3', 'invalid_format.xyz'];
 
         for (final fileName in corruptedFiles) {
@@ -348,8 +349,6 @@ void main() {
 
     group('Format Detection Performance', () {
       test('should handle large files efficiently', () async {
-        if (!nativeLibAvailable) return;
-
         // Find a large test file
         final availableFiles = await TestDataLoader.getAvailableAudioFiles();
         final largeFile = availableFiles.firstWhere(
@@ -397,8 +396,6 @@ void main() {
       });
 
       test('should be consistent across multiple calls', () {
-        if (!nativeLibAvailable) return;
-
         // Test with a simple WAV header
         final wavHeader = [
           0x52, 0x49, 0x46, 0x46, // "RIFF"

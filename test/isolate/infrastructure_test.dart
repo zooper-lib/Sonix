@@ -11,6 +11,7 @@ import 'dart:isolate';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sonix/src/isolate/isolate_messages.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 import 'package:sonix/src/isolate/processing_isolate.dart';
 import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/models/waveform_data.dart';
@@ -18,6 +19,12 @@ import 'package:sonix/src/models/waveform_type.dart';
 import 'package:sonix/src/models/waveform_metadata.dart';
 
 void main() {
+  setUpAll(() async {
+    // Setup FFMPEG binaries for testing - required even for infrastructure tests
+    // because isolates need FFMPEG to initialize properly
+    await FFMPEGSetupHelper.setupFFMPEGForTesting();
+  });
+
   group('Isolate Infrastructure Tests', () {
     test('should create and serialize ProcessingRequest message', () {
       // Arrange

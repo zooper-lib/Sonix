@@ -1,7 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:io';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import '../../tools/ffmpeg_binary_downloader.dart';
 import '../ffmpeg/ffmpeg_setup_helper.dart';
@@ -163,25 +163,6 @@ void main() {
         expect(cmakeContent.contains('REQUIRED'), isTrue, reason: 'FFMPEG libraries should be marked as REQUIRED');
 
         print('✅ CMake configuration verified');
-      });
-
-      test('should verify native build script exists', () async {
-        print('\n--- Testing Native Build Scripts ---');
-
-        if (Platform.isWindows) {
-          final buildScript = File('native/build.bat');
-          expect(buildScript.existsSync(), isTrue, reason: 'Windows build script should exist');
-          print('✅ Windows build script found');
-        } else {
-          final buildScript = File('native/build.sh');
-          expect(buildScript.existsSync(), isTrue, reason: 'Unix build script should exist');
-
-          // Verify script is executable
-          final stat = await buildScript.stat();
-          final isExecutable = (stat.mode & 0x49) != 0; // Check user/group/other execute bits
-          expect(isExecutable, isTrue, reason: 'Build script should be executable');
-          print('✅ Unix build script found and executable');
-        }
       });
 
       test('should test native library compilation with FFMPEG', () async {

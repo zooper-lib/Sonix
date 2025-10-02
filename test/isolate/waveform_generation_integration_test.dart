@@ -1,9 +1,3 @@
-/// Integration tests for end-to-end waveform generation in isolates
-///
-/// These tests verify that the complete pipeline from audio file to waveform
-/// data works correctly when processing happens in background isolates.
-library;
-
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -14,13 +8,21 @@ import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/processing/downsampling_algorithm.dart';
 import '../../tools/test_data_generator.dart';
 import '../test_helpers/test_sonix_instance.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
+/// Integration tests for end-to-end waveform generation in isolates
+///
+/// These tests verify that the complete pipeline from audio file to waveform
+/// data works correctly when processing happens in background isolates.
 void main() {
   group('Isolate Waveform Generation Integration Tests', () {
     late Sonix sonix;
     late String testAudioPath;
 
     setUpAll(() async {
+      // Setup FFMPEG binaries for testing - required for native binding tests
+      await FFMPEGSetupHelper.setupFFMPEGForTesting();
+
       // Generate essential test data if not already present
       await TestDataGenerator.generateEssentialTestData();
 

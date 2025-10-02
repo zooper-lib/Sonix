@@ -18,6 +18,7 @@ import 'error_serializer.dart';
 import 'package:sonix/src/models/waveform_data.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/utils/memory_manager.dart';
+import 'package:sonix/src/utils/sonix_logger.dart';
 
 import 'isolate_config.dart';
 
@@ -204,8 +205,7 @@ class _ManagedIsolate {
           onMessage(isolateMessage);
         }
       } catch (error) {
-        // Handle message parsing errors
-        // Handle message parsing errors - could use proper logging here
+        SonixLogger.isolate(id, 'Failed to parse isolate message: ${error.toString()}', level: 3);
       }
     });
   }
@@ -243,6 +243,7 @@ class _ManagedIsolate {
         isolate.kill(priority: Isolate.immediate);
       });
     } catch (e) {
+      SonixLogger.isolate(id, 'Failed to send shutdown message, proceeding with immediate cleanup: ${e.toString()}', level: 6);
       // If sending shutdown message fails, proceed with immediate cleanup
       _messageSubscription.cancel();
       receivePort.close();
@@ -411,6 +412,8 @@ class IsolateManager {
       _activeTasks.remove(task.id);
       _requestToIsolateMap.remove(task.id);
 
+      SonixLogger.isolate('task_${task.id}', 'Task execution failed: ${error.toString()}', level: 2);
+
       // Attempt error recovery if enabled
       if (enableErrorRecovery && _shouldRetryTask(task.id, error)) {
         return await _retryTask(task, error);
@@ -512,8 +515,23 @@ class IsolateManager {
     try {
       final isolate = await spawnProcessingIsolate(handshakeReceivePort.sendPort);
 
-      // Wait for the isolate to send its SendPort
-      final sendPort = await handshakeReceivePort.first as SendPort;
+      // Wait for the isolate to send its SendPort or an error message
+      final handshakeResponse = await handshakeReceivePort.first;
+
+      // Check if the isolate sent an error message during initialization
+      if (handshakeResponse is Map<String, dynamic>) {
+        // Isolate sent an error message - parse it and throw an exception
+        final errorMessage = ErrorMessage.fromJson(handshakeResponse);
+        throw IsolateProcessingException(
+          isolateId,
+          errorMessage.errorMessage,
+          originalErrorType: errorMessage.errorType,
+          details: 'Failed to initialize isolate during handshake',
+        );
+      }
+
+      // If we get here, it should be a SendPort
+      final sendPort = handshakeResponse as SendPort;
 
       // Close the handshake port as it's no longer needed
       handshakeReceivePort.close();

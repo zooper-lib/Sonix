@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/isolate/isolate_manager.dart';
 import 'package:sonix/src/isolate/isolate_config.dart';
 import 'package:sonix/src/isolate/isolate_health_monitor.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 /// Mock configuration for testing
 class MockIsolateConfig implements IsolateConfig {
@@ -26,6 +27,11 @@ class MockIsolateConfig implements IsolateConfig {
 }
 
 void main() {
+  setUpAll(() async {
+    // Setup FFMPEG binaries for testing
+    await FFMPEGSetupHelper.setupFFMPEGForTesting();
+  });
+
   group('Isolate Error Recovery Integration', () {
     late IsolateManager manager;
     late MockIsolateConfig config;
@@ -275,4 +281,3 @@ void main() {
     });
   });
 }
-

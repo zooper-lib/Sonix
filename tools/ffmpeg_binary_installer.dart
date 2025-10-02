@@ -78,14 +78,38 @@ class FFMPEGBinaryInstaller {
 
         // Copy each library file
         for (final libraryName in expectedLibraries) {
-          final sourceFile = File('$sourcePath/$libraryName');
+          // Try lib/ subdirectory first (new structure), then direct path (legacy)
+          File sourceFile = File('$sourcePath/lib/$libraryName');
+          if (!await sourceFile.exists()) {
+            sourceFile = File('$sourcePath/$libraryName');
+          }
+          
           final targetFile = File('$buildDir/$libraryName');
 
           if (await sourceFile.exists()) {
-            await sourceFile.copy(targetFile.path);
-            installedFiles.add(targetFile.path);
-            installPaths[libraryName] = targetFile.path;
-            print('Copied: $libraryName -> $buildDir');
+            try {
+              // Try to overwrite the file directly first
+              await sourceFile.copy(targetFile.path);
+              installedFiles.add(targetFile.path);
+              installPaths[libraryName] = targetFile.path;
+              print('Copied: $libraryName -> $buildDir');
+            } catch (e) {
+              // If direct copy fails, try to delete and copy
+              if (await targetFile.exists()) {
+                try {
+                  await targetFile.delete();
+                  await sourceFile.copy(targetFile.path);
+                  installedFiles.add(targetFile.path);
+                  installPaths[libraryName] = targetFile.path;
+                  print('Copied: $libraryName -> $buildDir');
+                } catch (deleteError) {
+                  print('Warning: Could not overwrite $libraryName in $buildDir: $deleteError');
+                  // Continue with other files instead of failing completely
+                }
+              } else {
+                rethrow;
+              }
+            }
           } else {
             return InstallationResult(success: false, errorMessage: 'Source file not found: ${sourceFile.path}');
           }
@@ -109,7 +133,17 @@ class FFMPEGBinaryInstaller {
       case 'windows':
         return ['example/build/windows/x64/runner/Debug', 'example/build/windows/x64/runner/Release'];
       case 'macos':
-        return ['example/build/macos/Build/Products/Debug', 'example/build/macos/Build/Products/Release'];
+        return [
+          // Root products dirs (legacy)
+          'example/build/macos/Build/Products/Debug',
+          'example/build/macos/Build/Products/Release',
+          // App bundle Frameworks dirs (preferred at runtime)
+          'example/build/macos/Build/Products/Debug/example.app/Contents/Frameworks',
+          'example/build/macos/Build/Products/Release/example.app/Contents/Frameworks',
+          // Also allow placing next to the executable in a pinch
+          'example/build/macos/Build/Products/Debug/example.app/Contents/MacOS',
+          'example/build/macos/Build/Products/Release/example.app/Contents/MacOS',
+        ];
       case 'linux':
         return ['example/build/linux/x64/debug/bundle/lib', 'example/build/linux/x64/release/bundle/lib'];
       default:
@@ -130,14 +164,38 @@ class FFMPEGBinaryInstaller {
     final expectedLibraries = platformInfo.getExpectedLibraryNames();
 
     for (final libraryName in expectedLibraries) {
-      final sourceFile = File('$sourcePath/$libraryName');
+      // Try lib/ subdirectory first (new structure), then direct path (legacy)
+      File sourceFile = File('$sourcePath/lib/$libraryName');
+      if (!await sourceFile.exists()) {
+        sourceFile = File('$sourcePath/$libraryName');
+      }
+      
       final targetFile = File('$testDir/$libraryName');
 
       if (await sourceFile.exists()) {
-        await sourceFile.copy(targetFile.path);
-        installedFiles.add(targetFile.path);
-        installPaths['test_$libraryName'] = targetFile.path;
-        print('Copied to test directory: $libraryName');
+        try {
+          // Try to overwrite the file directly first
+          await sourceFile.copy(targetFile.path);
+          installedFiles.add(targetFile.path);
+          installPaths['test_$libraryName'] = targetFile.path;
+          print('Copied to test directory: $libraryName');
+        } catch (e) {
+          // If direct copy fails, try to delete and copy
+          if (await targetFile.exists()) {
+            try {
+              await targetFile.delete();
+              await sourceFile.copy(targetFile.path);
+              installedFiles.add(targetFile.path);
+              installPaths['test_$libraryName'] = targetFile.path;
+              print('Copied to test directory: $libraryName');
+            } catch (deleteError) {
+              print('Warning: Could not copy $libraryName to test directory: $deleteError');
+              // Continue with other files instead of failing completely
+            }
+          } else {
+            print('Warning: Could not copy $libraryName to test directory: $e');
+          }
+        }
       }
     }
   }
@@ -157,14 +215,37 @@ class FFMPEGBinaryInstaller {
 
       // Copy each library file
       for (final libraryName in expectedLibraries) {
-        final sourceFile = File('$sourcePath/$libraryName');
+        // Try lib/ subdirectory first (new structure), then direct path (legacy)
+        File sourceFile = File('$sourcePath/lib/$libraryName');
+        if (!await sourceFile.exists()) {
+          sourceFile = File('$sourcePath/$libraryName');
+        }
+        
         final targetFile = File('$targetPath/$libraryName');
 
         if (await sourceFile.exists()) {
-          await sourceFile.copy(targetFile.path);
-          installedFiles.add(targetFile.path);
-          installPaths[libraryName] = targetFile.path;
-          print('Copied: $libraryName -> $targetPath');
+          try {
+            // Try to overwrite the file directly first
+            await sourceFile.copy(targetFile.path);
+            installedFiles.add(targetFile.path);
+            installPaths[libraryName] = targetFile.path;
+            print('Copied: $libraryName -> $targetPath');
+          } catch (e) {
+            // If direct copy fails, try to delete and copy
+            if (await targetFile.exists()) {
+              try {
+                await targetFile.delete();
+                await sourceFile.copy(targetFile.path);
+                installedFiles.add(targetFile.path);
+                installPaths[libraryName] = targetFile.path;
+                print('Copied: $libraryName -> $targetPath');
+              } catch (deleteError) {
+                return InstallationResult(success: false, errorMessage: 'Could not overwrite $libraryName in $targetPath: $deleteError');
+              }
+            } else {
+              return InstallationResult(success: false, errorMessage: 'Could not copy $libraryName to $targetPath: $e');
+            }
+          }
         } else {
           return InstallationResult(success: false, errorMessage: 'Source file not found: ${sourceFile.path}');
         }

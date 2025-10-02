@@ -8,14 +8,21 @@ import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/decoders/mp3_decoder.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
   group('MP3 Decoder Tests', () {
     late String testFilePath;
 
-    setUpAll(() {
+    setUpAll(() async {
       testFilePath = 'test/assets/Double-F the King - Your Blessing.mp3';
 
+      // Ensure FFMPEG is available for testing
+      final available = await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      if (!available) {
+        throw Exception('FFMPEG libraries not available for testing');
+      }
+      
       // Initialize native bindings - this should work or the tests should fail
       NativeAudioBindings.initialize();
     });
