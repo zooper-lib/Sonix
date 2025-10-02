@@ -38,7 +38,7 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
       throw FFIException(
         'FFMPEG not available in isolate',
         'FFMPEG libraries are required but not available in this isolate context. '
-            'Run: dart run tools/download_ffmpeg_binaries.dart',
+            'Run: dart run tool/download_ffmpeg_binaries.dart',
       );
     }
   } catch (e) {

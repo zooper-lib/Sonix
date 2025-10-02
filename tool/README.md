@@ -61,16 +61,16 @@ Downloads and installs FFMPEG binaries required for Sonix package development an
 
 ```bash
 # Download and install for development
-dart run tools/download_ffmpeg_binaries.dart
+dart run tool/download_ffmpeg_binaries.dart
 
 # Force reinstall
-dart run tools/download_ffmpeg_binaries.dart --force
+dart run tool/download_ffmpeg_binaries.dart --force
 
 # Verify installation
-dart run tools/download_ffmpeg_binaries.dart --verify
+dart run tool/download_ffmpeg_binaries.dart --verify
 
 # See all options
-dart run tools/download_ffmpeg_binaries.dart --help
+dart run tool/download_ffmpeg_binaries.dart --help
 ```
 
 ### `build_native_for_development.dart`
@@ -90,13 +90,13 @@ Quick development build script that compiles the native library for local testin
 
 ```bash
 # Quick development build
-dart run tools/build_native_for_development.dart
+dart run tool/build_native_for_development.dart
 
 # Debug build with verbose output
-dart run tools/build_native_for_development.dart --build-type Debug --verbose
+dart run tool/build_native_for_development.dart --build-type Debug --verbose
 
 # Clean build directory
-dart run tools/build_native_for_development.dart --clean
+dart run tool/build_native_for_development.dart --clean
 ```
 
 **Output Locations:**
@@ -122,16 +122,16 @@ Compiles the `sonix_native` library for all supported platforms and places them 
 
 ```bash
 # Build for current platform
-dart run tools/build_native_for_distribution.dart
+dart run tool/build_native_for_distribution.dart
 
 # Build for all platforms
-dart run tools/build_native_for_distribution.dart --platforms all
+dart run tool/build_native_for_distribution.dart --platforms all
 
 # Build for specific platforms
-dart run tools/build_native_for_distribution.dart --platforms windows,linux
+dart run tool/build_native_for_distribution.dart --platforms windows,linux
 
 # Clean build artifacts
-dart run tools/build_native_for_distribution.dart --clean
+dart run tool/build_native_for_distribution.dart --clean
 ```
 
 **Output Locations:**
@@ -154,18 +154,18 @@ dart run tools/build_native_for_distribution.dart --clean
 
 1. Clone the Sonix repository
 2. Run `flutter pub get`
-3. Run `dart run tools/download_ffmpeg_binaries.dart`
+3. Run `dart run tool/download_ffmpeg_binaries.dart`
 4. Build native libraries: `cd native && ./build.sh` (or `build.bat` on Windows)
 
 ### Testing
 
-1. Ensure FFMPEG binaries are installed: `dart run tools/download_ffmpeg_binaries.dart --verify`
+1. Ensure FFMPEG binaries are installed: `dart run tool/download_ffmpeg_binaries.dart --verify`
 2. Run tests: `flutter test`
 3. Run example app: `cd example && flutter run`
 
 ### Updating FFMPEG
 
-1. Run `dart run tools/download_ffmpeg_binaries.dart --force` to get latest binaries
+1. Run `dart run tool/download_ffmpeg_binaries.dart --force` to get latest binaries
 2. Rebuild native libraries if needed
 3. Run tests to ensure compatibility
 
@@ -207,8 +207,8 @@ Currently supported platforms for development:
 ### Download Issues
 
 - Check internet connection
-- Verify platform is supported: `dart run tools/download_ffmpeg_binaries.dart --list-platforms`
-- Try force reinstall: `dart run tools/download_ffmpeg_binaries.dart --force`
+- Verify platform is supported: `dart run tool/download_ffmpeg_binaries.dart --list-platforms`
+- Try force reinstall: `dart run tool/download_ffmpeg_binaries.dart --force`
 
 ### Build Issues
 
@@ -219,7 +219,7 @@ Currently supported platforms for development:
 ### Test Issues
 
 - Verify test fixtures are installed: check `test/fixtures/ffmpeg/` directory
-- Run installation verification: `dart run tools/download_ffmpeg_binaries.dart --verify`
+- Run installation verification: `dart run tool/download_ffmpeg_binaries.dart --verify`
 - Ensure FFI can load the libraries from the test fixtures directory
 
 ## Contributing

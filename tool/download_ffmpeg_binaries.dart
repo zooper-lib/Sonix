@@ -175,7 +175,7 @@ class FFMPEGBinaryDownloadTool {
       print('✅ All FFMPEG binaries are correctly installed and validated.');
     } else {
       print('❌ Some FFMPEG binaries are missing or invalid.');
-      print('Run: dart run tools/download_ffmpeg_binaries.dart --force');
+      print('Run: dart run tool/download_ffmpeg_binaries.dart --force');
     }
   }
 
@@ -321,7 +321,7 @@ End User Note:
   See the Sonix documentation for proper FFMPEG integration in your app.
 
 Usage:
-  dart run tools/download_ffmpeg_binaries.dart [options]
+  dart run tool/download_ffmpeg_binaries.dart [options]
 
 Options:
   -h, --help              Show this help message
@@ -335,19 +335,19 @@ Options:
 
 Examples:
   # Download and install for current platform
-  dart run tools/download_ffmpeg_binaries.dart
+  dart run tool/download_ffmpeg_binaries.dart
 
   # Force reinstall
-  dart run tools/download_ffmpeg_binaries.dart --force
+  dart run tool/download_ffmpeg_binaries.dart --force
 
   # Verify installation
-  dart run tools/download_ffmpeg_binaries.dart --verify
+  dart run tool/download_ffmpeg_binaries.dart --verify
 
   # Download to custom directory without installing
-  dart run tools/download_ffmpeg_binaries.dart --output ./custom --skip-install
+  dart run tool/download_ffmpeg_binaries.dart --output ./custom --skip-install
 
   # Remove installed binaries
-  dart run tools/download_ffmpeg_binaries.dart --uninstall
+  dart run tool/download_ffmpeg_binaries.dart --uninstall
 
 Development Notes:
   - Binaries are installed to package development directories only

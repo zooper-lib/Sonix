@@ -15,7 +15,7 @@ on:
     branches: [main, master, develop, development]
     paths:
       - 'native/**'
-      - 'tools/**'
+      - 'tool/**'
       - '.github/workflows/build-native-binaries.yml'
   
   # And on pull requests to main branches
@@ -23,7 +23,7 @@ on:
     branches: [main, master, develop, development]
     paths:
       - 'native/**'
-      - 'tools/**'
+      - 'tool/**'
       - '.github/workflows/build-native-binaries.yml'
 
 env:
@@ -101,11 +101,11 @@ jobs:
 
       # Download FFMPEG binaries for the target platform
       - name: Download FFMPEG binaries
-        run: dart run tools/download_ffmpeg_binaries.dart --force
+        run: dart run tool/download_ffmpeg_binaries.dart --force
 
       # Build the native library for distribution
       - name: Build native library for distribution
-        run: dart run tools/build_native_for_distribution.dart --platforms current
+        run: dart run tool/build_native_for_distribution.dart --platforms current
 
       # Upload the binary as an artifact (for debugging and manual download)
       - name: Upload binary artifact

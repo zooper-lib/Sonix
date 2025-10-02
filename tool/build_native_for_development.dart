@@ -10,7 +10,7 @@ import 'dart:async';
 /// for local testing and development in the native/build/ directory.
 ///
 /// For package distribution builds, use:
-/// dart run tools/build_native_for_distribution.dart
+/// dart run tool/build_native_for_distribution.dart
 ///
 class NativeDevelopmentBuilder {
   /// Main entry point
@@ -45,7 +45,7 @@ class NativeDevelopmentBuilder {
     print('');
     print('📝 NOTE: This is a development build for local testing.');
     print('   For package distribution builds, use:');
-    print('   dart run tools/build_native_for_distribution.dart');
+    print('   dart run tool/build_native_for_distribution.dart');
     print('');
 
     // Detect platform
@@ -129,7 +129,7 @@ class NativeDevelopmentBuilder {
     print('Next steps:');
     print('1. Test your changes with the example app (build the app to deploy libraries)');
     print('2. Run unit tests: flutter test');
-    print('3. For distribution builds: dart run tools/build_native_for_distribution.dart');
+    print('3. For distribution builds: dart run tool/build_native_for_distribution.dart');
   }
 
   /// Validates the build environment
@@ -158,7 +158,7 @@ class NativeDevelopmentBuilder {
     final ffmpegDir = 'build/ffmpeg/$platform';
     if (!await Directory(ffmpegDir).exists()) {
       print('⚠️  FFMPEG binaries not found in $ffmpegDir');
-      print('   Run: dart run tools/download_ffmpeg_binaries.dart');
+      print('   Run: dart run tool/download_ffmpeg_binaries.dart');
       print('   Continuing anyway (build may fail if FFMPEG is required)...');
     }
 
@@ -355,10 +355,10 @@ class NativeDevelopmentBuilder {
       File src = File('${sourceLibDir.path}/$base.dylib');
       if (!await src.exists()) {
         // Pick first versioned dylib
-        final match = sourceLibDir
-            .listSync()
-            .whereType<File>()
-            .firstWhere((f) => f.path.split('/').last.startsWith(base) && f.path.endsWith('.dylib'), orElse: () => File(''));
+        final match = sourceLibDir.listSync().whereType<File>().firstWhere(
+          (f) => f.path.split('/').last.startsWith(base) && f.path.endsWith('.dylib'),
+          orElse: () => File(''),
+        );
         if (match.path.isNotEmpty) {
           src = match;
         }
@@ -425,9 +425,7 @@ class NativeDevelopmentBuilder {
       }
 
       bool isSystemLib(String p) {
-        return p.startsWith('/usr/lib/') ||
-            p.startsWith('/System/Library/') ||
-            p.startsWith('/System/Volumes/Preboot/');
+        return p.startsWith('/usr/lib/') || p.startsWith('/System/Library/') || p.startsWith('/System/Volumes/Preboot/');
       }
 
       bool isFfmpegLibBase(String base) {
@@ -513,7 +511,7 @@ class NativeDevelopmentBuilder {
       }
 
       // After normalizing, bundle Homebrew-linked dependencies for FFmpeg libs so the app is self-contained
-  await _bundleMacOSHomebrewDeps(targetDir, brewPrefix);
+      await _bundleMacOSHomebrewDeps(targetDir, brewPrefix);
     } catch (e) {
       print('  ⚠️  Failed to fix macOS install names in $targetDir: $e');
     }
@@ -540,12 +538,7 @@ class NativeDevelopmentBuilder {
     }
   }
 
-  Future<void> _bundleDepsForFile(
-    String filePath,
-    String targetDir,
-    String brewPrefix,
-    Set<String> visited,
-  ) async {
+  Future<void> _bundleDepsForFile(String filePath, String targetDir, String brewPrefix, Set<String> visited) async {
     // Helper: parse deps
     Future<List<String>> depsOf(String path) async {
       final res = await Process.run('otool', ['-L', path]);
@@ -562,8 +555,8 @@ class NativeDevelopmentBuilder {
       return deps;
     }
 
-  bool isSystem(String p) => p.startsWith('/usr/lib/') || p.startsWith('/System/');
-  bool isRpath(String p) => p.startsWith('@rpath');
+    bool isSystem(String p) => p.startsWith('/usr/lib/') || p.startsWith('/System/');
+    bool isRpath(String p) => p.startsWith('@rpath');
 
     final deps = await depsOf(filePath);
     for (final dep in deps) {
@@ -675,13 +668,7 @@ class NativeDevelopmentBuilder {
     return null;
   }
 
-  Future<void> _copyAndRewriteDep(
-    String refererPath,
-    String sourceDepPath,
-    String targetDir,
-    String brewPrefix,
-    Set<String> visited,
-  ) async {
+  Future<void> _copyAndRewriteDep(String refererPath, String sourceDepPath, String targetDir, String brewPrefix, Set<String> visited) async {
     try {
       final srcFile = File(sourceDepPath);
       if (!await srcFile.exists()) return;
@@ -717,7 +704,7 @@ class NativeDevelopmentBuilder {
       }
 
       // Recurse to bundle this dependency's own deps
-  await _bundleDepsForFile(destPath, targetDir, brewPrefix, visited);
+      await _bundleDepsForFile(destPath, targetDir, brewPrefix, visited);
     } catch (e) {
       print('    ⚠️  Failed to copy/rewrite $sourceDepPath for $refererPath: $e');
     }
@@ -893,7 +880,7 @@ Quick development build script for the Sonix native library.
 Builds to native/build/ directory for local testing and development.
 
 Usage:
-  dart run tools/build_native_for_development.dart [options]
+  dart run tool/build_native_for_development.dart [options]
 
 Options:
   -h, --help              Show this help message
@@ -904,13 +891,13 @@ Options:
 
 Examples:
   # Quick development build
-  dart run tools/build_native_for_development.dart
+  dart run tool/build_native_for_development.dart
 
   # Debug build with verbose output
-  dart run tools/build_native_for_development.dart --build-type Debug --verbose
+  dart run tool/build_native_for_development.dart --build-type Debug --verbose
 
   # Clean build directory
-  dart run tools/build_native_for_development.dart --clean
+  dart run tool/build_native_for_development.dart --clean
 
 Build Output:
   - Windows: build/sonix/windows/Release/sonix_native.dll
@@ -918,12 +905,12 @@ Build Output:
   - macOS: build/sonix/macos/libsonix_native.dylib
 
 Note: This is for development only. For package distribution builds, use:
-  dart run tools/build_native_for_distribution.dart
+  dart run tool/build_native_for_distribution.dart
 
 Prerequisites:
   1. CMake 3.10 or later installed
   2. Platform-specific toolchain (MSVC, GCC, Clang)
-  3. FFMPEG binaries (optional): dart run tools/download_ffmpeg_binaries.dart
+  3. FFMPEG binaries (optional): dart run tool/download_ffmpeg_binaries.dart
 ''');
   }
 }

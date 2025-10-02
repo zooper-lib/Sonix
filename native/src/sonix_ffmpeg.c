@@ -159,7 +159,7 @@ int32_t sonix_init_ffmpeg(void)
     // Verify FFMPEG libraries are available by testing core functions
     if (avformat_version() == 0 || avcodec_version() == 0 || avutil_version() == 0 || swresample_version() == 0)
     {
-        set_error_message("FFMPEG libraries not found. Please run: dart run tools/download_ffmpeg_binaries.dart");
+        set_error_message("FFMPEG libraries not found. Please run: dart run tool/download_ffmpeg_binaries.dart");
         return SONIX_ERROR_FFMPEG_NOT_AVAILABLE;
     }
 

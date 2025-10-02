@@ -41,10 +41,10 @@ Test files are automatically generated using the test data generator:
 
 ```bash
 # Generate all test files (comprehensive suite)
-dart run tools/test_data_generator.dart
+dart run tool/test_data_generator.dart
 
 # Generate only essential files (faster)
-dart run tools/test_data_generator.dart --essential
+dart run tool/test_data_generator.dart --essential
 ```
 
 ## File Access

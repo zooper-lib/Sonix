@@ -30,7 +30,7 @@ class NativeAudioBindings {
       throw FFIException(
         'Failed to initialize native audio bindings',
         'Make sure the native library is built and FFMPEG binaries are installed. '
-            'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+            'Run: dart run tool/download_ffmpeg_binaries.dart\n'
             'Error: $e',
       );
     }
@@ -51,7 +51,7 @@ class NativeAudioBindings {
           'FFMPEG initialization failed',
           'FFMPEG libraries are required but could not be initialized. '
               'Please ensure FFMPEG binaries are properly installed.\n'
-              'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+              'Run: dart run tool/download_ffmpeg_binaries.dart\n'
               'Error: $errorMsg',
         );
       }
@@ -65,7 +65,7 @@ class NativeAudioBindings {
         'FFMPEG libraries not available',
         'FFMPEG libraries are required but not found. '
             'Please install FFMPEG binaries.\n'
-            'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+            'Run: dart run tool/download_ffmpeg_binaries.dart\n'
             'Error: $e',
       );
     }
@@ -84,7 +84,7 @@ class NativeAudioBindings {
       throw FFIException(
         'FFMPEG backend not available',
         'FFMPEG is required but not properly initialized. '
-            'Run: dart run tools/download_ffmpeg_binaries.dart',
+            'Run: dart run tool/download_ffmpeg_binaries.dart',
       );
     }
     return 'FFMPEG';
@@ -157,7 +157,7 @@ class NativeAudioBindings {
       throw DecodingException(
         'FFMPEG not available for format detection',
         'FFMPEG libraries are required for audio format detection. '
-            'Run: dart run tools/download_ffmpeg_binaries.dart',
+            'Run: dart run tool/download_ffmpeg_binaries.dart',
       );
     }
 
@@ -198,7 +198,7 @@ class NativeAudioBindings {
       throw DecodingException(
         'FFMPEG not available for audio decoding',
         'FFMPEG libraries are required for audio decoding. '
-            'Run: dart run tools/download_ffmpeg_binaries.dart',
+            'Run: dart run tool/download_ffmpeg_binaries.dart',
       );
     }
 
@@ -225,7 +225,7 @@ class NativeAudioBindings {
           throw DecodingException(
             'FFMPEG libraries not found',
             'FFMPEG libraries are required but not properly installed. '
-                'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+                'Run: dart run tool/download_ffmpeg_binaries.dart\n'
                 'Error: $errorMsg',
           );
         } else if (errorMsg.contains('probe')) {
@@ -269,7 +269,7 @@ class NativeAudioBindings {
       throw DecodingException(
         'Native decoding failed',
         'Error during FFI operation. Ensure FFMPEG libraries are properly installed.\n'
-            'Run: dart run tools/download_ffmpeg_binaries.dart\n'
+            'Run: dart run tool/download_ffmpeg_binaries.dart\n'
             'Error: $e',
       );
     } finally {

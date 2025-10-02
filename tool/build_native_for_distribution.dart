@@ -116,7 +116,7 @@ class NativeDistributionBuilder {
     }
 
     if (!ffmpegFound) {
-      print('❌ FFMPEG binaries not found. Run: dart run tools/download_ffmpeg_binaries.dart');
+      print('❌ FFMPEG binaries not found. Run: dart run tool/download_ffmpeg_binaries.dart');
       return false;
     }
 
@@ -578,7 +578,7 @@ Sonix Native Distribution Builder
 Builds sonix_native libraries for package distribution across all platforms.
 
 Usage:
-  dart run tools/build_native_for_distribution.dart [options]
+  dart run tool/build_native_for_distribution.dart [options]
 
 Options:
   -h, --help                    Show this help message
@@ -589,21 +589,21 @@ Options:
 
 Examples:
   # Build for current platform only
-  dart run tools/build_native_for_distribution.dart
+  dart run tool/build_native_for_distribution.dart
 
   # Build for all platforms
-  dart run tools/build_native_for_distribution.dart --platforms all
+  dart run tool/build_native_for_distribution.dart --platforms all
 
   # Build for specific platforms
-  dart run tools/build_native_for_distribution.dart --platforms windows,linux
+  dart run tool/build_native_for_distribution.dart --platforms windows,linux
 
   # Clean build artifacts
-  dart run tools/build_native_for_distribution.dart --clean
+  dart run tool/build_native_for_distribution.dart --clean
 
 Prerequisites:
   1. CMake 3.10 or later installed
   2. Platform-specific toolchains (MSVC, GCC, Clang, Android NDK)
-  3. FFMPEG binaries installed: dart run tools/download_ffmpeg_binaries.dart
+  3. FFMPEG binaries installed: dart run tool/download_ffmpeg_binaries.dart
 
 Output Locations:
   - Windows: windows/sonix_native.dll

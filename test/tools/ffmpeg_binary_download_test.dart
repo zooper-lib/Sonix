@@ -3,9 +3,9 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:archive/archive.dart';
-import '../../tools/ffmpeg_binary_validator.dart';
-import '../../tools/ffmpeg_binary_installer.dart';
-import '../../tools/ffmpeg_binary_downloader.dart';
+import '../../tool/ffmpeg_binary_validator.dart';
+import '../../tool/ffmpeg_binary_installer.dart';
+import '../../tool/ffmpeg_binary_downloader.dart';
 
 void main() {
   group('FFMPEG Binary Download System', () {

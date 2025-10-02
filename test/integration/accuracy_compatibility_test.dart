@@ -3,7 +3,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
-import '../../tools/test_data_generator.dart';
+import '../../tool/test_data_generator.dart';
 
 /// Integration test suite for accuracy and compatibility testing of chunked audio processing
 ///
@@ -982,4 +982,3 @@ class OggAnalysis {
 
   OggAnalysis({required this.invalidPages, required this.granuleAccuracy});
 }
-

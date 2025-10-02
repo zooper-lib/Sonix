@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../test_helpers/test_sonix_instance.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
 import '../ffmpeg/ffmpeg_setup_helper.dart';
-import '../../tools/test_data_generator.dart';
+import '../../tool/test_data_generator.dart';
 
 /// Comprehensive integration test for log level functionality across all data sources
 ///

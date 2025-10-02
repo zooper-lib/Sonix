@@ -3,7 +3,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
-import '../../tools/test_data_generator.dart';
+import '../../tool/test_data_generator.dart';
 
 /// Memory and performance testing suite for chunked audio processing
 ///
@@ -774,4 +774,3 @@ class ProcessInfo {
     _memoryPressureLimit = 100 * 1024 * 1024;
   }
 }
-
