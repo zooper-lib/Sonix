@@ -174,13 +174,22 @@ jobs:
       # Commit the binaries
       - name: Commit binaries
         run: |
+          echo "Checking for changes..."
+          git status
+          
+          echo "Adding binary files..."
           git add windows/sonix_native.dll
           git add linux/libsonix_native.so
           git add macos/libsonix_native.dylib
           
+          echo "Checking staged changes..."
+          git status
+          git diff --staged --name-only
+          
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "No changes to commit - binaries are already up to date"
           else
+            echo "Changes detected, committing..."
             git commit -m "🤖 Update native binaries [skip ci]
             
             Built from commit: ${{ github.sha }}
