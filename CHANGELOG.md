@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-10-02
+
+### 🐛 Bug Fixes
+
+#### Native Library Distribution
+
+- **Fixed Linux RUNPATH Issue**: Resolved hardcoded CI build path in Linux native library
+  - The distributed `libsonix_native.so` had a hardcoded RUNPATH pointing to an invalid path
+  - Updated CMake configuration to use `$ORIGIN` (relative path) instead of absolute CI paths
+  - Native library now correctly looks for FFmpeg dependencies in the same directory
+  - Fixes library loading issues when using the package in Flutter applications
+
+#### Build System
+
+- **CMake RPATH Configuration**: Added `CMAKE_BUILD_WITH_INSTALL_RPATH TRUE` to ensure proper RUNPATH handling
+  - Prevents CMake from embedding absolute build-time library paths
+  - Ensures distributed libraries use relative paths for dependency resolution
+  - Improves portability of the native library across different systems
+
+### 🔧 Technical Details
+
+This patch release addresses a critical issue where the Linux native library contained hardcoded paths from the CI build environment, preventing proper library loading in end-user applications. The fix ensures that the library uses relative paths (`$ORIGIN`) to locate its FFmpeg dependencies, making the package truly portable.
+
 ## [1.0.0] - 2025-09-26
 
 ### 🎉 Initial Release
