@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-10-05
+
+### ✨ New Features
+
+#### WaveformController
+
+- **Added `WaveformController`**: New controller class for programmatic control of `WaveformWidget`
+  - Provides `seekTo()` method for programmatic seeking to any position
+  - Includes `updatePosition()` method for syncing with audio player without triggering seek events
+  - Supports `addListener()` for monitoring position changes
+  - Features `reset()` method to return to the beginning
+  - Allows controlling animation behavior via `setAnimationEnabled()`
+  - Follows Flutter's controller pattern (similar to `TextEditingController`, `ScrollController`)
+
+#### Enhanced WaveformWidget
+
+- **Controller Integration**: `WaveformWidget` now accepts optional `controller` parameter
+  - Controller takes precedence over `playbackPosition` parameter when both are provided
+  - Fully backward compatible - existing code continues to work without changes
+  - Automatic listener management - no manual cleanup required
+  - Respects controller's animation settings for smooth or instant position changes
+
+### 🎯 Use Cases
+
+The new controller enables:
+- Quick seek buttons (jump to specific positions like 0%, 25%, 50%, 75%, 100%)
+- Skip forward/backward controls
+- Programmatic playback simulation
+- Marker-based navigation in audio content
+- External control from buttons, sliders, or other UI elements
+- Easy synchronization with audio players
+
+### 📚 Documentation
+
+- Added comprehensive API documentation for `WaveformController`
+- Added complete working example in `example/lib/examples/waveform_controller_example.dart`
+- Updated `WaveformWidget` documentation with controller usage patterns
+
+### 🔄 Migration Guide
+
+No migration required! This is a fully backward-compatible feature addition.
+
+**Old way (still works):**
+```dart
+WaveformWidget(
+  waveformData: data,
+  playbackPosition: position,
+)
+```
+
+**New way with controller:**
+```dart
+WaveformWidget(
+  waveformData: data,
+  controller: controller,
+)
+```
+
+## [1.0.1] - 2025-10-02
+
+### 🐛 Bug Fixes
+
+#### Native Library Distribution
+
+- **Fixed Linux RUNPATH Issue**: Resolved hardcoded CI build path in Linux native library
+  - The distributed `libsonix_native.so` had a hardcoded RUNPATH pointing to an invalid path
+  - Updated CMake configuration to use `$ORIGIN` (relative path) instead of absolute CI paths
+  - Native library now correctly looks for FFmpeg dependencies in the same directory
+  - Fixes library loading issues when using the package in Flutter applications
+
+#### Build System
+
+- **CMake RPATH Configuration**: Added `CMAKE_BUILD_WITH_INSTALL_RPATH TRUE` to ensure proper RUNPATH handling
+  - Prevents CMake from embedding absolute build-time library paths
+  - Ensures distributed libraries use relative paths for dependency resolution
+  - Improves portability of the native library across different systems
+
+### 🔧 Technical Details
+
+This patch release addresses a critical issue where the Linux native library contained hardcoded paths from the CI build environment, preventing proper library loading in end-user applications. The fix ensures that the library uses relative paths (`$ORIGIN`) to locate its FFmpeg dependencies, making the package truly portable.
+
 ## [1.0.0] - 2025-09-26
 
 ### 🎉 Initial Release

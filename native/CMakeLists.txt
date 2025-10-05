@@ -5,6 +5,10 @@ project(sonix_native)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# Force CMake to use install RPATH even during build phase
+# This prevents hardcoded CI build paths from being embedded in the library
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
 # Determine platform-specific directory
 if(WIN32)
     set(PLATFORM_NAME "windows")
