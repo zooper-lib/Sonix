@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-10-05
+
+### Fixed
+
+- Fixed waveform generation for large files (>5MB) showing silence/garbage data
+- Fixed duration estimation causing waveforms to end with excessive silence
+- Fixed selective decoding using incorrect byte-position reading instead of proper time-based seeking
+
+### Performance
+
+- **~10x faster** waveform generation for large files (e.g., 11MB MP3: 30s → 3s)
+- Eliminated failed decode attempts and invalid seeks
+- Direct native FFmpeg chunked decoder integration
+
+### Changed
+
+- Large files now use `ffprobe` for accurate duration metadata
+- Selective decoding uses native seek-to-time instead of byte positions
+
 ## [1.1.0] - 2025-10-05
 
 ### ✨ New Features
