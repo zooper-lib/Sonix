@@ -1,20 +1,22 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:isolate';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
+import 'dart:ffi' as ffi;
+import 'package:ffi/ffi.dart';
 
 import 'isolate_messages.dart';
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/decoders/chunked_audio_decoder.dart';
-import 'package:sonix/src/models/file_chunk.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
 import 'package:sonix/src/processing/waveform_config.dart';
 import 'package:sonix/src/processing/downsampling_algorithm.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
+import 'package:sonix/src/native/sonix_bindings.dart';
 import 'package:sonix/src/utils/sonix_logger.dart';
 
 /// Background isolate entry point for audio processing
@@ -355,15 +357,16 @@ void _sendCancellationResponse(SendPort mainSendPort, String requestId) {
   mainSendPort.send(response.toJson());
 }
 
-/// Process large files using selective decoding at strategic time positions
+/// Process large files using native chunked decoder with proper seeking
 ///
-/// Instead of decoding the entire file, this method:
-/// 1. Estimates the file duration
-/// 2. Calculates strategic time positions based on desired resolution
-/// 3. Seeks to each position and decodes a small chunk
-/// 4. Extracts amplitude from each chunk to build the waveform
+/// This method uses the native FFmpeg-based chunked decoder which:
+/// 1. Properly handles encoder delay skipping
+/// 2. Seeks accurately to time positions
+/// 3. Decodes from proper frame boundaries
+/// 4. Works correctly with all compressed formats (MP3, Opus, AAC, etc.)
 ///
-/// This is much more efficient for large files as it only decodes what's needed.
+/// The previous implementation tried to read arbitrary byte positions,
+/// which doesn't work for compressed audio formats.
 Future<AudioData> _processWithSelectiveDecoding(
   ChunkedAudioDecoder decoder,
   String filePath,
@@ -372,106 +375,214 @@ Future<AudioData> _processWithSelectiveDecoding(
   String requestId,
   _ActiveOperation operation,
 ) async {
-  // Initialize decoder for chunked processing
-  await decoder.initializeChunkedDecoding(filePath);
+  // Import native bindings for direct access to chunked decoder
+  final format = _detectAudioFormat(filePath);
 
-  // Check for cancellation after initialization
-  if (operation.isCancelled) {
-    throw Exception('Operation cancelled during selective decoder initialization');
+  // Initialize native chunked decoder
+  final filePathNative = filePath.toNativeUtf8();
+  final nativeDecoder = SonixNativeBindings.initChunkedDecoder(format, filePathNative.cast());
+
+  if (nativeDecoder.address == 0) {
+    malloc.free(filePathNative);
+    throw DecodingException('Failed to initialize native chunked decoder', 'Could not initialize native decoder for $filePath');
   }
 
-  // Get file metadata and estimate duration
-  final metadata = decoder.getFormatMetadata();
-  final sampleRate = metadata['sampleRate'] as int? ?? 44100;
-  final channels = metadata['channels'] as int? ?? 2;
-
-  // Estimate duration from file size and format
-  Duration? estimatedDuration = await decoder.estimateDuration();
-  if (estimatedDuration == null) {
-    // Fallback: estimate from file size (rough approximation)
+  try {
+    // Get file metadata to get ACCURATE duration from FFmpeg
     final file = File(filePath);
     final fileSize = await file.length();
-    // Rough estimate: assume 128kbps average bitrate for MP3
-    final estimatedSeconds = (fileSize * 8) / (128 * 1000);
-    estimatedDuration = Duration(seconds: estimatedSeconds.round());
-  }
 
-  // Calculate how many sample positions we need
-  final resolution = config.resolution;
+    int sampleRate = 44100; // Default
+    int channels = 2; // Default
+    Duration? actualDuration; // Nullable until we get it from ffprobe or estimation
 
-  // Sample audio at each position
-  final amplitudes = <double>[];
-  final file = File(filePath);
-  final fileSize = await file.length();
-
-  for (int i = 0; i < resolution; i++) {
-    // Check for cancellation during processing
-    if (operation.isCancelled) {
-      throw Exception('Operation cancelled during selective processing');
-    }
-
+    // Get accurate duration using ffprobe (FFmpeg's metadata tool)
+    // This is fast and doesn't require decoding
     try {
-      // Use a simple approach: distribute sample positions across the file
-      // Don't rely on duration estimation for byte positioning
-      final progress = resolution <= 1 ? 0.5 : i / (resolution - 1); // 0.0 to 1.0
-      final bytePosition = (fileSize * progress).round();
+      final result = await Process.run('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filePath]);
 
-      // Ensure byte position is within valid bounds
-      final safeBytePosition = math.max(0, math.min(bytePosition, fileSize - (16 * 1024)));
+      if (result.exitCode == 0) {
+        final jsonOutput = result.stdout as String;
+        final data = jsonDecode(jsonOutput) as Map<String, dynamic>;
 
-      // Read a small chunk directly from the calculated position
-      const chunkSize = 16 * 1024; // 16KB
-      final endPosition = math.min(fileSize, safeBytePosition + chunkSize);
-
-      final chunkData = await file.openRead(safeBytePosition, endPosition).fold<List<int>>([], (previous, element) => previous..addAll(element));
-
-      if (chunkData.isNotEmpty) {
-        // Create a file chunk for processing
-        final fileChunk = FileChunk(
-          data: Uint8List.fromList(chunkData),
-          startPosition: safeBytePosition,
-          endPosition: endPosition,
-          isLast: i == resolution - 1,
-        );
-
-        // Process this chunk to get audio samples
-        final audioChunks = await decoder.processFileChunk(fileChunk);
-
-        // Extract amplitude from the decoded chunk
-        double amplitude = 0.0;
-        if (audioChunks.isNotEmpty) {
-          final samples = audioChunks.first.samples;
-          if (samples.isNotEmpty) {
-            // Calculate amplitude from this chunk
-            if (config.algorithm == DownsamplingAlgorithm.rms) {
-              // RMS calculation
-              double sum = 0.0;
-              for (final sample in samples) {
-                sum += sample * sample;
-              }
-              amplitude = math.sqrt(sum / samples.length);
-            } else {
-              // Peak calculation
-              amplitude = samples.map((s) => s.abs()).reduce(math.max);
-            }
+        // Get duration from format section
+        if (data.containsKey('format')) {
+          final formatData = data['format'] as Map<String, dynamic>;
+          if (formatData.containsKey('duration')) {
+            final durationSeconds = double.parse(formatData['duration'] as String);
+            actualDuration = Duration(milliseconds: (durationSeconds * 1000).round());
           }
         }
 
-        amplitudes.add(amplitude);
+        // Get sample rate and channels from streams
+        if (data.containsKey('streams')) {
+          final streams = data['streams'] as List;
+          for (final stream in streams) {
+            if (stream is Map<String, dynamic> && stream['codec_type'] == 'audio') {
+              if (stream.containsKey('sample_rate')) {
+                sampleRate = int.parse(stream['sample_rate'] as String);
+              }
+              if (stream.containsKey('channels')) {
+                channels = stream['channels'] as int;
+              }
+              break;
+            }
+          }
+        }
       } else {
-        // No data at this position
-        amplitudes.add(0.0);
+        // ffprobe failed, fall back to estimation
+        throw Exception('ffprobe failed');
       }
     } catch (e) {
-      // Add a zero amplitude for failed positions (silently handle errors)
-      amplitudes.add(0.0);
+      // If ffprobe fails, use more conservative estimate
+      SonixLogger.debug('ffprobe failed, using file size estimation: $e');
+      int estimatedBitrate;
+      switch (format) {
+        case 1: // MP3
+          estimatedBitrate = 192000; // 192kbps average for MP3
+          break;
+        case 5: // Opus
+          estimatedBitrate = 96000; // 96kbps average for Opus
+          break;
+        case 6: // MP4/AAC
+          estimatedBitrate = 192000; // 192kbps average for AAC
+          break;
+        case 4: // OGG Vorbis
+          estimatedBitrate = 160000; // 160kbps average for Vorbis
+          break;
+        default:
+          estimatedBitrate = 128000; // Conservative fallback
+      }
+
+      final estimatedSeconds = (fileSize * 8) / estimatedBitrate;
+      actualDuration = Duration(milliseconds: (estimatedSeconds * 1000).round());
     }
+
+    // Ensure we have a duration (shouldn't happen, but defensive)
+    actualDuration ??= Duration(seconds: 180);
+
+    // Calculate resolution and sample positions
+    final resolution = config.resolution;
+    final amplitudes = <double>[];
+    final durationMs = actualDuration.inMilliseconds;
+
+    for (int i = 0; i < resolution; i++) {
+      // Check for cancellation
+      if (operation.isCancelled) {
+        throw Exception('Operation cancelled during selective processing');
+      }
+
+      try {
+        // Calculate time position for this waveform point
+        final progress = resolution <= 1 ? 0.5 : i / (resolution - 1);
+        final timePositionMs = (durationMs * progress).round();
+
+        // Seek to this time position using native decoder
+        // This properly handles frame boundaries and codec quirks
+        final seekResult = SonixNativeBindings.seekToTime(nativeDecoder, timePositionMs);
+
+        if (seekResult != 0) {
+          // 0 = success in native code
+          // Seek failed, use zero amplitude
+          amplitudes.add(0.0);
+          continue;
+        }
+
+        // Process a chunk at this position
+        final chunkPtr = malloc<SonixFileChunk>();
+        chunkPtr.ref.chunk_index = i;
+        chunkPtr.ref.start_byte = 0; // Not used after seeking
+        chunkPtr.ref.end_byte = 0; // Not used after seeking
+
+        try {
+          final result = SonixNativeBindings.processFileChunk(nativeDecoder, chunkPtr);
+
+          double amplitude = 0.0;
+          if (result.address != 0) {
+            final resultData = result.ref;
+            if (resultData.success == 1 && resultData.audio_data.address != 0) {
+              final audioData = resultData.audio_data.ref;
+              final sampleCount = audioData.sample_count;
+
+              if (sampleCount > 0 && audioData.samples.address != 0) {
+                // Extract samples and calculate amplitude
+                final samples = audioData.samples.asTypedList(sampleCount);
+
+                // Calculate amplitude based on algorithm
+                if (config.algorithm == DownsamplingAlgorithm.rms) {
+                  double sum = 0.0;
+                  for (int j = 0; j < sampleCount; j++) {
+                    final sample = samples[j];
+                    sum += sample * sample;
+                  }
+                  amplitude = math.sqrt(sum / sampleCount);
+                } else if (config.algorithm == DownsamplingAlgorithm.peak) {
+                  double peak = 0.0;
+                  for (int j = 0; j < sampleCount; j++) {
+                    final abs = samples[j].abs();
+                    if (abs > peak) peak = abs;
+                  }
+                  amplitude = peak;
+                } else if (config.algorithm == DownsamplingAlgorithm.average) {
+                  double sum = 0.0;
+                  for (int j = 0; j < sampleCount; j++) {
+                    sum += samples[j].abs();
+                  }
+                  amplitude = sum / sampleCount;
+                } else {
+                  // Default to RMS
+                  double sum = 0.0;
+                  for (int j = 0; j < sampleCount; j++) {
+                    final sample = samples[j];
+                    sum += sample * sample;
+                  }
+                  amplitude = math.sqrt(sum / sampleCount);
+                }
+              }
+            }
+
+            SonixNativeBindings.freeChunkResult(result);
+          }
+
+          amplitudes.add(amplitude);
+        } finally {
+          malloc.free(chunkPtr);
+        }
+      } catch (e) {
+        SonixLogger.debug('Failed to decode at position $i: $e');
+        amplitudes.add(0.0);
+      }
+    }
+
+    return AudioData(samples: amplitudes, sampleRate: sampleRate, channels: channels, duration: actualDuration);
+  } finally {
+    // Always cleanup the native decoder
+    SonixNativeBindings.cleanupChunkedDecoder(nativeDecoder);
+    malloc.free(filePathNative);
   }
+}
 
-  // Cleanup decoder resources
-  await decoder.cleanupChunkedProcessing();
-
-  return AudioData(samples: amplitudes, sampleRate: sampleRate, channels: channels, duration: estimatedDuration);
+/// Detect audio format from file extension
+int _detectAudioFormat(String filePath) {
+  final extension = filePath.toLowerCase().split('.').last;
+  switch (extension) {
+    case 'mp3':
+      return 1; // SONIX_FORMAT_MP3
+    case 'wav':
+      return 2; // SONIX_FORMAT_WAV
+    case 'flac':
+      return 3; // SONIX_FORMAT_FLAC
+    case 'ogg':
+      return 4; // SONIX_FORMAT_OGG
+    case 'opus':
+      return 5; // SONIX_FORMAT_OPUS
+    case 'm4a':
+    case 'mp4':
+    case 'aac':
+      return 6; // SONIX_FORMAT_MP4
+    default:
+      return 0; // SONIX_FORMAT_UNKNOWN
+  }
 }
 
 /// Cleanup FFMPEG resources when isolate shuts down

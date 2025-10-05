@@ -45,6 +45,9 @@ struct SonixChunkedDecoder
     char *file_path;
     int64_t total_samples;
     int64_t current_sample;
+    // Encoder delay handling
+    int64_t encoder_delay;      // Total encoder delay samples to skip
+    int64_t samples_skipped;    // Number of samples skipped so far
 };
 
 // Set error message
@@ -605,6 +608,43 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
     uint32_t sample_rate = codec_ctx->sample_rate;
     uint32_t channels = codec_ctx->ch_layout.nb_channels;
 
+    // Read encoder delay (priming samples) from codec parameters
+    // This is the number of padding samples added by the encoder that must be skipped
+    int64_t encoder_delay = audio_stream->codecpar->initial_padding;
+    int64_t samples_to_skip = encoder_delay;
+    int64_t samples_skipped = 0;
+
+#ifdef DEBUG
+    // Log encoder delay for debugging
+    if (encoder_delay > 0)
+    {
+        double delay_ms = (encoder_delay * 1000.0) / sample_rate;
+        fprintf(stderr, "[SONIX] Encoder delay detected: %ld samples (%.2f ms) for codec %s\n",
+                encoder_delay, delay_ms, codec->name);
+    }
+    
+    // Validate known codec delays
+    if (strcmp(codec->name, "opus") == 0)
+    {
+        // Opus should always have 312 samples delay
+        if (encoder_delay != 312)
+        {
+            fprintf(stderr, "[SONIX] WARNING: Opus file has unexpected encoder delay: %ld (expected 312)\n",
+                    encoder_delay);
+        }
+    }
+    else if (strcmp(codec->name, "flac") == 0 || strcmp(codec->name, "pcm_s16le") == 0 ||
+             strcmp(codec->name, "pcm_s16be") == 0)
+    {
+        // Lossless/uncompressed codecs should have no delay
+        if (encoder_delay != 0)
+        {
+            fprintf(stderr, "[SONIX] WARNING: Lossless codec %s has unexpected encoder delay: %ld (expected 0)\n",
+                    codec->name, encoder_delay);
+        }
+    }
+#endif
+
     // Use very generous buffer allocation to avoid overflow issues
     size_t estimated_samples;
 
@@ -744,8 +784,32 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
                     goto cleanup;
                 }
 
+                // Handle encoder delay - skip priming samples
+                int samples_in_frame = frame->nb_samples;
+                int frame_offset = 0; // Offset into frame data to start reading from
+
+                if (samples_skipped < samples_to_skip)
+                {
+                    // Calculate how many samples to skip from this frame
+                    int skip_from_frame = samples_to_skip - samples_skipped;
+                    
+                    if (skip_from_frame >= samples_in_frame)
+                    {
+                        // Skip the entire frame
+                        samples_skipped += samples_in_frame;
+                        continue; // Don't process this frame at all
+                    }
+                    else
+                    {
+                        // Skip partial frame - we'll handle offset during conversion
+                        frame_offset = skip_from_frame;
+                        samples_in_frame -= skip_from_frame;
+                        samples_skipped += skip_from_frame;
+                    }
+                }
+
                 // Check if we need to expand the buffer dynamically
-                uint64_t required_samples = sample_index + (frame->nb_samples * channels);
+                uint64_t required_samples = sample_index + (samples_in_frame * channels);
                 if (required_samples > max_samples)
                 {
                     // Expand buffer by 50% or required size + safety margin, whichever is larger
@@ -769,10 +833,40 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
                     max_samples = new_max_samples;
                 }
 
-                // Convert to float samples
+                // Convert to float samples (handling frame_offset for encoder delay skip)
                 uint8_t *output_buffer = (uint8_t *)(audio_data->samples + sample_index);
-                int converted_samples = swr_convert(swr_ctx, &output_buffer, frame->nb_samples,
-                                                    (const uint8_t **)frame->data, frame->nb_samples);
+                
+                // Prepare input pointers with offset if we're skipping samples
+                const uint8_t *input_data[AV_NUM_DATA_POINTERS];
+                for (int i = 0; i < AV_NUM_DATA_POINTERS; i++)
+                {
+                    if (frame->data[i] && frame_offset > 0)
+                    {
+                        // Calculate byte offset based on sample format
+                        int bytes_per_sample = av_get_bytes_per_sample(codec_ctx->sample_fmt);
+                        int plane_offset;
+                        
+                        if (av_sample_fmt_is_planar(codec_ctx->sample_fmt))
+                        {
+                            // Planar format: each plane has one channel
+                            plane_offset = frame_offset * bytes_per_sample;
+                        }
+                        else
+                        {
+                            // Packed format: samples are interleaved
+                            plane_offset = frame_offset * channels * bytes_per_sample;
+                        }
+                        
+                        input_data[i] = frame->data[i] + plane_offset;
+                    }
+                    else
+                    {
+                        input_data[i] = frame->data[i];
+                    }
+                }
+                
+                int converted_samples = swr_convert(swr_ctx, &output_buffer, samples_in_frame,
+                                                    input_data, samples_in_frame);
 
                 if (converted_samples < 0)
                 {
@@ -800,9 +894,57 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
             break;
         }
 
+        // Handle encoder delay for flushed frames too
+        int samples_in_frame = frame->nb_samples;
+        int frame_offset = 0;
+
+        if (samples_skipped < samples_to_skip)
+        {
+            int skip_from_frame = samples_to_skip - samples_skipped;
+            
+            if (skip_from_frame >= samples_in_frame)
+            {
+                samples_skipped += samples_in_frame;
+                continue;
+            }
+            else
+            {
+                frame_offset = skip_from_frame;
+                samples_in_frame -= skip_from_frame;
+                samples_skipped += skip_from_frame;
+            }
+        }
+
         uint8_t *output_buffer = (uint8_t *)(audio_data->samples + sample_index);
-        int converted_samples = swr_convert(swr_ctx, &output_buffer, frame->nb_samples,
-                                            (const uint8_t **)frame->data, frame->nb_samples);
+        
+        // Prepare input with offset
+        const uint8_t *input_data[AV_NUM_DATA_POINTERS];
+        for (int i = 0; i < AV_NUM_DATA_POINTERS; i++)
+        {
+            if (frame->data[i] && frame_offset > 0)
+            {
+                int bytes_per_sample = av_get_bytes_per_sample(codec_ctx->sample_fmt);
+                int plane_offset;
+                
+                if (av_sample_fmt_is_planar(codec_ctx->sample_fmt))
+                {
+                    plane_offset = frame_offset * bytes_per_sample;
+                }
+                else
+                {
+                    plane_offset = frame_offset * channels * bytes_per_sample;
+                }
+                
+                input_data[i] = frame->data[i] + plane_offset;
+            }
+            else
+            {
+                input_data[i] = frame->data[i];
+            }
+        }
+        
+        int converted_samples = swr_convert(swr_ctx, &output_buffer, samples_in_frame,
+                                            input_data, samples_in_frame);
 
         if (converted_samples > 0)
         {
@@ -994,6 +1136,20 @@ SonixChunkedDecoder *sonix_init_chunked_decoder(int32_t format, const char *file
         goto init_cleanup;
     }
 
+    // Read encoder delay from codec parameters
+    decoder->encoder_delay = audio_stream->codecpar->initial_padding;
+    decoder->samples_skipped = 0;
+
+#ifdef DEBUG
+    // Log encoder delay for debugging
+    if (decoder->encoder_delay > 0)
+    {
+        double delay_ms = (decoder->encoder_delay * 1000.0) / decoder->codec_ctx->sample_rate;
+        fprintf(stderr, "[SONIX CHUNKED] Encoder delay detected: %ld samples (%.2f ms) for codec %s\n",
+                decoder->encoder_delay, delay_ms, codec->name);
+    }
+#endif
+
     // Initialize resampler
     decoder->swr_ctx = swr_alloc();
     if (!decoder->swr_ctx)
@@ -1161,16 +1317,70 @@ SonixChunkResult *sonix_process_file_chunk(SonixChunkedDecoder *decoder, SonixFi
                 goto chunk_cleanup;
             }
 
+            // Handle encoder delay - skip priming samples (only on first chunks)
+            int samples_in_frame = frame->nb_samples;
+            int frame_offset = 0;
+
+            if (decoder->samples_skipped < decoder->encoder_delay)
+            {
+                // Calculate how many samples to skip from this frame
+                int skip_from_frame = decoder->encoder_delay - decoder->samples_skipped;
+                
+                if (skip_from_frame >= samples_in_frame)
+                {
+                    // Skip the entire frame
+                    decoder->samples_skipped += samples_in_frame;
+                    continue; // Don't process this frame
+                }
+                else
+                {
+                    // Skip partial frame
+                    frame_offset = skip_from_frame;
+                    samples_in_frame -= skip_from_frame;
+                    decoder->samples_skipped += skip_from_frame;
+                }
+            }
+
             // Check if we have room for more samples
-            if (samples_processed + (frame->nb_samples * channels) > buffer_size)
+            if (samples_processed + (samples_in_frame * channels) > buffer_size)
             {
                 break; // Chunk is full
             }
 
-            // Convert samples using resampler
+            // Convert samples using resampler (handling frame_offset for encoder delay skip)
             uint8_t *output_buffer = (uint8_t *)(result->audio_data->samples + samples_processed);
-            int converted_samples = swr_convert(decoder->swr_ctx, &output_buffer, frame->nb_samples,
-                                                (const uint8_t **)frame->data, frame->nb_samples);
+            
+            // Prepare input pointers with offset if we're skipping samples
+            const uint8_t *input_data[AV_NUM_DATA_POINTERS];
+            for (int i = 0; i < AV_NUM_DATA_POINTERS; i++)
+            {
+                if (frame->data[i] && frame_offset > 0)
+                {
+                    // Calculate byte offset based on sample format
+                    int bytes_per_sample = av_get_bytes_per_sample(decoder->codec_ctx->sample_fmt);
+                    int plane_offset;
+                    
+                    if (av_sample_fmt_is_planar(decoder->codec_ctx->sample_fmt))
+                    {
+                        // Planar format: each plane has one channel
+                        plane_offset = frame_offset * bytes_per_sample;
+                    }
+                    else
+                    {
+                        // Packed format: samples are interleaved
+                        plane_offset = frame_offset * channels * bytes_per_sample;
+                    }
+                    
+                    input_data[i] = frame->data[i] + plane_offset;
+                }
+                else
+                {
+                    input_data[i] = frame->data[i];
+                }
+            }
+            
+            int converted_samples = swr_convert(decoder->swr_ctx, &output_buffer, samples_in_frame,
+                                                input_data, samples_in_frame);
 
             if (converted_samples < 0)
             {
