@@ -68,6 +68,7 @@ export 'src/widgets/waveform_painter.dart';
 export 'src/widgets/waveform_style.dart';
 export 'src/widgets/waveform_style_presets.dart';
 export 'src/widgets/waveform_widget.dart';
+export 'src/widgets/waveform_controller.dart';
 
 // Display resolution and sampling
 export 'src/processing/display_sampler.dart';
