@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/waveform_data.dart';
 import 'waveform_style.dart';
 import 'waveform_painter.dart';
+import 'waveform_controller.dart';
 
 /// A Flutter widget for displaying interactive audio waveforms with playback visualization.
 ///
@@ -29,8 +30,14 @@ import 'waveform_painter.dart';
 ///
 /// class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
 ///   WaveformData? waveformData;
-///   double playbackPosition = 0.0;
+///   final WaveformController controller = WaveformController();
 ///   AudioPlayer? audioPlayer;
+///
+///   @override
+///   void dispose() {
+///     controller.dispose();
+///     super.dispose();
+///   }
 ///
 ///   @override
 ///   Widget build(BuildContext context) {
@@ -39,12 +46,16 @@ import 'waveform_painter.dart';
 ///         if (waveformData != null)
 ///           WaveformWidget(
 ///             waveformData: waveformData!,
-///             playbackPosition: playbackPosition,
+///             controller: controller,
 ///             onSeek: (position) {
 ///               final seekTime = waveformData!.duration * position;
 ///               audioPlayer?.seek(seekTime);
 ///             },
 ///           ),
+///         ElevatedButton(
+///           onPressed: () => controller.seekTo(0.5),
+///           child: Text('Jump to Middle'),
+///         ),
 ///         // Audio controls here...
 ///       ],
 ///     );
@@ -117,6 +128,22 @@ class WaveformWidget extends StatefulWidget {
   /// **Required:** Must not be null and should contain valid amplitude data.
   final WaveformData waveformData;
 
+  /// Optional controller for programmatic control of the waveform.
+  ///
+  /// When provided, the controller can be used to programmatically seek to positions,
+  /// get the current position, and listen to position changes.
+  ///
+  /// If both [controller] and [playbackPosition] are provided, [controller] takes precedence.
+  ///
+  /// ## Example
+  /// ```dart
+  /// final controller = WaveformController();
+  ///
+  /// // Later in code:
+  /// controller.seekTo(0.5); // Jump to middle
+  /// ```
+  final WaveformController? controller;
+
   /// Current playback position as a fraction from 0.0 to 1.0.
   ///
   /// - 0.0 = beginning of audio
@@ -126,6 +153,8 @@ class WaveformWidget extends StatefulWidget {
   ///
   /// The widget displays a vertical line or highlight at this position.
   /// Update this value as audio plays to show real-time progress.
+  ///
+  /// **Note:** If a [controller] is provided, it takes precedence over this parameter.
   final double? playbackPosition;
 
   /// Visual styling configuration for the waveform.
@@ -208,6 +237,7 @@ class WaveformWidget extends StatefulWidget {
   const WaveformWidget({
     super.key,
     required this.waveformData,
+    this.controller,
     this.playbackPosition,
     this.style = const WaveformStyle(),
     this.onTap,
@@ -234,8 +264,11 @@ class _WaveformWidgetState extends State<WaveformWidget> with SingleTickerProvid
     super.initState();
     _animationController = AnimationController(duration: widget.animationDuration, vsync: this);
 
+    // Listen to controller changes if provided
+    widget.controller?.addListener(_onControllerChanged);
+
     // Initialize with current position if available, otherwise start at 0
-    final initialPosition = widget.playbackPosition ?? 0.0;
+    final initialPosition = _getCurrentPosition() ?? 0.0;
     _positionAnimation = Tween<double>(
       begin: initialPosition,
       end: initialPosition,
@@ -248,6 +281,12 @@ class _WaveformWidgetState extends State<WaveformWidget> with SingleTickerProvid
   void didUpdateWidget(WaveformWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // Update controller listener if controller changed
+    if (widget.controller != oldWidget.controller) {
+      oldWidget.controller?.removeListener(_onControllerChanged);
+      widget.controller?.addListener(_onControllerChanged);
+    }
+
     // Handle playback position changes with smooth transitions
     if (widget.playbackPosition != oldWidget.playbackPosition) {
       _handlePositionChange();
@@ -259,13 +298,29 @@ class _WaveformWidgetState extends State<WaveformWidget> with SingleTickerProvid
     }
   }
 
+  /// Gets the current position from controller or playbackPosition parameter
+  double? _getCurrentPosition() {
+    return widget.controller?.position ?? widget.playbackPosition;
+  }
+
+  /// Called when the controller's position changes
+  void _onControllerChanged() {
+    if (!_isDragging) {
+      _handlePositionChange();
+    }
+  }
+
   void _handlePositionChange() {
-    if (widget.playbackPosition != _previousPosition && !_isDragging) {
+    final currentPositionValue = _getCurrentPosition();
+    if (currentPositionValue != _previousPosition && !_isDragging) {
       final currentPosition = _previousPosition ?? 0.0;
-      final newPosition = widget.playbackPosition ?? 0.0;
+      final newPosition = currentPositionValue ?? 0.0;
+
+      // Check if we should animate based on controller setting or internal flag
+      final shouldAnimatePosition = widget.controller?.shouldAnimate ?? _shouldAnimate;
 
       // Only animate if we should animate and the change is significant
-      if (_shouldAnimate && (newPosition - currentPosition).abs() > 0.001) {
+      if (shouldAnimatePosition && (newPosition - currentPosition).abs() > 0.001) {
         // Create new animation from current position to new position
         _positionAnimation = Tween<double>(
           begin: currentPosition,
@@ -283,12 +338,13 @@ class _WaveformWidgetState extends State<WaveformWidget> with SingleTickerProvid
         _animationController.value = 1.0;
       }
 
-      _previousPosition = widget.playbackPosition;
+      _previousPosition = currentPositionValue;
     }
   }
 
   @override
   void dispose() {
+    widget.controller?.removeListener(_onControllerChanged);
     _animationController.dispose();
     super.dispose();
   }
@@ -316,6 +372,10 @@ class _WaveformWidgetState extends State<WaveformWidget> with SingleTickerProvid
     if (_dragPosition != null && widget.onSeek != null) {
       // Disable animation for the next position change since it's from drag
       _shouldAnimate = false;
+
+      // Update controller if present
+      widget.controller?.updatePosition(_dragPosition!);
+
       widget.onSeek!(_dragPosition!);
       // Re-enable animation after a brief delay
       Future.delayed(const Duration(milliseconds: 50), () {
@@ -340,6 +400,10 @@ class _WaveformWidgetState extends State<WaveformWidget> with SingleTickerProvid
       final position = (details.localPosition.dx / size.width).clamp(0.0, 1.0);
       // Disable animation for tap-to-seek to make it immediate
       _shouldAnimate = false;
+
+      // Update controller if present
+      widget.controller?.updatePosition(position);
+
       widget.onSeek!(position);
       // Re-enable animation after a brief delay
       Future.delayed(const Duration(milliseconds: 50), () {
