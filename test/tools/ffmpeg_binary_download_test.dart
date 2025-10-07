@@ -45,7 +45,10 @@ void main() {
         final libraryNames = platformInfo.getExpectedLibraryNames();
 
         expect(libraryNames, isNotEmpty);
-        expect(libraryNames.length, equals(4)); // avformat, avcodec, avutil, swresample
+
+        // Windows and macOS have 4 libraries, Linux has 8 (generic + versioned)
+        final expectedCount = platformInfo.platform == 'linux' ? 8 : 4;
+        expect(libraryNames.length, equals(expectedCount));
 
         switch (platformInfo.platform) {
           case 'windows':
@@ -55,7 +58,7 @@ void main() {
             expect(libraryNames.every((name) => name.endsWith('.dylib')), isTrue);
             break;
           case 'linux':
-            expect(libraryNames.every((name) => name.endsWith('.so')), isTrue);
+            expect(libraryNames.every((name) => name.endsWith('.so') || name.contains('.so.')), isTrue);
             break;
         }
       });
