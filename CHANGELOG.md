@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-10-07
+
+### Fixed
+
+- **FFMPEG Download Tool**: Fixed library extraction failure on Linux due to hardcoded version numbers
+  - Updated library paths to use wildcard patterns instead of specific version numbers
+  - Resolves `File not found: ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100` error
+  - Makes downloader resilient to upstream FFmpeg version updates
+  - Applies to all Linux FFMPEG libraries: libavformat, libavcodec, libavutil, libswresample
+
+### Technical Details
+
+The FFMPEG binary downloader was using hardcoded version numbers (e.g., `libavformat.so.62.6.100`) which broke when upstream FFmpeg builds updated their versions. The fix replaces these with wildcard patterns (e.g., `libavformat.so.62.*`) that match any patch version, ensuring compatibility with future FFmpeg updates.
+
 ## [1.2.0] - 2025-10-05
 
 ### Fixed
