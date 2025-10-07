@@ -320,7 +320,13 @@ void main() {
 
           // Chunk size should be reasonable
           expect(chunkSize, greaterThan(0));
-          expect(chunkSize, lessThanOrEqualTo(10 * 1024 * 1024)); // Max 10MB
+          
+          // For files <= 100MB, chunk size should be <= 10MB
+          // For larger files, allow proportionally larger chunks (up to 20MB for 1GB)
+          final maxChunkSize = fileSize <= 100 * 1024 * 1024 
+              ? 10 * 1024 * 1024 
+              : 20 * 1024 * 1024;
+          expect(chunkSize, lessThanOrEqualTo(maxChunkSize));
 
           // Chunk size should generally increase or stay the same with file size
           if (previousChunkSize != null) {

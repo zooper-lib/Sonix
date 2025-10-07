@@ -256,7 +256,7 @@ void main() {
       test('should detect OGG format from generated file content', () async {
         if (!nativeLibAvailable) return;
 
-        final oggPath = TestDataLoader.getAssetPath('sample_audio.ogg');
+        final oggPath = TestDataLoader.getAssetPath('test_sample.ogg');
         if (!await File(oggPath).exists()) {
           markTestSkipped('Generated OGG test file not found. Run test data generator first.');
           return;
@@ -315,9 +315,8 @@ void main() {
         }
 
         final bytes = await File(corruptedPath).readAsBytes();
-        // Corrupted files should be handled gracefully, typically returning unknown format
-        final format = NativeAudioBindings.detectFormat(bytes);
-        expect(format, equals(AudioFormat.unknown));
+        // Corrupted files should throw DecodingException as they cannot be detected
+        expect(() => NativeAudioBindings.detectFormat(bytes), throwsA(isA<DecodingException>()));
       });
 
       test('should handle invalid format files', () async {
@@ -330,9 +329,8 @@ void main() {
         }
 
         final bytes = await File(invalidPath).readAsBytes();
-        // Invalid format files should return unknown format
-        final format = NativeAudioBindings.detectFormat(bytes);
-        expect(format, equals(AudioFormat.unknown));
+        // Invalid format files should throw DecodingException
+        expect(() => NativeAudioBindings.detectFormat(bytes), throwsA(isA<DecodingException>()));
       });
 
       test('should detect format from real file content using NativeAudioBindings', () async {

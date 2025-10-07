@@ -227,17 +227,19 @@ void main() {
           return;
         }
 
-        // On Linux, verify that the shared object can be loaded
-        final expectedFiles = ['libsonix_native.so'];
+        // On Linux, verify that the shared object can be loaded from platform directory
+        final expectedPaths = ['linux/libsonix_native.so', 'test/fixtures/ffmpeg/libsonix_native.so'];
 
         print('Checking for Linux FFMPEG SO files:');
-        for (final fileName in expectedFiles) {
-          final file = File(fileName);
+        bool foundAtLeastOne = false;
+        for (final filePath in expectedPaths) {
+          final file = File(filePath);
           final exists = file.existsSync();
-          print('  $fileName: ${exists ? "✅ Found" : "❌ Missing"}');
-
-          expect(exists, isTrue, reason: 'Native shared object $fileName should exist');
+          print('  $filePath: ${exists ? "✅ Found" : "❌ Missing"}');
+          if (exists) foundAtLeastOne = true;
         }
+
+        expect(foundAtLeastOne, isTrue, reason: 'At least one native shared object should exist in expected locations');
 
         // Test that we can actually load the library
         expect(() => SonixNativeBindings.lib, returnsNormally, reason: 'Should be able to load Linux shared object');
@@ -257,11 +259,14 @@ void main() {
         print('Linux path information:');
         print('  Current directory: $currentDir');
 
-        // Check if SO exists in current directory
-        final soInCurrentDir = File('$currentDir/libsonix_native.so');
-        print('  SO in current dir: ${soInCurrentDir.existsSync()}');
+        // Check if SO exists in platform-specific directory or test fixtures
+        final soInPlatformDir = File('$currentDir/linux/libsonix_native.so');
+        final soInTestFixtures = File('$currentDir/test/fixtures/ffmpeg/libsonix_native.so');
+        print('  SO in linux/ dir: ${soInPlatformDir.existsSync()}');
+        print('  SO in test fixtures: ${soInTestFixtures.existsSync()}');
 
-        expect(soInCurrentDir.existsSync(), isTrue, reason: 'Shared object should be found in current directory');
+        final foundInExpectedLocation = soInPlatformDir.existsSync() || soInTestFixtures.existsSync();
+        expect(foundInExpectedLocation, isTrue, reason: 'Shared object should be found in linux/ or test/fixtures/ffmpeg directory');
 
         print('✅ Linux library path test completed');
       });

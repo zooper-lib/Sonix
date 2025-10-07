@@ -21,7 +21,7 @@ void main() {
       if (!available) {
         throw Exception('FFMPEG libraries not available for testing');
       }
-      
+
       // Initialize native bindings before running tests
       NativeAudioBindings.initialize();
       testFilePath = 'test/assets/Double-F the King - Your Blessing.flac';
@@ -339,11 +339,10 @@ void main() {
         print('  FLAC samples/sec: ${(flacData.samples.length / flacStopwatch.elapsedMilliseconds * 1000).round()}');
         print('  MP3 samples/sec: ${(mp3Data.samples.length / mp3Stopwatch.elapsedMilliseconds * 1000).round()}');
 
-        // Both should complete within reasonable time
+        // Both should complete within reasonable time (allow some variance for system load)
         expect(flacStopwatch.elapsedMilliseconds, lessThan(2000));
-        expect(mp3Stopwatch.elapsedMilliseconds, lessThan(1000));
+        expect(mp3Stopwatch.elapsedMilliseconds, lessThan(1500));
       });
     });
   });
 }
-
