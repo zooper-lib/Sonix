@@ -17,7 +17,7 @@ class FFMPEGBinaryConfig {
   final String architecture;
   final String version;
   final String archiveUrl;
-  final Map<String, String> libraryPaths; // Maps library name to path within archive
+  final Map<String, String> libraryPaths;
   final String? archiveChecksum;
   final List<String> requiredSymbols;
 
@@ -577,15 +577,15 @@ class FFMPEGBinaryDownloader {
       version: '6.0',
       archiveUrl: archiveUrl,
       libraryPaths: {
-        'libavformat.so.62': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100',
-        'libavcodec.so.62': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.16.100',
-        'libavutil.so.60': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.13.100',
-        'libswresample.so.6': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.2.100',
+        'libavformat.so.62': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.*',
+        'libavcodec.so.62': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.*',
+        'libavutil.so.60': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.*',
+        'libswresample.so.6': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.*',
         // Also provide generic names for CMake find_library
-        'libavformat.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100',
-        'libavcodec.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.16.100',
-        'libavutil.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.13.100',
-        'libswresample.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.2.100',
+        'libavformat.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.*',
+        'libavcodec.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavcodec.so.62.*',
+        'libavutil.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libavutil.so.60.*',
+        'libswresample.so': 'ffmpeg-master-latest-linux64-gpl-shared/lib/libswresample.so.6.*',
         // Development files (headers)
         'include': 'ffmpeg-master-latest-linux64-gpl-shared/include/',
       },
