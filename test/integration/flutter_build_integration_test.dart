@@ -48,17 +48,18 @@ void main() {
           final result = await downloader.downloadForPlatform(targetPath: downloadPath, installToFlutterDirs: false);
           expect(result.success, isTrue, reason: 'Download should succeed: ${result.errorMessage}');
 
-          // Verify downloaded files exist
+          // Verify downloaded files exist (in lib subdirectory)
           final expectedLibraries = _getExpectedLibraryNames();
+          final libPath = path.join(downloadPath, 'lib');
           for (final libraryName in expectedLibraries) {
-            final libraryFile = File(path.join(downloadPath, libraryName));
+            final libraryFile = File(path.join(libPath, libraryName));
             expect(libraryFile.existsSync(), isTrue, reason: 'Downloaded library $libraryName should exist');
           }
 
           print('✅ Successfully downloaded ${expectedLibraries.length} FFMPEG libraries');
 
           // Verify binary integrity using validator
-          final validationResults = await downloader.validator.validateAllBinaries(downloadPath);
+          final validationResults = await downloader.validator.validateAllBinaries(libPath);
           bool allValid = true;
           for (final entry in validationResults.entries) {
             if (!entry.value.isValid) {
@@ -81,7 +82,7 @@ void main() {
         print('\n--- Testing Flutter Build Directory Installation ---');
 
         // First download binaries
-        final downloadPath = path.join(tempDir.path, 'downloaded');
+        final downloadPath = path.join(tempDir.path, 'downloaded', 'lib');
         if (!Directory(downloadPath).existsSync()) {
           print('⚠️ Skipping installation test - no downloaded binaries');
           return;
@@ -260,9 +261,10 @@ void main() {
           expect(result.success, isTrue, reason: 'Download should succeed');
           print('✅ Step 1 completed');
 
-          // Step 2: Validate binaries
+          // Step 2: Validate binaries (in lib subdirectory)
           print('Step 2: Validating downloaded binaries...');
-          final validationResults = await downloader.validator.validateAllBinaries(downloadPath);
+          final libPath = path.join(downloadPath, 'lib');
+          final validationResults = await downloader.validator.validateAllBinaries(libPath);
           bool allValid = true;
           for (final entry in validationResults.entries) {
             if (!entry.value.isValid) {
@@ -278,9 +280,10 @@ void main() {
 
           // Manually copy files to mock build directories for testing
           final expectedLibraries = _getExpectedLibraryNames();
+          final sourceLibPath = path.join(downloadPath, 'lib');
           for (final buildDir in buildDirs) {
             for (final libraryName in expectedLibraries) {
-              final sourceFile = File(path.join(downloadPath, libraryName));
+              final sourceFile = File(path.join(sourceLibPath, libraryName));
               final targetFile = File(path.join(buildDir, libraryName));
               if (sourceFile.existsSync()) {
                 await sourceFile.copy(targetFile.path);
