@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **macOS Build Configuration**: Fixed Xcode build script errors in example app and consuming applications
+  - Corrected Flutter script path from `flutter_tool` to `flutter_tools` in Xcode build phases
+  - Added proper environment variable sourcing for `FLUTTER_ROOT` in build scripts
+  - Ensures `macos_assemble.sh` can be located during build process
+  - Resolves "Command PhaseScriptExecution failed with a nonzero exit code" error
+
+- **macOS Deployment Target**: Added explicit deployment target configuration for native library
+  - Set `CMAKE_OSX_DEPLOYMENT_TARGET` to 10.15 in CMakeLists.txt for macOS builds
+  - Ensures compatibility with Flutter's minimum macOS version requirements
+  - Reduces deployment target mismatch warnings during linking
+
 ## [1.2.1] - 2025-10-07
 
 ### Fixed
