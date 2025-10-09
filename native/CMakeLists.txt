@@ -111,6 +111,11 @@ if(WIN32)
 
 elseif(APPLE)
     # macOS-specific settings
+    # Set deployment target to match Flutter's minimum (10.15)
+    if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS deployment version")
+    endif()
+    
     set_target_properties(sonix_native PROPERTIES
         MACOSX_RPATH TRUE
         INSTALL_RPATH "@loader_path"
