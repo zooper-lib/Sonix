@@ -64,6 +64,8 @@ void main() {
         'sonix_get_optimal_chunk_size',
         'sonix_cleanup_chunked_decoder',
         'sonix_free_chunk_result',
+        // Media info accessor should be exported on all platforms
+        'sonix_get_decoder_media_info',
       ];
 
       for (final functionName in requiredFunctions) {

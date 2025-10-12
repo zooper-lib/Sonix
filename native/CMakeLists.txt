@@ -147,6 +147,11 @@ elseif(UNIX)
     set_target_properties(sonix_native PROPERTIES
         INSTALL_RPATH "$ORIGIN"
     )
+    # Ensure exported API functions are not removed by linker garbage collection.
+    # Some environments enable -ffunction-sections/-Wl,--gc-sections by default,
+    # which can drop unreferenced symbols from shared libraries.
+    # We explicitly disable section GC for this target to retain the public API.
+    target_link_options(sonix_native PRIVATE -Wl,--no-gc-sections)
 endif()
 
 # For Flutter packages, the native library will be built by the consuming app
