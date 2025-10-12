@@ -9,11 +9,11 @@ A comprehensive Flutter package for generating and displaying audio waveforms wi
 
 🔄 **Isolate-Based Processing**: All audio processing runs in background isolates to keep UI responsive  
 ✨ **Multi-format Support**: MP3, OGG, WAV, FLAC, and Opus audio formats  
-🚀 **High Performance**: Native C libraries via Dart FFI (no FFMPEG dependency)  
+🚀 **High Performance**: Native C libraries via Dart FFI with FFmpeg-based decoding  
 🎨 **Extensive Customization**: Colors, gradients, styles, and animations  
-� **\*Interactive Playback**: Real-time position visualization and seeking  
-� **Insstance-Based API**: Modern API with proper resource management  
-� **Easyi Integration**: Simple API with comprehensive error handling  
+🎚️ **Interactive Playback**: Real-time position visualization and seeking  
+📦 **Instance-Based API**: Modern API with proper resource management  
+✅ **Easy Integration**: Simple API with comprehensive error handling  
 📊 **Multiple Algorithms**: RMS, Peak, Average, and Median downsampling  
 🎯 **Optimized Presets**: Ready-to-use configurations for different use cases
 
@@ -34,53 +34,42 @@ Then run:
 flutter pub get
 ```
 
-**Note**: Sonix includes pre-built native libraries (`sonix_native`) for all supported platforms. These are automatically bundled with your app - no additional compilation required!
+Note: Sonix includes the plugin glue code and native wrapper sources. Desktop platforms require FFmpeg installed on the system. The Flutter toolchain builds and bundles the plugin artifacts automatically; you should not need to compile C code manually for typical usage.
 
-### FFMPEG Setup
+### FFmpeg setup
 
-Sonix uses FFMPEG for audio decoding. You need to install FFMPEG binaries in your Flutter app to use Sonix.
+Sonix uses FFmpeg for audio decoding. For desktop platforms, you must install FFmpeg on the system. Mobile platforms do not require a separate FFmpeg install.
 
-#### Automated Setup (Recommended)
+Recommended installation methods:
 
-**Required Step**: Use our automated setup tool to download and install FFMPEG binaries:
+- macOS: Homebrew
+  - Install: `brew install ffmpeg`
+  - Verify: `ffmpeg -version`
+- Linux: Your distro’s package manager
+  - Debian/Ubuntu: `sudo apt install ffmpeg`
+  - Fedora: `sudo dnf install ffmpeg`
+  - Arch: `sudo pacman -S ffmpeg`
+- Windows: Install FFmpeg and ensure the DLLs are on PATH or co-located next to your app’s executable
+  - Options: winget, chocolatey, or manual install from ffmpeg.org (DLLs must be discoverable at runtime)
+  - Verify: `ffmpeg -version`
 
-```bash
-# From your Flutter app's root directory
-dart run sonix:setup_ffmpeg_for_app
+#### Supported platforms
 
-# Verify installation
-dart run sonix:setup_ffmpeg_for_app --verify
-```
+- ✅ Android (API 21+)
+- ✅ iOS (11.0+)
+- ✅ Windows (Windows 10+) - requires FFmpeg DLLs
+- ✅ macOS (10.15+) - requires FFmpeg dylibs
+- ✅ Linux (Ubuntu 18.04+) - requires FFmpeg shared objects
 
-This tool will:
+#### Advanced (manual placement)
 
-- ✅ Automatically detect your platform
-- ✅ Download compatible FFMPEG binaries from trusted sources  
-- ✅ Install them to your app's build directories
-- ✅ Validate the installation
-- ✅ Enable Sonix to work with FFMPEG in your app
+Desktop apps can also load FFmpeg when the libraries are placed alongside the app at runtime:
 
-**Requirements:**
-- Run from your Flutter app's root directory (where pubspec.yaml is located)
-- Sonix must be added as a dependency in your pubspec.yaml
+- Windows: place FFmpeg DLLs next to the app’s exe (or ensure they are on PATH)
+- Linux: place `.so` files under the app’s `lib` directory
+- macOS: prefer system-installed FFmpeg; bundling FFmpeg into an app may have licensing implications
 
-#### Supported Platforms
-
-- ✅ Android (API 21+) - _FFMPEG binaries included in APK_
-- ✅ iOS (11.0+) - _FFMPEG binaries statically linked_
-- ✅ Windows (Windows 10+) - _Requires FFMPEG DLLs_
-- ✅ macOS (10.14+) - _Requires FFMPEG dylibs_
-- ✅ Linux (Ubuntu 18.04+) - _Requires FFMPEG shared objects_
-
-#### Manual Installation (Advanced)
-
-If you prefer to install FFMPEG binaries manually, place them in your Flutter build directory:
-
-- **Windows**: `build/windows/x64/runner/Debug/`
-- **macOS**: `build/macos/Build/Products/Debug/`
-- **Linux**: `build/linux/x64/debug/bundle/lib/`
-
-Required FFMPEG libraries: `avformat`, `avcodec`, `avutil`, `swresample`
+Required FFmpeg libraries: `avformat`, `avcodec`, `avutil`, `swresample`
 
 ## Quick Start
 
@@ -499,33 +488,31 @@ for (final rec in recommendations) {
 
 #### Desktop (Windows/macOS/Linux)
 
-- FFMPEG binaries must be present in build directory (use download tool)
+- macOS/Linux: Use system FFmpeg installed via your package manager (no bundling)
+- Windows: Provide FFmpeg DLLs via PATH or next to the app executable
 - Full isolate pool support for maximum performance
-- Runtime loading of FFMPEG libraries from build directory
+- Runtime loading of FFmpeg libraries
 
-#### Troubleshooting FFMPEG Setup
+#### Troubleshooting FFmpeg setup
 
-If you encounter issues with FFMPEG binaries:
+If you encounter issues with FFmpeg:
 
 ```bash
-# Check if binaries are properly installed
-dart run sonix:setup_ffmpeg_for_app --verify
+# Check installation
+ffmpeg -version
 
-# Force reinstall if needed
-dart run sonix:setup_ffmpeg_for_app --force
+# On macOS (Homebrew): reinstall
+brew reinstall ffmpeg
 
-# Remove FFMPEG binaries
-dart run sonix:setup_ffmpeg_for_app --clean
-
-# Get help and see all options
-dart run sonix:setup_ffmpeg_for_app --help
+# On Linux: use your distro package manager to reinstall
+# e.g., Ubuntu/Debian
+sudo apt --reinstall install ffmpeg
 ```
 
 Common issues:
 
-- **"FFMPEG libraries not found"**: Run the download tool to install binaries
-- **"Unsupported platform"**: Check supported platforms list above
-- **"Binary validation failed"**: Try force reinstalling with `--force` flag
+- "FFmpeg libraries not found": Install FFmpeg using your system package manager
+- "Unsupported platform": Check supported platforms list above
 
 ## Supported Audio Formats
 
@@ -540,7 +527,7 @@ Sonix supports multiple audio formats through FFMPEG integration:
 | Opus       | .opus      | FFMPEG          | Modern codec             |
 | MP4/AAC    | .mp4, .m4a | FFMPEG          | Container with AAC       |
 
-**Note**: All audio decoding is handled by FFMPEG libraries. Ensure FFMPEG binaries are installed using the provided download tool.
+**Note**: All audio decoding is handled by FFmpeg libraries. Ensure FFmpeg is installed on the system for desktop platforms.
 
 ## Contributing
 
@@ -550,15 +537,18 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 1. Clone the repository
 2. Run `flutter pub get`
-3. **Install FFMPEG binaries for development**: `dart run tool/download_ffmpeg_binaries.dart`
-4. **Build native library for testing**: `dart run tool/build_native_for_development.dart`
+3. Install system FFmpeg (desktop dev machines)
+  - macOS: `brew install ffmpeg`
+  - Linux: `sudo apt install ffmpeg` (or your distro equivalent)
+  - Windows: install FFmpeg and ensure DLLs are available on PATH
+4. Build native library for testing: `dart run tool/build_native_for_development.dart`
 5. Run tests: `flutter test`
 6. Run example: `cd example && flutter run`
 
-**Note for Contributors**: 
+**Note for Contributors**:
 - Use `dart run tool/build_native_for_development.dart` for quick development builds
 - Use `dart run tool/build_native_for_distribution.dart` for release builds
-- End users should use `dart run sonix:setup_ffmpeg_for_app` in their own apps
+- Desktop users must install FFmpeg via their system package manager
 
 ## License
 

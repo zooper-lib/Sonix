@@ -39,13 +39,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: windows
-            os: windows-latest
-            binary_name: sonix_native.dll
-            binary_path: windows/sonix_native.dll
-            cmake_generator: "Visual Studio 17 2022"
-            cmake_arch: x64
-            
           - platform: linux
             os: ubuntu-latest
             binary_name: libsonix_native.so
@@ -77,17 +70,11 @@ jobs:
           cmake-version: '3.16'
 
       # Platform-specific toolchain setup
-      - name: Setup MSVC (Windows)
-        if: matrix.platform == 'windows'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
       - name: Install build dependencies (Linux)
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config
+          sudo apt-get install -y build-essential pkg-config ffmpeg
 
       - name: Setup Xcode (macOS)
         if: matrix.platform == 'macos'
@@ -99,9 +86,12 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      # Download FFMPEG binaries for the target platform
-      - name: Download FFMPEG binaries
-        run: dart run tool/download_ffmpeg_binaries.dart --force
+      # Ensure FFmpeg is installed on macOS
+      - name: Install FFmpeg (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          brew update
+          brew list ffmpeg || brew install ffmpeg
 
       # Build the native library for distribution
       - name: Build native library for distribution
@@ -134,12 +124,6 @@ jobs:
           fetch-depth: 0
 
       # Download all the built binaries
-      - name: Download Windows binary
-        uses: actions/download-artifact@v4
-        with:
-          name: sonix-native-windows
-          path: windows/
-
       - name: Download Linux binary
         uses: actions/download-artifact@v4
         with:
@@ -156,12 +140,10 @@ jobs:
       - name: Verify binaries
         run: |
           echo "Checking downloaded binaries..."
-          ls -la windows/sonix_native.dll
           ls -la linux/libsonix_native.so
           ls -la macos/libsonix_native.dylib
           
           echo "Binary sizes:"
-          du -h windows/sonix_native.dll
           du -h linux/libsonix_native.so
           du -h macos/libsonix_native.dylib
 
@@ -178,7 +160,6 @@ jobs:
           git status
           
           echo "Adding binary files..."
-          git add windows/sonix_native.dll
           git add linux/libsonix_native.so
           git add macos/libsonix_native.dylib
           

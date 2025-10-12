@@ -7,7 +7,7 @@ sonix/
 ├── lib/                    # Main Dart library code
 ├── example/                # Example Flutter app demonstrating usage
 ├── test/                   # Comprehensive test suite
-├── tools/                  # Development and build tools
+├── tool/                   # Development and build tools
 ├── native/                 # Native C library source code
 ├── docs/                   # Additional documentation
 ├── android/                # Android plugin configuration
@@ -56,14 +56,12 @@ lib/
 - **`integration/`**: End-to-end integration tests
 - **`performance/`**: Performance benchmarking tests
 - **`mocks/`**: Mock objects and test doubles
-- **`fixtures/`**: Test data and FFMPEG binaries for testing
+- **`fixtures/`**: Test data (optionally, local FFmpeg libs for tests)
 
-### `/tools/` - Development Tools
-- **`setup_ffmpeg_for_app.dart`**: End-user FFMPEG setup tool (executable)
-- **`download_ffmpeg_binaries.dart`**: Developer FFMPEG download tool
+### `/tool/` - Development Tools
+// System FFmpeg is required; no download/setup tools are provided.
 - **`build_native_for_development.dart`**: Quick development builds
 - **`build_native_for_distribution.dart`**: Production builds for all platforms
-- **Supporting files**: Downloaders, validators, installers
 
 ### `/native/` - Native Library Source
 - **`src/`**: C source code for sonix_native wrapper

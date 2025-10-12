@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:isolate';
 import 'dart:io';
 import 'dart:math' as math;
@@ -40,7 +39,7 @@ void processingIsolateEntryPoint(SendPort handshakeSendPort) {
       throw FFIException(
         'FFMPEG not available in isolate',
         'FFMPEG libraries are required but not available in this isolate context. '
-            'Run: dart run tool/download_ffmpeg_binaries.dart',
+            'Please install system FFmpeg (on macOS via Homebrew: brew install ffmpeg).',
       );
     }
   } catch (e) {
@@ -388,83 +387,61 @@ Future<AudioData> _processWithSelectiveDecoding(
   }
 
   try {
-    // Get file metadata to get ACCURATE duration from FFmpeg
+    // Query decoder for accurate media info instead of shelling out to ffprobe (more reliable on macOS)
     final file = File(filePath);
     final fileSize = await file.length();
 
     int sampleRate = 44100; // Default
     int channels = 2; // Default
-    Duration? actualDuration; // Nullable until we get it from ffprobe or estimation
+    Duration actualDuration = const Duration(seconds: 180); // Default fallback
 
-    // Get accurate duration using ffprobe (FFmpeg's metadata tool)
-    // This is fast and doesn't require decoding
+    // Ask native decoder for media info
+    final durPtr = malloc<ffi.Uint32>();
+    final srPtr = malloc<ffi.Uint32>();
+    final chPtr = malloc<ffi.Uint32>();
     try {
-      final result = await Process.run('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filePath]);
-
-      if (result.exitCode == 0) {
-        final jsonOutput = result.stdout as String;
-        final data = jsonDecode(jsonOutput) as Map<String, dynamic>;
-
-        // Get duration from format section
-        if (data.containsKey('format')) {
-          final formatData = data['format'] as Map<String, dynamic>;
-          if (formatData.containsKey('duration')) {
-            final durationSeconds = double.parse(formatData['duration'] as String);
-            actualDuration = Duration(milliseconds: (durationSeconds * 1000).round());
-          }
+      final infoRes = SonixNativeBindings.getDecoderMediaInfo(nativeDecoder, durPtr, srPtr, chPtr);
+      if (infoRes == 0) {
+        final durMs = durPtr.value;
+        if (durMs > 0) {
+          actualDuration = Duration(milliseconds: durMs);
         }
-
-        // Get sample rate and channels from streams
-        if (data.containsKey('streams')) {
-          final streams = data['streams'] as List;
-          for (final stream in streams) {
-            if (stream is Map<String, dynamic> && stream['codec_type'] == 'audio') {
-              if (stream.containsKey('sample_rate')) {
-                sampleRate = int.parse(stream['sample_rate'] as String);
-              }
-              if (stream.containsKey('channels')) {
-                channels = stream['channels'] as int;
-              }
-              break;
-            }
-          }
-        }
+        if (srPtr.value > 0) sampleRate = srPtr.value;
+        if (chPtr.value > 0) channels = chPtr.value;
       } else {
-        // ffprobe failed, fall back to estimation
-        throw Exception('ffprobe failed');
+        // If native info fails, estimate conservatively based on format and file size
+        int estimatedBitrate;
+        switch (format) {
+          case 1: // MP3
+            estimatedBitrate = 192000;
+            break;
+          case 5: // Opus
+            estimatedBitrate = 96000;
+            break;
+          case 6: // MP4/AAC
+            estimatedBitrate = 192000;
+            break;
+          case 4: // OGG Vorbis
+            estimatedBitrate = 160000;
+            break;
+          default:
+            estimatedBitrate = 128000;
+        }
+        final estimatedSeconds = (fileSize * 8) / estimatedBitrate;
+        actualDuration = Duration(milliseconds: (estimatedSeconds * 1000).round());
       }
-    } catch (e) {
-      // If ffprobe fails, use more conservative estimate
-      SonixLogger.debug('ffprobe failed, using file size estimation: $e');
-      int estimatedBitrate;
-      switch (format) {
-        case 1: // MP3
-          estimatedBitrate = 192000; // 192kbps average for MP3
-          break;
-        case 5: // Opus
-          estimatedBitrate = 96000; // 96kbps average for Opus
-          break;
-        case 6: // MP4/AAC
-          estimatedBitrate = 192000; // 192kbps average for AAC
-          break;
-        case 4: // OGG Vorbis
-          estimatedBitrate = 160000; // 160kbps average for Vorbis
-          break;
-        default:
-          estimatedBitrate = 128000; // Conservative fallback
-      }
-
-      final estimatedSeconds = (fileSize * 8) / estimatedBitrate;
-      actualDuration = Duration(milliseconds: (estimatedSeconds * 1000).round());
+    } finally {
+      malloc.free(durPtr);
+      malloc.free(srPtr);
+      malloc.free(chPtr);
     }
-
-    // Ensure we have a duration (shouldn't happen, but defensive)
-    actualDuration ??= Duration(seconds: 180);
 
     // Calculate resolution and sample positions
     final resolution = config.resolution;
     final amplitudes = <double>[];
-    final durationMs = actualDuration.inMilliseconds;
+    // Subtract a tiny epsilon from the end to avoid final-position seeks landing at/beyond EOF on macOS
+    // which can produce zeroed chunks -> trailing silence in waveform
+    final durationMs = math.max(0, actualDuration.inMilliseconds - 5);
 
     for (int i = 0; i < resolution; i++) {
       // Check for cancellation
@@ -475,7 +452,11 @@ Future<AudioData> _processWithSelectiveDecoding(
       try {
         // Calculate time position for this waveform point
         final progress = resolution <= 1 ? 0.5 : i / (resolution - 1);
-        final timePositionMs = (durationMs * progress).round();
+        int timePositionMs = (durationMs * progress).round();
+        if (i == resolution - 1) {
+          // Ensure the last sample doesn't exceed duration-5ms
+          timePositionMs = durationMs;
+        }
 
         // Seek to this time position using native decoder
         // This properly handles frame boundaries and codec quirks

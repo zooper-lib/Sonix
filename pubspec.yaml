@@ -1,5 +1,5 @@
 name: sonix
-description: "Flutter audio waveform package with multi-format support (MP3, WAV, FLAC, OGG, Opus, MP4, M4A) using FFMPEG."
+description: "Flutter audio waveform package with multi-format support (MP3, WAV, FLAC, OGG, Opus, MP4, M4A) using FFmpeg."
 version: 1.2.1
 homepage: https://github.com/zooper-lib/Sonix
 repository: https://github.com/zooper-lib/Sonix
@@ -16,18 +16,12 @@ dependencies:
   ffi: ^2.1.0
   path: ^1.8.3
   meta: ^1.15.0
-  crypto: ^3.0.3
-  archive: ^3.4.10
-  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   ffigen: ^13.0.0
-
-executables:
-  setup_ffmpeg_for_app: setup_ffmpeg_for_app
 
 flutter:
   plugin:

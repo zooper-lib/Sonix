@@ -116,6 +116,13 @@ extern "C"
   SONIX_EXPORT void sonix_cleanup_chunked_decoder(SonixChunkedDecoder *decoder);
   SONIX_EXPORT void sonix_free_chunk_result(SonixChunkResult *result);
 
+  // Retrieve media info (duration/sample rate/channels) from an initialized chunked decoder
+  // Returns SONIX_OK on success. Duration is in milliseconds.
+  SONIX_EXPORT int32_t sonix_get_decoder_media_info(SonixChunkedDecoder *decoder,
+                                                    uint32_t *duration_ms,
+                                                    uint32_t *sample_rate,
+                                                    uint32_t *channels);
+
 // Debug functions (only available in debug builds)
 #ifdef DEBUG
   SONIX_EXPORT void sonix_debug_memory_status(void);
