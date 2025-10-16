@@ -1,30 +1,22 @@
-name: Build Native Binaries
+name: Build and Publish
 
 on:
   # Allow manual triggering
   workflow_dispatch:
     inputs:
-      commit_binaries:
-        description: 'Commit built binaries to repository'
+      publish_to_pub:
+        description: 'Publish to pub.dev after building'
         required: false
-        default: 'true'
+        default: 'false'
         type: boolean
   
-  # Also trigger on pushes to main/development branches
+  # Trigger on pushes to main - build and publish
   push:
-    branches: [main, master, develop, development]
-    paths:
-      - 'native/**'
-      - 'tool/**'
-      - '.github/workflows/build-native-binaries.yml'
+    branches: [main, master]
   
-  # And on pull requests to main branches
+  # On PR or development branch - build only (no publish)
   pull_request:
-    branches: [main, master, develop, development]
-    paths:
-      - 'native/**'
-      - 'tool/**'
-      - '.github/workflows/build-native-binaries.yml'
+    branches: [main, master]
 
 env:
   # Use the latest stable Dart version that satisfies the project requirements
@@ -74,7 +66,8 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config ffmpeg
+          sudo apt-get install -y build-essential pkg-config \
+            libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
 
       - name: Setup Xcode (macOS)
         if: matrix.platform == 'macos'
@@ -105,16 +98,16 @@ jobs:
           path: ${{ matrix.binary_path }}
           retention-days: 30
 
-  # Job to commit all built binaries back to the repository
-  commit-binaries:
-    name: Commit built binaries
+  # Job to commit binaries and publish to pub.dev
+  commit-and-publish:
+    name: Commit binaries and publish
     needs: build-native
     runs-on: ubuntu-latest
     
-    # Only run if this is a push to main branch or manual trigger with commit enabled
+    # Only run on push to main/master or manual trigger with publish enabled
     if: |
-      (github.event_name == 'push' && contains(fromJson('["main", "master", "develop", "development"]'), github.ref_name)) ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.commit_binaries == 'true')
+      (github.event_name == 'push' && contains(fromJson('["main", "master"]'), github.ref_name)) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_to_pub == 'true')
     
     steps:
       - name: Checkout repository
@@ -122,6 +115,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
 
       # Download all the built binaries
       - name: Download Linux binary
@@ -155,6 +153,7 @@ jobs:
 
       # Commit the binaries
       - name: Commit binaries
+        id: commit
         run: |
           echo "Checking for changes..."
           git status
@@ -169,6 +168,7 @@ jobs:
           
           if git diff --staged --quiet; then
             echo "No changes to commit - binaries are already up to date"
+            echo "binaries_updated=false" >> $GITHUB_OUTPUT
           else
             echo "Changes detected, committing..."
             git commit -m "🤖 Update native binaries [skip ci]
@@ -179,4 +179,67 @@ jobs:
             
             git push
             echo "✅ Binaries committed and pushed"
+            echo "binaries_updated=true" >> $GITHUB_OUTPUT
           fi
+
+      # Get the current version from pubspec.yaml
+      - name: Get package version
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Package version: $VERSION"
+
+      # Validate package before publishing
+      - name: Validate package
+        run: |
+          echo "Running pub publish --dry-run..."
+          flutter pub publish --dry-run
+
+      # Publish to pub.dev
+      - name: Publish to pub.dev
+        uses: k-paxian/dart-package-publisher@v1.6
+        with:
+          credentialJson: ${{ secrets.PUB_DEV_CREDENTIALS }}
+          flutter: true
+          skipTests: true
+
+      # Create a git tag for the published version
+      - name: Create version tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v$VERSION"
+          
+          # Check if tag already exists
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "⚠️ Tag $TAG already exists, skipping tag creation"
+          else
+            echo "Creating tag: $TAG"
+            git tag -a "$TAG" -m "Release $VERSION"
+            git push origin "$TAG"
+            echo "✅ Tag $TAG created and pushed"
+          fi
+
+      # Create GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            ## Release ${{ steps.version.outputs.version }}
+            
+            🚀 Published to pub.dev: https://pub.dev/packages/sonix/versions/${{ steps.version.outputs.version }}
+            
+            ### Native Binaries
+            - ✅ Linux: `linux/libsonix_native.so`
+            - ✅ macOS: `macos/libsonix_native.dylib`
+            
+            Built from commit: ${{ github.sha }}
+          files: |
+            linux/libsonix_native.so
+            macos/libsonix_native.dylib
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
