@@ -18,10 +18,10 @@ Sonix uses a two-layer native library architecture:
 - Bundled with Sonix package via Flutter plugin system
 - Platform-specific: `.dll` (Windows), `.so` (Linux), `.dylib` (macOS), `.a` (iOS)
 
-**Layer 2: FFMPEG Libraries**
+**Layer 2: FFmpeg Libraries**
 - Core audio decoding libraries (`avformat`, `avcodec`, `avutil`, `swresample`)
 - GPL licensed (provided separately by user)
-- Installed via `dart run sonix:setup_ffmpeg_for_app`
+- Installed via system package manager (for example, macOS Homebrew: `brew install ffmpeg`)
 - Loaded dynamically by `sonix_native` at runtime
 
 ### 2. Plugin Structure
@@ -75,15 +75,15 @@ Pre-compiled `sonix_native` libraries are placed in platform-specific locations:
 
 ### For Package Developers
 
-1. **Download FFMPEG**: `dart run tool/download_ffmpeg_binaries.dart`
-2. **Build Native Libraries**: `dart run tool/build_native_for_distribution.dart --platforms all`
-3. **Publish Package**: Libraries are automatically included
+1. Install FFmpeg on your development machine (for example, `brew install ffmpeg` on macOS)
+2. Build native libraries: `dart run tool/build_native_for_distribution.dart --platforms all`
+3. Publish the package: libraries are automatically included
 
 ### For End Users
 
-1. **Add Dependency**: `flutter pub add sonix`
-2. **Setup FFMPEG**: `dart run sonix:setup_ffmpeg_for_app`
-3. **Use Sonix**: Native libraries are automatically available
+1. Add dependency: `flutter pub add sonix`
+2. On desktop, install FFmpeg on the machine where the app runs
+3. Use Sonix: `sonix_native` is bundled; FFmpeg is resolved at runtime from the system
 
 ## How It Works
 
@@ -120,11 +120,11 @@ When Sonix code runs:
 - **Distribution**: Bundled with Sonix package
 - **Compilation**: Done by Sonix developers
 
-### FFMPEG Libraries (GPL Licensed)
+### FFmpeg Libraries (GPL Licensed)
 - **What**: Audio decoding libraries (avformat, avcodec, etc.)
 - **License**: GPL (incompatible with MIT for distribution)
-- **Distribution**: User must provide (via setup tool)
-- **Compilation**: Downloaded as pre-built binaries
+- **Distribution**: User must provide via system package manager
+- **Compilation**: Provided by OS/package manager (not bundled by Sonix)
 
 ## Benefits
 
@@ -159,8 +159,8 @@ cd sonix
 # Install dependencies
 flutter pub get
 
-# Download FFMPEG for development
-dart run tool/download_ffmpeg_binaries.dart
+# Ensure system FFmpeg is installed (macOS example)
+brew install ffmpeg
 
 # Quick development build (for testing)
 dart run tool/build_native_for_development.dart
@@ -197,17 +197,16 @@ If users get "library not found" errors:
 - Check that the library was built for the correct architecture
 - Ensure the plugin configuration is correct
 
-### FFMPEG Issues
-If users get FFMPEG-related errors:
-- They need to run `dart run sonix:setup_ffmpeg_for_app`
-- FFMPEG libraries must be in their app's build directory
+### FFmpeg Issues
+If users get FFmpeg-related errors:
+- Install FFmpeg using the system package manager and ensure shared libraries are available
+- On macOS, `brew install ffmpeg` provides dylibs in `/opt/homebrew/opt/ffmpeg/lib`
 - This is separate from the Sonix native library
 
 ### Build Issues
 If native library compilation fails:
 - Check that all required toolchains are installed
-- Verify FFMPEG binaries are available for linking
-- Use `--skip-validation` flag to bypass environment checks
+- Ensure system FFmpeg is available for linking and runtime resolution
 
 ## Future Enhancements
 

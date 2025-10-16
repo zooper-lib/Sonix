@@ -4,6 +4,9 @@ project(sonix_native)
 # Set C standard
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+# Option: prefer using system-installed FFmpeg (e.g., Homebrew) over local binaries
+option(SONIX_USE_SYSTEM_FFMPEG "Use system-installed FFmpeg (Homebrew, system lib paths)" ON)
+
 
 # Force CMake to use install RPATH even during build phase
 # This prevents hardcoded CI build paths from being embedded in the library
@@ -21,69 +24,75 @@ elseif(UNIX)
     set(LIBRARY_EXTENSION ".so")
 endif()
 
-# CRITICAL: Look for FFMPEG libraries in platform-specific directories
-# Check if FFMPEG_ROOT is provided, otherwise use the old default location
-if(DEFINED FFMPEG_ROOT)
-    # Convert to absolute path if it's relative
-    if(IS_ABSOLUTE ${FFMPEG_ROOT})
-        set(FFMPEG_ROOT_DIR "${FFMPEG_ROOT}")
-    else()
-        set(FFMPEG_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../${FFMPEG_ROOT}")
+if(SONIX_USE_SYSTEM_FFMPEG)
+    message(STATUS "SONIX_USE_SYSTEM_FFMPEG=ON — searching system/default paths for FFmpeg")
+    # Clear any cached library/header paths from previous non-system builds to avoid stale references
+    unset(AVFORMAT_LIBRARY CACHE)
+    unset(AVCODEC_LIBRARY CACHE)
+    unset(AVUTIL_LIBRARY CACHE)
+    unset(SWRESAMPLE_LIBRARY CACHE)
+    unset(FFMPEG_INCLUDE_DIR CACHE)
+    # Allow CMake to search default system locations (Homebrew, /usr/local, etc.).
+    # If a brew prefix is provided, prefer it explicitly, and also query the specific ffmpeg prefix.
+    set(_FFMPEG_LIB_HINTS)
+    set(_FFMPEG_INCLUDE_HINTS)
+    if(DEFINED SONIX_BREW_PREFIX)
+        message(STATUS "Using Homebrew prefix: ${SONIX_BREW_PREFIX}")
+        list(APPEND _FFMPEG_LIB_HINTS
+            ${SONIX_BREW_PREFIX}/opt/ffmpeg/lib
+            ${SONIX_BREW_PREFIX}/opt/ffmpeg@6/lib
+            ${SONIX_BREW_PREFIX}/lib
+        )
+        list(APPEND _FFMPEG_INCLUDE_HINTS
+            ${SONIX_BREW_PREFIX}/opt/ffmpeg/include
+            ${SONIX_BREW_PREFIX}/opt/ffmpeg@6/include
+            ${SONIX_BREW_PREFIX}/include
+        )
+        # Try to get the exact prefix for the installed ffmpeg formula (resolves Cellar path)
+        if(EXISTS ${SONIX_BREW_PREFIX}/bin/brew)
+            execute_process(
+                COMMAND ${SONIX_BREW_PREFIX}/bin/brew --prefix ffmpeg
+                OUTPUT_VARIABLE _BREW_FFMPEG_PREFIX
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(_BREW_FFMPEG_PREFIX)
+                message(STATUS "brew --prefix ffmpeg: ${_BREW_FFMPEG_PREFIX}")
+                list(APPEND _FFMPEG_LIB_HINTS ${_BREW_FFMPEG_PREFIX}/lib)
+                list(APPEND _FFMPEG_INCLUDE_HINTS ${_BREW_FFMPEG_PREFIX}/include)
+            endif()
+        endif()
     endif()
+    # Also add common default locations for Apple Silicon/Intel Macs and generic UNIX
+    list(APPEND _FFMPEG_LIB_HINTS
+        /opt/homebrew/opt/ffmpeg/lib
+        /opt/homebrew/lib
+        /usr/local/opt/ffmpeg/lib
+        /usr/local/lib
+        /opt/local/lib
+    )
+    list(APPEND _FFMPEG_INCLUDE_HINTS
+        /opt/homebrew/opt/ffmpeg/include
+        /opt/homebrew/include
+        /usr/local/opt/ffmpeg/include
+        /usr/local/include
+        /opt/local/include
+    )
+    find_library(AVFORMAT_LIBRARY NAMES avformat HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
+    find_library(AVCODEC_LIBRARY  NAMES avcodec  HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
+    find_library(AVUTIL_LIBRARY   NAMES avutil   HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
+    find_library(SWRESAMPLE_LIBRARY NAMES swresample HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
+    find_path(FFMPEG_INCLUDE_DIR NAMES libavformat/avformat.h HINTS ${_FFMPEG_INCLUDE_HINTS} REQUIRED)
+
+    message(STATUS "Found system FFmpeg libraries:")
+    message(STATUS "  avformat: ${AVFORMAT_LIBRARY}")
+    message(STATUS "  avcodec: ${AVCODEC_LIBRARY}")
+    message(STATUS "  avutil: ${AVUTIL_LIBRARY}")
+    message(STATUS "  swresample: ${SWRESAMPLE_LIBRARY}")
+    message(STATUS "Found FFmpeg headers: ${FFMPEG_INCLUDE_DIR}")
 else()
-    set(FFMPEG_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${PLATFORM_NAME}")
+    message(FATAL_ERROR "System FFmpeg is required. Reconfigure with -DSONIX_USE_SYSTEM_FFMPEG=ON")
 endif()
-
-message(STATUS "Looking for FFMPEG libraries in: ${FFMPEG_ROOT_DIR}")
-
-# REQUIRE FFMPEG libraries - NO FALLBACKS
-find_library(AVFORMAT_LIBRARY 
-    NAMES avformat
-    PATHS ${FFMPEG_ROOT_DIR}/lib
-    NO_DEFAULT_PATH 
-    REQUIRED)
-
-find_library(AVCODEC_LIBRARY 
-    NAMES avcodec
-    PATHS ${FFMPEG_ROOT_DIR}/lib
-    NO_DEFAULT_PATH 
-    REQUIRED)
-
-find_library(AVUTIL_LIBRARY 
-    NAMES avutil
-    PATHS ${FFMPEG_ROOT_DIR}/lib
-    NO_DEFAULT_PATH 
-    REQUIRED)
-
-find_library(SWRESAMPLE_LIBRARY 
-    NAMES swresample
-    PATHS ${FFMPEG_ROOT_DIR}/lib
-    NO_DEFAULT_PATH 
-    REQUIRED)
-
-# Fail if any library is missing
-if(NOT AVFORMAT_LIBRARY OR NOT AVCODEC_LIBRARY OR NOT AVUTIL_LIBRARY OR NOT SWRESAMPLE_LIBRARY)
-    message(FATAL_ERROR "FFMPEG libraries are required in native/${PLATFORM_NAME}/lib/. Please ensure FFMPEG development files are downloaded.")
-endif()
-
-message(STATUS "Found FFMPEG libraries:")
-message(STATUS "  avformat: ${AVFORMAT_LIBRARY}")
-message(STATUS "  avcodec: ${AVCODEC_LIBRARY}")
-message(STATUS "  avutil: ${AVUTIL_LIBRARY}")
-message(STATUS "  swresample: ${SWRESAMPLE_LIBRARY}")
-
-# Find FFMPEG headers
-find_path(FFMPEG_INCLUDE_DIR 
-    NAMES libavformat/avformat.h
-    PATHS ${FFMPEG_ROOT_DIR}/include
-    NO_DEFAULT_PATH
-    REQUIRED)
-
-if(NOT FFMPEG_INCLUDE_DIR)
-    message(FATAL_ERROR "FFMPEG headers not found in ${FFMPEG_ROOT_DIR}/include. Please ensure FFMPEG development files are downloaded.")
-endif()
-
-message(STATUS "Found FFMPEG headers: ${FFMPEG_INCLUDE_DIR}")
 
 # Create the native library
 add_library(sonix_native SHARED
@@ -116,9 +125,21 @@ elseif(APPLE)
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS deployment version")
     endif()
     
+    # Base rpath always includes @loader_path so local colocated libs can be found
+    set(_SONIX_MAC_BASE_RPATH "@loader_path")
+
+    # If we're using system FFmpeg, also include the directory that contains the discovered FFmpeg libs
+    if(SONIX_USE_SYSTEM_FFMPEG)
+        get_filename_component(_FFMPEG_LIB_DIR ${AVFORMAT_LIBRARY} DIRECTORY)
+        if(_FFMPEG_LIB_DIR)
+            set(_SONIX_MAC_BASE_RPATH "${_SONIX_MAC_BASE_RPATH};${_FFMPEG_LIB_DIR}")
+            message(STATUS "Adding FFmpeg lib dir to INSTALL_RPATH: ${_FFMPEG_LIB_DIR}")
+        endif()
+    endif()
+
     set_target_properties(sonix_native PROPERTIES
         MACOSX_RPATH TRUE
-        INSTALL_RPATH "@loader_path"
+        INSTALL_RPATH "${_SONIX_MAC_BASE_RPATH}"
     )
 
 elseif(UNIX)
@@ -126,6 +147,11 @@ elseif(UNIX)
     set_target_properties(sonix_native PROPERTIES
         INSTALL_RPATH "$ORIGIN"
     )
+    # Ensure exported API functions are not removed by linker garbage collection.
+    # Some environments enable -ffunction-sections/-Wl,--gc-sections by default,
+    # which can drop unreferenced symbols from shared libraries.
+    # We explicitly disable section GC for this target to retain the public API.
+    target_link_options(sonix_native PRIVATE -Wl,--no-gc-sections)
 endif()
 
 # For Flutter packages, the native library will be built by the consuming app

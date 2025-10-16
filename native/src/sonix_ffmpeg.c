@@ -162,7 +162,7 @@ int32_t sonix_init_ffmpeg(void)
     // Verify FFMPEG libraries are available by testing core functions
     if (avformat_version() == 0 || avcodec_version() == 0 || avutil_version() == 0 || swresample_version() == 0)
     {
-        set_error_message("FFMPEG libraries not found. Please run: dart run tool/download_ffmpeg_binaries.dart");
+        set_error_message("FFMPEG libraries not found. Please install system FFmpeg (e.g., on macOS: brew install ffmpeg)");
         return SONIX_ERROR_FFMPEG_NOT_AVAILABLE;
     }
 
@@ -1447,7 +1447,23 @@ int32_t sonix_seek_to_time(SonixChunkedDecoder *decoder, uint32_t time_ms)
 
     // Convert time to stream time base
     AVStream *audio_stream = decoder->format_ctx->streams[decoder->audio_stream_index];
+    // Clamp to within stream duration to avoid landing past EOF on some platforms (macOS dyld/ffmpeg timing quirks)
+    int64_t max_pts = AV_NOPTS_VALUE;
+    if (audio_stream->duration != AV_NOPTS_VALUE)
+    {
+        max_pts = audio_stream->duration;
+    }
+
     int64_t timestamp = (int64_t)time_ms * audio_stream->time_base.den / (audio_stream->time_base.num * 1000);
+    if (max_pts != AV_NOPTS_VALUE && timestamp > max_pts)
+    {
+        // Seek slightly before the end to ensure we can decode a valid frame
+        timestamp = max_pts - (audio_stream->time_base.den / audio_stream->time_base.num) / 10; // ~100ms back
+        if (timestamp < 0)
+        {
+            timestamp = max_pts;
+        }
+    }
 
     int ret = av_seek_frame(decoder->format_ctx, decoder->audio_stream_index, timestamp, AVSEEK_FLAG_BACKWARD);
     if (ret < 0)
@@ -1458,6 +1474,42 @@ int32_t sonix_seek_to_time(SonixChunkedDecoder *decoder, uint32_t time_ms)
 
     // Flush codec buffers
     avcodec_flush_buffers(decoder->codec_ctx);
+
+    return SONIX_OK;
+}
+
+// Retrieve media info (duration/sample rate/channels)
+int32_t sonix_get_decoder_media_info(SonixChunkedDecoder *decoder,
+                                     uint32_t *duration_ms,
+                                     uint32_t *sample_rate,
+                                     uint32_t *channels)
+{
+    if (!decoder || !decoder->format_ctx || decoder->audio_stream_index < 0)
+    {
+        set_error_message("Invalid decoder for media info");
+        return SONIX_ERROR_INVALID_DATA;
+    }
+
+    AVStream *audio_stream = decoder->format_ctx->streams[decoder->audio_stream_index];
+    uint32_t sr = decoder->codec_ctx ? decoder->codec_ctx->sample_rate : (audio_stream->codecpar ? audio_stream->codecpar->sample_rate : 0);
+    uint32_t ch = decoder->codec_ctx ? decoder->codec_ctx->ch_layout.nb_channels : (audio_stream->codecpar ? audio_stream->codecpar->ch_layout.nb_channels : 0);
+
+    // Compute duration
+    uint32_t dur_ms = 0;
+    if (audio_stream->duration != AV_NOPTS_VALUE && audio_stream->time_base.den > 0)
+    {
+        double seconds = (double)audio_stream->duration * audio_stream->time_base.num / audio_stream->time_base.den;
+        dur_ms = (uint32_t)(seconds * 1000.0);
+    }
+    else if (decoder->format_ctx->duration != AV_NOPTS_VALUE)
+    {
+        // Fall back to format context duration (in AV_TIME_BASE units)
+        dur_ms = (uint32_t)(decoder->format_ctx->duration / (AV_TIME_BASE / 1000));
+    }
+
+    if (duration_ms) *duration_ms = dur_ms;
+    if (sample_rate) *sample_rate = sr;
+    if (channels) *channels = ch;
 
     return SONIX_OK;
 }

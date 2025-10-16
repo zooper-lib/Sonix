@@ -20,8 +20,7 @@ void main() {
       if (!ffmpegAvailable) {
         throw StateError(
           'FFMPEG not available - required for chunked processing tests. '
-          'To set up FFMPEG for testing, run: '
-          'dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install',
+          'Install system FFmpeg (e.g., brew install ffmpeg) or place required libs under test/fixtures/ffmpeg',
         );
       }
 

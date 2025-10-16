@@ -26,7 +26,7 @@ void main() {
       if (!ffmpegAvailable) {
         print('⚠️ FFMPEG not available - performance tests will be skipped');
         print('   To set up FFMPEG for testing, run:');
-        print('   dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
+        print('   Ensure system FFmpeg is installed (e.g., brew install ffmpeg) or place dylibs in test/fixtures/ffmpeg');
         return;
       }
 
