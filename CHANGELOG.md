@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Infinite Retry Bug**: Fixed infinite retry loop when decoding fails with non-recoverable errors
+  - Fixed task ID tracking issue where retry count wasn't properly maintained across retries
+  - Added `_extractBaseTaskId()` method to strip `_retry_N` suffixes for correct retry count tracking
+  - Enhanced error classification to identify non-recoverable `DecodingException` cases (empty files, invalid files)
+  - Updated `ErrorSerializer.isRecoverableError()` to check for empty file patterns in decoding exceptions
+  - Prevents application from hanging when encountering empty or severely corrupted audio files
+  - Retry attempts now properly respect `maxRetryAttempts` limit
+
 - **macOS Build Configuration**: Fixed Xcode build script errors in example app and consuming applications
   - Corrected Flutter script path from `flutter_tool` to `flutter_tools` in Xcode build phases
   - Added proper environment variable sourcing for `FLUTTER_ROOT` in build scripts

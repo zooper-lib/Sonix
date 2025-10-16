@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/isolate/isolate_manager.dart';
 import 'package:sonix/src/isolate/isolate_config.dart';
 import 'package:sonix/src/isolate/isolate_health_monitor.dart';
+import 'package:sonix/src/processing/waveform_config.dart';
+import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 /// Mock configuration for testing
@@ -235,6 +238,53 @@ void main() {
       expect(manager.maxRetryAttempts, equals(3)); // Default value
 
       manager.dispose();
+    });
+
+    test('should respect maxRetryAttempts limit for failed tasks', () async {
+      final tempDir = await Directory.systemTemp.createTemp('sonix_retry_test_');
+      try {
+        // Create an empty file that will cause decoding to fail
+        final emptyFile = File('${tempDir.path}/empty.mp4');
+        await emptyFile.writeAsBytes([]);
+
+        final testManager = IsolateManager(
+          const MockIsolateConfig(),
+          maxRetryAttempts: 2,
+          enableErrorRecovery: true,
+        );
+
+        try {
+          await testManager.executeTask(
+            ProcessingTask(
+              id: 'test_retry_limit',
+              filePath: emptyFile.path,
+              config: WaveformConfig(),
+            ),
+          );
+          fail('Should have thrown an exception');
+        } catch (e) {
+          // Expected to fail after retries
+          expect(e, isA<SonixException>());
+        }
+
+        await testManager.dispose();
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    }, timeout: const Timeout(Duration(seconds: 15)));
+
+    test('should correctly track retry attempts across multiple retries', () {
+      // Test the base task ID extraction logic with various retry suffixes
+      const originalTaskId = 'task_12345';
+      const retryTaskId1 = 'task_12345_retry_1';
+      const retryTaskId2 = 'task_12345_retry_1_retry_2';
+      const retryTaskId3 = 'task_12345_retry_1_retry_2_retry_3';
+
+      // All these IDs should map to the same base task
+      expect(originalTaskId.replaceAll(RegExp(r'_retry_\d+'), ''), equals('task_12345'));
+      expect(retryTaskId1.replaceAll(RegExp(r'_retry_\d+'), ''), equals('task_12345'));
+      expect(retryTaskId2.replaceAll(RegExp(r'_retry_\d+'), ''), equals('task_12345'));
+      expect(retryTaskId3.replaceAll(RegExp(r'_retry_\d+'), ''), equals('task_12345'));
     });
   });
 

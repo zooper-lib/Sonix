@@ -209,6 +209,41 @@ void main() {
       expect(ErrorSerializer.isRecoverableError(const UnsupportedFormatException('xyz')), isFalse);
     });
 
+    test('should identify non-recoverable empty file DecodingExceptions', () {
+      // Empty file errors should not be retryable
+      final emptyFileErrors = [
+        const DecodingException('File is empty', 'Cannot decode empty MP4 file: /path/to/file.mp4'),
+        const DecodingException('Empty file', 'File has no content'),
+        const DecodingException('Cannot decode empty', 'File is empty'),
+        const DecodingException('Invalid file', 'File is empty'),
+      ];
+
+      for (final error in emptyFileErrors) {
+        expect(
+          ErrorSerializer.isRecoverableError(error),
+          isFalse,
+          reason: 'Empty file errors should not be recoverable: ${error.message}',
+        );
+      }
+    });
+
+    test('should identify recoverable temporary DecodingExceptions', () {
+      // Temporary decoding errors might be recoverable
+      final recoverableErrors = [
+        const DecodingException('Temporary decode failure', 'Network timeout'),
+        const DecodingException('Decode interrupted', 'Resource temporarily unavailable'),
+        const DecodingException('Processing error', 'Temporary issue'),
+      ];
+
+      for (final error in recoverableErrors) {
+        expect(
+          ErrorSerializer.isRecoverableError(error),
+          isTrue,
+          reason: 'Temporary decoding errors should be recoverable: ${error.message}',
+        );
+      }
+    });
+
     test('should calculate retry delays', () {
       final commError = IsolateCommunicationException.sendFailure('test');
       final memoryError = const MemoryException('test');

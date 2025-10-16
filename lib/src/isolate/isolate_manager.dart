@@ -426,7 +426,9 @@ class IsolateManager {
 
   /// Check if a task should be retried based on the error type
   bool _shouldRetryTask(String taskId, Object error) {
-    final retryCount = _taskRetryAttempts[taskId] ?? 0;
+    // Extract the base task ID without retry suffixes
+    final baseTaskId = _extractBaseTaskId(taskId);
+    final retryCount = _taskRetryAttempts[baseTaskId] ?? 0;
 
     if (retryCount >= maxRetryAttempts) {
       return false;
@@ -438,8 +440,20 @@ class IsolateManager {
       final originalErrorType = error.originalErrorType ?? '';
       if (originalErrorType.contains('FileNotFoundException') ||
           originalErrorType.contains('CorruptedFileException') ||
-          originalErrorType.contains('UnsupportedFormatException')) {
-        return false;
+          originalErrorType.contains('UnsupportedFormatException') ||
+          originalErrorType.contains('DecodingException')) {
+        // For DecodingException, check if it's a non-recoverable decoding error
+        if (originalErrorType.contains('DecodingException')) {
+          final errorMessage = error.originalError.toLowerCase();
+          if (errorMessage.contains('file is empty') ||
+              errorMessage.contains('empty file') ||
+              errorMessage.contains('invalid file') ||
+              errorMessage.contains('cannot decode empty')) {
+            return false;
+          }
+        } else {
+          return false;
+        }
       }
 
       // Also check the error message for these patterns
@@ -447,7 +461,11 @@ class IsolateManager {
       if (errorMessage.contains('file not found') ||
           errorMessage.contains('filenotfoundexception') ||
           errorMessage.contains('unsupported') ||
-          errorMessage.contains('corrupted')) {
+          errorMessage.contains('corrupted') ||
+          errorMessage.contains('file is empty') ||
+          errorMessage.contains('empty file') ||
+          errorMessage.contains('invalid file') ||
+          errorMessage.contains('cannot decode empty')) {
         return false;
       }
     }
@@ -455,10 +473,18 @@ class IsolateManager {
     return ErrorSerializer.isRecoverableError(error);
   }
 
+  /// Extract the base task ID without retry suffixes
+  String _extractBaseTaskId(String taskId) {
+    // Remove all _retry_N suffixes to get the original task ID
+    return taskId.replaceAll(RegExp(r'_retry_\d+'), '');
+  }
+
   /// Retry a failed task with exponential backoff
   Future<WaveformData> _retryTask(ProcessingTask originalTask, Object error) async {
-    final retryCount = (_taskRetryAttempts[originalTask.id] ?? 0) + 1;
-    _taskRetryAttempts[originalTask.id] = retryCount;
+    // Extract the base task ID to track retries correctly
+    final baseTaskId = _extractBaseTaskId(originalTask.id);
+    final retryCount = (_taskRetryAttempts[baseTaskId] ?? 0) + 1;
+    _taskRetryAttempts[baseTaskId] = retryCount;
 
     // Calculate retry delay
     final delay = ErrorSerializer.getRetryDelay(error, retryCount);
@@ -471,12 +497,12 @@ class IsolateManager {
       return await executeTask(retryTask);
     } catch (retryError) {
       // If retry also fails, check if we should retry again
-      if (_shouldRetryTask(originalTask.id, retryError)) {
+      if (_shouldRetryTask(baseTaskId, retryError)) {
         return await _retryTask(originalTask, retryError);
       }
 
       // Max retries exceeded, propagate the error
-      _taskRetryAttempts.remove(originalTask.id);
+      _taskRetryAttempts.remove(baseTaskId);
       rethrow;
     }
   }
