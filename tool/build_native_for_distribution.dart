@@ -99,6 +99,17 @@ class NativeDistributionBuilder {
         print('❌ System FFmpeg not found. Install via Homebrew: brew install ffmpeg');
         return false;
       }
+    } else if (Platform.isLinux) {
+      // Check for FFmpeg development libraries using pkg-config
+      final pkgConfigResult = await Process.run('pkg-config', ['--exists', 'libavcodec', 'libavformat', 'libavutil', 'libswresample']);
+      if (pkgConfigResult.exitCode != 0) {
+        print('❌ System FFmpeg development libraries not found.');
+        print('   Install via your package manager:');
+        print('   - Ubuntu/Debian: sudo apt-get install libavcodec-dev libavformat-dev libavutil-dev libswresample-dev');
+        print('   - Fedora/RHEL: sudo dnf install ffmpeg-devel');
+        print('   - Arch: sudo pacman -S ffmpeg');
+        return false;
+      }
     }
 
     return true;
