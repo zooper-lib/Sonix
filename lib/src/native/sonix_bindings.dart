@@ -120,6 +120,22 @@ typedef SonixCleanupChunkedDecoderDart = void Function(ffi.Pointer<SonixChunkedD
 typedef SonixFreeChunkResultNative = ffi.Void Function(ffi.Pointer<SonixChunkResult> result);
 typedef SonixFreeChunkResultDart = void Function(ffi.Pointer<SonixChunkResult> result);
 
+// Media info query for chunked decoder
+typedef SonixGetDecoderMediaInfoNative =
+    ffi.Int32 Function(
+      ffi.Pointer<SonixChunkedDecoder> decoder,
+      ffi.Pointer<ffi.Uint32> durationMs,
+      ffi.Pointer<ffi.Uint32> sampleRate,
+      ffi.Pointer<ffi.Uint32> channels,
+    );
+typedef SonixGetDecoderMediaInfoDart =
+    int Function(
+      ffi.Pointer<SonixChunkedDecoder> decoder,
+      ffi.Pointer<ffi.Uint32> durationMs,
+      ffi.Pointer<ffi.Uint32> sampleRate,
+      ffi.Pointer<ffi.Uint32> channels,
+    );
+
 /// Function signatures for native library
 typedef SonixDetectFormatNative = ffi.Int32 Function(ffi.Pointer<ffi.Uint8> data, ffi.Size size);
 
@@ -303,6 +319,11 @@ class SonixNativeBindings {
   /// Free chunk result allocated by processFileChunk
   static final SonixFreeChunkResultDart freeChunkResult = lib.lookup<ffi.NativeFunction<SonixFreeChunkResultNative>>('sonix_free_chunk_result').asFunction();
 
+  /// Get media info from an initialized chunked decoder
+  static final SonixGetDecoderMediaInfoDart getDecoderMediaInfo = lib
+      .lookup<ffi.NativeFunction<SonixGetDecoderMediaInfoNative>>('sonix_get_decoder_media_info')
+      .asFunction();
+
   // FFMPEG-specific functions
 
   /// Get the current backend type (legacy or FFMPEG)
@@ -321,8 +342,8 @@ class SonixNativeBindings {
 
   /// Enable/disable forwarding FFmpeg logs to the console (stderr). Disabled by default.
   static final SonixSetFFMPEGConsoleLoggingDart setFFMPEGConsoleLogging = lib
-    .lookup<ffi.NativeFunction<SonixSetFFMPEGConsoleLoggingNative>>('sonix_set_ffmpeg_console_logging')
-    .asFunction();
+      .lookup<ffi.NativeFunction<SonixSetFFMPEGConsoleLoggingNative>>('sonix_set_ffmpeg_console_logging')
+      .asFunction();
 
   /// Check if FFMPEG backend is available and initialized
   static bool get isFFMPEGAvailable {

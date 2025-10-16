@@ -5,19 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.1] - 2025-10-07
+## [1.3.0] - 2025-10-16
 
 ### Fixed
 
-- **FFMPEG Download Tool**: Fixed library extraction failure on Linux due to hardcoded version numbers
-  - Updated library paths to use wildcard patterns instead of specific version numbers
-  - Resolves `File not found: ffmpeg-master-latest-linux64-gpl-shared/lib/libavformat.so.62.6.100` error
-  - Makes downloader resilient to upstream FFmpeg version updates
-  - Applies to all Linux FFMPEG libraries: libavformat, libavcodec, libavutil, libswresample
+- **Infinite Retry Bug**: Fixed infinite retry loop when decoding fails with non-recoverable errors
+  - Fixed task ID tracking issue where retry count wasn't properly maintained across retries
+  - Added `_extractBaseTaskId()` method to strip `_retry_N` suffixes for correct retry count tracking
+  - Enhanced error classification to identify non-recoverable `DecodingException` cases (empty files, invalid files)
+  - Updated `ErrorSerializer.isRecoverableError()` to check for empty file patterns in decoding exceptions
+  - Prevents application from hanging when encountering empty or severely corrupted audio files
+  - Retry attempts now properly respect `maxRetryAttempts` limit
 
-### Technical Details
+- **macOS Build Configuration**: Fixed Xcode build script errors in example app and consuming applications
+  - Corrected Flutter script path from `flutter_tool` to `flutter_tools` in Xcode build phases
+  - Added proper environment variable sourcing for `FLUTTER_ROOT` in build scripts
+  - Ensures `macos_assemble.sh` can be located during build process
+  - Resolves "Command PhaseScriptExecution failed with a nonzero exit code" error
 
-The FFMPEG binary downloader was using hardcoded version numbers (e.g., `libavformat.so.62.6.100`) which broke when upstream FFmpeg builds updated their versions. The fix replaces these with wildcard patterns (e.g., `libavformat.so.62.*`) that match any patch version, ensuring compatibility with future FFmpeg updates.
+- **macOS Deployment Target**: Added explicit deployment target configuration for native library
+  - Set `CMAKE_OSX_DEPLOYMENT_TARGET` to 10.15 in CMakeLists.txt for macOS builds
+  - Ensures compatibility with Flutter's minimum macOS version requirements
+  - Reduces deployment target mismatch warnings during linking
+
+- **macOS Waveform Trailing Silence**: Eliminated extra silence at waveform end on macOS
+  - Replaced external `ffprobe` duration fetch with native decoder media info for consistency across platforms
+  - Added safe end-of-file clamp during selective decoding to avoid final seeks past EOF returning empty chunks
+  - Uses slight end epsilon (<=5ms) to ensure last sample represents real audio content
+
+- **macOS FFmpeg Resolution**: Fixed example app crash at launch (dyld missing symbol `_av_frame_alloc`)
+  - Switched to system-installed FFmpeg resolution via CMake RPATH and Homebrew discovery
+  - Removed all bundling/installer logic and rely on `brew install ffmpeg` for development/runtime
+  - Updated error messages and docs to instruct installing system FFmpeg
+
+## [1.2.1] - 2025-10-07
+
+### Changed
+
+- Removed legacy FFmpeg downloader/installer tooling and references (system FFmpeg only)
 
 ## [1.2.0] - 2025-10-05
 
@@ -169,16 +194,13 @@ This is the first stable release of Sonix, a comprehensive Flutter package for g
 
 ### 🛠️ Developer Tools
 
-#### FFMPEG Setup Tool
+#### FFmpeg (System) Requirements
 
-- **Automated Installation**: `dart run sonix:setup_ffmpeg_for_app` command
-- **Platform Detection**: Automatic platform detection and binary selection
-- **Validation**: Built-in verification of FFMPEG installation
-- **Force Reinstall**: Option to force reinstall corrupted binaries
+- Desktop development requires system FFmpeg (for example, macOS via Homebrew)
+- Build scripts and CMake default to SONIX_USE_SYSTEM_FFMPEG=ON
 
 #### Development Tools
 
-- **Binary Downloader**: Development tool for downloading FFMPEG binaries
 - **Native Builder**: Tools for compiling native libraries for all platforms
 - **Performance Profiler**: Built-in performance monitoring and optimization tools
 - **Platform Validator**: Validation tools for platform compatibility
@@ -270,7 +292,7 @@ This is the first stable release of Sonix, a comprehensive Flutter package for g
 - **Android**: API 21+ (ARM64, ARMv7, x86_64)
 - **iOS**: 11.0+ (ARM64, x86_64 simulator)
 - **Windows**: Windows 10+ (x64)
-- **macOS**: 10.14+ (x64, Apple Silicon via Rosetta)
+- **macOS**: 10.15+ (Intel and Apple Silicon)
 - **Linux**: Ubuntu 18.04+ (x64)
 
 #### Native Library Distribution
@@ -305,8 +327,7 @@ This is the first stable release of Sonix, a comprehensive Flutter package for g
 - `path: ^1.8.3` - File path utilities
 - `meta: ^1.15.0` - Annotations and metadata
 - `crypto: ^3.0.3` - Cryptographic functions
-- `archive: ^3.4.10` - Archive file handling
-- `http: ^1.1.0` - HTTP client for downloads
+  (Downloader-related dependencies removed; system FFmpeg only)
 
 #### Development Dependencies
 
@@ -320,7 +341,7 @@ This is the first stable release of Sonix, a comprehensive Flutter package for g
 
 - **Flutter**: >=1.17.0
 - **Dart**: ^3.9.0
-- **FFMPEG**: User-provided (installed via setup tool)
+- **FFmpeg**: User-provided (installed via system package manager on desktop)
 
 #### Build Requirements (Development Only)
 
@@ -346,7 +367,7 @@ This is the first stable release of Sonix, a comprehensive Flutter package for g
 
 - **Sonix Package**: MIT License (permissive, commercial-friendly)
 - **Native Wrapper**: MIT License (bundled with package)
-- **FFMPEG Libraries**: GPL License (user-provided, separate licensing)
+- **FFmpeg Libraries**: GPL License (user/system-provided, separate licensing)
 - **Clear Separation**: Licensing responsibilities clearly defined
 
 ### 🚀 Getting Started
@@ -358,10 +379,10 @@ This is the first stable release of Sonix, a comprehensive Flutter package for g
 flutter pub add sonix
 
 # Setup FFMPEG (required)
-dart run sonix:setup_ffmpeg_for_app
+brew install ffmpeg
 
 # Verify installation
-dart run sonix:setup_ffmpeg_for_app --verify
+ffmpeg -version
 ```
 
 #### Basic Usage

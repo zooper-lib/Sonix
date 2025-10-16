@@ -8,31 +8,22 @@ import 'dart:async';
 ///
 /// This script compiles the native sonix_native library for all supported platforms
 /// and places them in the correct locations within the Flutter plugin structure
-/// so they can be bundled with the published package.
+/// so they can be used during development and CI. Desktop relies on system FFmpeg.
 ///
 /// ## What it does:
 /// 1. Compiles sonix_native for each platform using CMake
 /// 2. Places binaries in platform-specific directories:
-///    - Windows: windows/sonix_native.dll
 ///    - Linux: linux/libsonix_native.so
 ///    - macOS: macos/libsonix_native.dylib
-///    - iOS: ios/libsonix_native.a (static library)
-///    - Android: android/src/main/jniLibs/{arch}/libsonix_native.so
 ///
 /// ## Requirements:
 /// - CMake 3.10+
 /// - Platform-specific toolchains (MSVC, GCC, Clang, NDK)
-/// - FFMPEG binaries installed (run download_ffmpeg_binaries.dart first)
+/// - System FFmpeg installed (on macOS via Homebrew: brew install ffmpeg)
 ///
 class NativeDistributionBuilder {
-  final Map<String, String> platformOutputs = {
-    'windows': 'windows/sonix_native.dll',
-    'linux': 'linux/libsonix_native.so',
-    'macos': 'macos/libsonix_native.dylib',
-    'ios': 'ios/libsonix_native.a',
-  };
-
-  final List<String> androidArchs = ['arm64-v8a', 'armeabi-v7a', 'x86_64'];
+  // Distribution builds are supported for Linux and macOS only (system FFmpeg)
+  final Map<String, String> platformOutputs = {'linux': 'linux/libsonix_native.so', 'macos': 'macos/libsonix_native.dylib'};
 
   /// Main entry point
   Future<void> run(List<String> arguments) async {
@@ -101,23 +92,13 @@ class NativeDistributionBuilder {
       return false;
     }
 
-    // Check FFMPEG binaries
-    final ffmpegDirs = ['build/ffmpeg/windows', 'build/ffmpeg/linux', 'build/ffmpeg/macos'];
-    bool ffmpegFound = false;
-
-    for (final dir in ffmpegDirs) {
-      if (await Directory(dir).exists()) {
-        final files = await Directory(dir).list().toList();
-        if (files.isNotEmpty) {
-          ffmpegFound = true;
-          break;
-        }
+    // Check system FFmpeg for host platforms (macOS/Linux)
+    if (Platform.isMacOS) {
+      final brew = Process.runSync('brew', ['--prefix', 'ffmpeg']);
+      if (brew.exitCode != 0 || (brew.stdout as String).toString().trim().isEmpty) {
+        print('❌ System FFmpeg not found. Install via Homebrew: brew install ffmpeg');
+        return false;
       }
-    }
-
-    if (!ffmpegFound) {
-      print('❌ FFMPEG binaries not found. Run: dart run tool/download_ffmpeg_binaries.dart');
-      return false;
     }
 
     return true;
@@ -142,13 +123,6 @@ class NativeDistributionBuilder {
         print('   Continuing with other platforms...');
       }
     }
-
-    // Build Android separately
-    try {
-      await _buildForAndroid();
-    } catch (e) {
-      print('⚠️  Failed to build for Android: $e');
-    }
   }
 
   /// Builds for a specific platform
@@ -158,20 +132,11 @@ class NativeDistributionBuilder {
     print('-' * 30);
 
     switch (platform) {
-      case 'windows':
-        await _buildWindows();
-        break;
       case 'linux':
         await _buildLinux();
         break;
       case 'macos':
         await _buildMacOS();
-        break;
-      case 'ios':
-        await _buildIOS();
-        break;
-      case 'android':
-        await _buildForAndroid();
         break;
       default:
         throw ArgumentError('Unsupported platform: $platform');
@@ -180,55 +145,13 @@ class NativeDistributionBuilder {
     print('✅ $platform build completed');
   }
 
-  /// Builds Windows DLL
-  Future<void> _buildWindows() async {
-    final tempBuildDir = 'build/sonix/windows';
-    await _createBuildDirectory(tempBuildDir);
-
-    // Configure with CMake - use NMake Makefiles for GitHub Actions compatibility
-    final configResult = await Process.run('cmake', [
-      '-S',
-      'native',
-      '-B',
-      tempBuildDir,
-      '-G',
-      'NMake Makefiles',
-      '-DCMAKE_BUILD_TYPE=Release',
-      '-DFFMPEG_ROOT=build/ffmpeg/windows',
-    ]);
-
-    if (configResult.exitCode != 0) {
-      throw Exception('CMake configuration failed: ${configResult.stderr}');
-    }
-
-    // Build
-    final buildResult = await Process.run('cmake', ['--build', tempBuildDir, '--config', 'Release']);
-
-    if (buildResult.exitCode != 0) {
-      throw Exception('Build failed: ${buildResult.stderr}');
-    }
-
-    // Copy from build directory to plugin directory (NMake puts output directly in build dir)
-    final sourceFile = File('$tempBuildDir/sonix_native.dll');
-    final targetFile = File('windows/sonix_native.dll');
-
-    if (await sourceFile.exists()) {
-      await sourceFile.copy(targetFile.path);
-      print('✅ Built and copied: ${targetFile.path}');
-    } else {
-      throw Exception('Built library not found: ${sourceFile.path}');
-    }
-
-    // Build directory preserved for incremental builds
-  }
-
   /// Builds Linux shared library
   Future<void> _buildLinux() async {
     final tempBuildDir = 'build/sonix/linux';
     await _createBuildDirectory(tempBuildDir);
 
-    // Configure with CMake
-    final configResult = await Process.run('cmake', ['-S', 'native', '-B', tempBuildDir, '-DCMAKE_BUILD_TYPE=Release', '-DFFMPEG_ROOT=build/ffmpeg/linux']);
+    // Configure with CMake using system FFmpeg on Linux
+    final configResult = await Process.run('cmake', ['-S', 'native', '-B', tempBuildDir, '-DCMAKE_BUILD_TYPE=Release', '-DSONIX_USE_SYSTEM_FFMPEG=ON']);
 
     if (configResult.exitCode != 0) {
       throw Exception('CMake configuration failed: ${configResult.stderr}');
@@ -261,26 +184,10 @@ class NativeDistributionBuilder {
     await _createBuildDirectory(tempBuildDir);
 
     // Decide architectures to build based on available FFmpeg dylibs
-    final ffmpegRoot = 'build/ffmpeg/macos';
-    final ffmpegLibDir = Directory('$ffmpegRoot/lib');
+    // Prefer system FFmpeg; architecture choice can simply follow host arch
+    // If you need universal binaries, you can extend this later by probing Homebrew Cellar.
     final hostArch = _detectHostMacArch();
-    final ffmpegArchs = await _detectMacOSArchitecturesForFFmpeg(ffmpegLibDir.path);
-    String cmakeArchArg;
-
-    if (ffmpegArchs.contains('arm64') && ffmpegArchs.contains('x86_64')) {
-      // Universal FFmpeg libs available
-      cmakeArchArg = 'x86_64;arm64';
-      print('Detected universal FFmpeg libraries; building universal binary (x86_64;arm64)');
-    } else if (ffmpegArchs.isNotEmpty) {
-      // Constrain to whatever FFmpeg supports, preferring host arch if present
-      final chosen = ffmpegArchs.contains(hostArch) ? hostArch : ffmpegArchs.first;
-      cmakeArchArg = chosen;
-      print('FFMPEG libs are ${ffmpegArchs.join(', ')}; building for: $chosen');
-    } else {
-      // Could not detect, default to host arch
-      cmakeArchArg = hostArch;
-      print('Could not detect FFmpeg architectures; defaulting to host arch: $hostArch');
-    }
+    final cmakeArchArg = hostArch;
 
     // Configure with CMake
     final configResult = await Process.run('cmake', [
@@ -289,7 +196,7 @@ class NativeDistributionBuilder {
       '-B',
       tempBuildDir,
       '-DCMAKE_BUILD_TYPE=Release',
-      '-DFFMPEG_ROOT=$ffmpegRoot',
+      '-DSONIX_USE_SYSTEM_FFMPEG=ON',
       '-DCMAKE_OSX_ARCHITECTURES=$cmakeArchArg',
     ]);
 
@@ -334,147 +241,6 @@ class NativeDistributionBuilder {
     return 'x86_64';
   }
 
-  /// Detect architectures present in FFmpeg dylibs within the given directory
-  Future<Set<String>> _detectMacOSArchitecturesForFFmpeg(String libDir) async {
-    final archs = <String>{};
-    try {
-      final candidates = ['libavformat.dylib', 'libavcodec.dylib', 'libavutil.dylib', 'libswresample.dylib'];
-
-      for (final name in candidates) {
-        final f = File('$libDir/$name');
-        if (await f.exists()) {
-          // Prefer lipo -info; fall back to file
-          ProcessResult res = await Process.run('lipo', ['-info', f.path]);
-          String out = '';
-          if (res.exitCode == 0) {
-            out = (res.stdout as String).toLowerCase();
-            if (out.contains('architectures in the fat file')) {
-              if (out.contains('arm64')) archs.add('arm64');
-              if (out.contains('x86_64')) archs.add('x86_64');
-            } else if (out.contains('non-fat file')) {
-              if (out.contains('arm64')) archs.add('arm64');
-              if (out.contains('x86_64')) archs.add('x86_64');
-            }
-          }
-          if (archs.isEmpty) {
-            res = await Process.run('file', [f.path]);
-            if (res.exitCode == 0) {
-              out = (res.stdout as String).toLowerCase();
-              if (out.contains('arm64')) archs.add('arm64');
-              if (out.contains('x86_64')) archs.add('x86_64');
-            }
-          }
-        }
-      }
-    } catch (_) {}
-    return archs;
-  }
-
-  /// Builds iOS static library
-  Future<void> _buildIOS() async {
-    final tempBuildDir = 'build/sonix/ios';
-    await _createBuildDirectory(tempBuildDir);
-
-    // Configure with CMake for iOS - output directly to ios/ directory
-    final configResult = await Process.run('cmake', [
-      '-S', 'native',
-      '-B', tempBuildDir,
-      '-DCMAKE_BUILD_TYPE=Release',
-      '-DCMAKE_TOOLCHAIN_FILE=cmake/ios.toolchain.cmake', // You'll need an iOS toolchain file
-      '-DPLATFORM=OS64COMBINED', // Universal iOS binary
-      '-DFFMPEG_ROOT=build/ffmpeg/ios',
-    ]);
-
-    if (configResult.exitCode != 0) {
-      throw Exception('CMake configuration failed: ${configResult.stderr}');
-    }
-
-    // Build
-    final buildResult = await Process.run('cmake', ['--build', tempBuildDir, '--config', 'Release']);
-
-    if (buildResult.exitCode != 0) {
-      throw Exception('Build failed: ${buildResult.stderr}');
-    }
-
-    // Copy from build directory to plugin directory
-    final sourceFile = File('$tempBuildDir/libsonix_native.a');
-    final targetFile = File('ios/libsonix_native.a');
-
-    if (await sourceFile.exists()) {
-      await sourceFile.copy(targetFile.path);
-      print('✅ Built and copied: ${targetFile.path}');
-    } else {
-      throw Exception('Built library not found: ${sourceFile.path}');
-    }
-
-    // Build directory preserved for incremental builds
-  }
-
-  /// Builds Android libraries for all architectures
-  Future<void> _buildForAndroid() async {
-    print('');
-    print('Building for Android...');
-    print('-' * 30);
-
-    for (final arch in androidArchs) {
-      await _buildAndroidArch(arch);
-    }
-  }
-
-  /// Builds Android library for specific architecture
-  Future<void> _buildAndroidArch(String arch) async {
-    print('Building Android $arch...');
-
-    final tempBuildDir = 'build/android_$arch';
-    await _createBuildDirectory(tempBuildDir);
-
-    // Map architecture to NDK ABI
-    final abiMap = {'arm64-v8a': 'arm64-v8a', 'armeabi-v7a': 'armeabi-v7a', 'x86_64': 'x86_64'};
-
-    final abi = abiMap[arch]!;
-    final outputDir = 'android/src/main/jniLibs/$arch';
-
-    // Ensure output directory exists
-    await Directory(outputDir).create(recursive: true);
-
-    // Configure with CMake for Android - output directly to jniLibs directory
-    final configResult = await Process.run('cmake', [
-      '-S',
-      'native',
-      '-B',
-      tempBuildDir,
-      '-DCMAKE_BUILD_TYPE=Release',
-      '-DCMAKE_TOOLCHAIN_FILE=\$ANDROID_NDK/build/cmake/android.toolchain.cmake',
-      '-DANDROID_ABI=$abi',
-      '-DANDROID_PLATFORM=android-21',
-      '-DFFMPEG_ROOT=build/ffmpeg/android/$arch',
-    ]);
-
-    if (configResult.exitCode != 0) {
-      throw Exception('CMake configuration failed for $arch: ${configResult.stderr}');
-    }
-
-    // Build
-    final buildResult = await Process.run('cmake', ['--build', tempBuildDir, '--config', 'Release']);
-
-    if (buildResult.exitCode != 0) {
-      throw Exception('Build failed for $arch: ${buildResult.stderr}');
-    }
-
-    // Copy from build directory to plugin directory
-    final sourceFile = File('$tempBuildDir/libsonix_native.so');
-    final targetFile = File('$outputDir/libsonix_native.so');
-
-    if (await sourceFile.exists()) {
-      await sourceFile.copy(targetFile.path);
-      print('✅ Built and copied: ${targetFile.path}');
-    } else {
-      throw Exception('Built library not found: ${sourceFile.path}');
-    }
-
-    // Build directory preserved for incremental builds
-  }
-
   /// Creates build directory
   Future<void> _createBuildDirectory(String path) async {
     final dir = Directory(path);
@@ -491,16 +257,10 @@ class NativeDistributionBuilder {
     print('Cleaning build artifacts...');
 
     // Clean build directories (these are gitignored anyway)
-    final buildDirsToClean = [
-      'build/sonix/windows',
-      'build/sonix/linux',
-      'build/sonix/macos',
-      'build/sonix/ios',
-      ...androidArchs.map((arch) => 'build/android_$arch'),
-    ];
+    final buildDirsToClean = ['build/sonix/linux', 'build/sonix/macos'];
 
     // Clean built binaries from plugin directories
-    final filesToClean = [...platformOutputs.values, ...androidArchs.map((arch) => 'android/src/main/jniLibs/$arch/libsonix_native.so')];
+    final filesToClean = [...platformOutputs.values];
 
     for (final dir in buildDirsToClean) {
       final directory = Directory(dir);
@@ -523,7 +283,7 @@ class NativeDistributionBuilder {
 
   /// Gets the current platform
   String _getCurrentPlatform() {
-    if (Platform.isWindows) return 'windows';
+    // Only linux/macos are supported here
     if (Platform.isLinux) return 'linux';
     if (Platform.isMacOS) return 'macos';
     throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
@@ -583,7 +343,7 @@ Usage:
 Options:
   -h, --help                    Show this help message
   -p, --platforms <list>        Comma-separated list of platforms to build
-                               Options: current, all, windows, linux, macos, ios, android
+                               Options: current, all, linux, macos
   -c, --clean                   Clean build artifacts and exit
       --skip-validation         Skip build environment validation
 
@@ -595,22 +355,20 @@ Examples:
   dart run tool/build_native_for_distribution.dart --platforms all
 
   # Build for specific platforms
-  dart run tool/build_native_for_distribution.dart --platforms windows,linux
+  dart run tool/build_native_for_distribution.dart --platforms linux,macos
 
   # Clean build artifacts
   dart run tool/build_native_for_distribution.dart --clean
 
 Prerequisites:
   1. CMake 3.10 or later installed
-  2. Platform-specific toolchains (MSVC, GCC, Clang, Android NDK)
-  3. FFMPEG binaries installed: dart run tool/download_ffmpeg_binaries.dart
+  2. Platform-specific toolchains (Clang, GCC)
+  3. System FFmpeg installed (on macOS via Homebrew: brew install ffmpeg)
 
 Output Locations:
-  - Windows: windows/sonix_native.dll
   - Linux: linux/libsonix_native.so
   - macOS: macos/libsonix_native.dylib
-  - iOS: ios/libsonix_native.a
-  - Android: android/src/main/jniLibs/{arch}/libsonix_native.so
+  
 
 Note: This tool prepares native libraries for package distribution.
 The libraries will be automatically bundled when users install the Sonix package.

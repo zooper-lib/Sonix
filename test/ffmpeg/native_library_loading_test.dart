@@ -26,7 +26,7 @@ void main() {
       if (!ffmpegAvailable) {
         print('⚠️ FFMPEG not available - some tests will be skipped');
         print('   To set up FFMPEG for testing, run:');
-        print('   dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
+        print('   Install system FFmpeg or place libs under test/fixtures/ffmpeg');
       }
     });
 
@@ -64,6 +64,8 @@ void main() {
         'sonix_get_optimal_chunk_size',
         'sonix_cleanup_chunked_decoder',
         'sonix_free_chunk_result',
+        // Media info accessor should be exported on all platforms
+        'sonix_get_decoder_media_info',
       ];
 
       for (final functionName in requiredFunctions) {

@@ -155,7 +155,23 @@ class ErrorSerializer {
     }
 
     if (error is DecodingException) {
-      // Some decoding errors might be temporary
+      // Check if it's a non-recoverable decoding error
+      final message = error.message.toLowerCase();
+      final details = error.details?.toLowerCase() ?? '';
+      
+      // Empty files, invalid files, and severely corrupted files are not recoverable
+      if (message.contains('file is empty') ||
+          message.contains('empty file') ||
+          message.contains('invalid file') ||
+          message.contains('cannot decode empty') ||
+          details.contains('file is empty') ||
+          details.contains('empty file') ||
+          details.contains('invalid file') ||
+          details.contains('cannot decode empty')) {
+        return false;
+      }
+      
+      // Other decoding errors might be temporary (e.g., due to incomplete file write)
       return true;
     }
 

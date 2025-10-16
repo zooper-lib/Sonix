@@ -30,7 +30,7 @@ class NativeAudioBindings {
       throw FFIException(
         'Failed to initialize native audio bindings',
         'Make sure the native library is built and FFMPEG binaries are installed. '
-            'Run: dart run tool/download_ffmpeg_binaries.dart\n'
+            'Install system FFmpeg (e.g., macOS: brew install ffmpeg)\n'
             'Error: $e',
       );
     }
@@ -51,7 +51,7 @@ class NativeAudioBindings {
           'FFMPEG initialization failed',
           'FFMPEG libraries are required but could not be initialized. '
               'Please ensure FFMPEG binaries are properly installed.\n'
-              'Run: dart run tool/download_ffmpeg_binaries.dart\n'
+              'Install system FFmpeg (e.g., macOS: brew install ffmpeg)\n'
               'Error: $errorMsg',
         );
       }
@@ -84,7 +84,7 @@ class NativeAudioBindings {
       throw FFIException(
         'FFMPEG backend not available',
         'FFMPEG is required but not properly initialized. '
-            'Run: dart run tool/download_ffmpeg_binaries.dart',
+            'Install system FFmpeg (e.g., macOS: brew install ffmpeg)',
       );
     }
     return 'FFMPEG';
@@ -157,7 +157,7 @@ class NativeAudioBindings {
       throw DecodingException(
         'FFMPEG not available for format detection',
         'FFMPEG libraries are required for audio format detection. '
-            'Run: dart run tool/download_ffmpeg_binaries.dart',
+            'Install system FFmpeg (e.g., macOS: brew install ffmpeg)',
       );
     }
 
@@ -198,7 +198,7 @@ class NativeAudioBindings {
       throw DecodingException(
         'FFMPEG not available for audio decoding',
         'FFMPEG libraries are required for audio decoding. '
-            'Run: dart run tool/download_ffmpeg_binaries.dart',
+            'Install system FFmpeg (e.g., macOS: brew install ffmpeg)',
       );
     }
 
@@ -225,7 +225,7 @@ class NativeAudioBindings {
           throw DecodingException(
             'FFMPEG libraries not found',
             'FFMPEG libraries are required but not properly installed. '
-                'Run: dart run tool/download_ffmpeg_binaries.dart\n'
+                'Install system FFmpeg (e.g., macOS: brew install ffmpeg)\n'
                 'Error: $errorMsg',
           );
         } else if (errorMsg.contains('probe')) {

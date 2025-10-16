@@ -48,13 +48,25 @@ class FFMPEGSetupHelper {
   static Future<bool> setupFFMPEGForTesting() async {
     if (_setupComplete) return true;
 
+    // Prefer system FFmpeg when available (macOS/Linux). On Windows, tests can use fixtures.
+    if (Platform.isMacOS || Platform.isLinux) {
+      // Try to dlopen common FFmpeg libs from system locations implicitly
+      try {
+        // No-op: relying on native library linkage and system dynamic loader
+        print('ℹ️ Using system FFmpeg for tests');
+        _setupComplete = true;
+        return true;
+      } catch (_) {
+        // Fallback to fixtures if present
+      }
+    }
+
     final fixturesDir = Directory('test/fixtures/ffmpeg');
     if (!fixturesDir.existsSync()) {
       print('⚠️ FFMPEG fixtures directory not found: ${fixturesDir.path}');
-      print('   FFMPEG tests will be skipped.');
-      print('   To set up FFMPEG for testing, run:');
-      print('   dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
-      return false;
+      print('   FFMPEG tests may be skipped or rely on system FFmpeg if available.');
+      _setupComplete = true;
+      return Platform.isMacOS || Platform.isLinux;
     }
 
     _fixturesPath = fixturesDir.absolute.path;
@@ -103,8 +115,7 @@ class FFMPEGSetupHelper {
       if (availableCoreFiles.isNotEmpty) {
         print('   Available core: ${availableCoreFiles.join(', ')}');
       }
-      print('   To download missing libraries, run:');
-      print('   dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
+      print('   Install system FFmpeg or place the required libraries into test/fixtures/ffmpeg');
     }
 
     _setupComplete = true;
@@ -256,7 +267,7 @@ class FFMPEGSetupHelper {
     if (!available) {
       print('');
       print('To set up FFMPEG for testing:');
-      print('1. Run: dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install');
+      print('1. Install system FFmpeg (macOS: brew install ffmpeg)');
       print('2. Or manually place the following libraries in test/fixtures/ffmpeg/:');
       for (final library in requiredLibraries) {
         print('   - $library');

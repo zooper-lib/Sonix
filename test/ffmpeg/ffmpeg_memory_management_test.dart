@@ -21,7 +21,7 @@ void main() {
         throw StateError(
           'FFMPEG not available - required for memory management tests. '
           'To set up FFMPEG for testing, run: '
-          'dart run tool/download_ffmpeg_binaries.dart --output test/fixtures/ffmpeg --skip-install',
+          'Install system FFmpeg or place libs under test/fixtures/ffmpeg',
         );
       }
 
