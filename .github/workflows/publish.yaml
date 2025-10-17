@@ -1,0 +1,18 @@
+# .github/workflows/publish.yml
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - run: flutter pub publish --dry-run
+      - run: dart pub publish -f
