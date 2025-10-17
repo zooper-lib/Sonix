@@ -1,7 +1,9 @@
 # .github/workflows/publish.yml
+name: Publish to pub.dev
+
 on:
   push:
-    tags: ['[0-9]+.[0-9]+.[0-9]+']
+    tags: ['[0-9]+.[0-9]+.[0-9]+*']
 
 jobs:
   publish:
@@ -10,9 +12,21 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - uses: subosito/flutter-action@v2
-        with: { channel: stable }
-      - run: flutter pub publish --dry-run
-      - run: dart pub publish -f
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Validate package
+        run: flutter pub publish --dry-run
+      
+      - name: Publish to pub.dev
+        run: dart pub publish --force
