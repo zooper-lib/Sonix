@@ -34,6 +34,7 @@ test/assets/generated/
 
 # Real audio files for integration testing (user-provided, may be copyrighted)
 test/assets/real_audio/
+!test/assets/real_audio/README.md
 
 native/windows/*
 test/assets/ffmpeg/*
