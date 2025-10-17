@@ -33,8 +33,17 @@ migrate_working_dir/
 test/assets/generated/
 
 # Real audio files for integration testing (user-provided, may be copyrighted)
-test/assets/real_audio/
-!test/assets/real_audio/README.md
+# Use specific patterns instead of ignoring the whole directory to allow README.md
+test/assets/real_audio/*.mp3
+test/assets/real_audio/*.wav
+test/assets/real_audio/*.flac
+test/assets/real_audio/*.ogg
+test/assets/real_audio/*.opus
+test/assets/real_audio/*.aac
+test/assets/real_audio/*.m4a
+test/assets/real_audio/*.wma
+test/assets/real_audio/*.aiff
+test/assets/real_audio/*.alac
 
 native/windows/*
 test/assets/ffmpeg/*
