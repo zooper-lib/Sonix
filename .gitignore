@@ -16,11 +16,9 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-.vscode/
-.kiro/
+# VS Code and project-specific files
+# Note: .vscode/settings.json and .kiro/ files are checked in for the project
+# Do not add .vscode/ or .kiro/ patterns here
 
 # Flutter/Dart/Pub related
 # Libraries should not include pubspec.lock, per https://dart.dev/guides/libraries/private-files#pubspeclock.
@@ -33,52 +31,9 @@ migrate_working_dir/
 
 # Generated test files (too large for version control)
 test/assets/generated/
-test/assets/large_files/
-test/assets/test_file_inventory.json
 
 # Real audio files for integration testing (user-provided, may be copyrighted)
-test/assets/real_audio/*.mp3
-test/assets/real_audio/*.wav
-test/assets/real_audio/*.flac
-test/assets/real_audio/*.ogg
-test/assets/real_audio/*.opus
-test/assets/real_audio/*.aac
-test/assets/real_audio/*.m4a
-test/assets/real_audio/*.wma
-test/assets/real_audio/*.aiff
-# Allow README.md in real_audio folder
-!test/assets/real_audio/README.md
-
-# Generated test files (legacy - can be removed after cleanup)
-test/assets/*_tiny_*.wav
-test/assets/*_tiny_*.mp3
-test/assets/*_tiny_*.flac
-test/assets/*_tiny_*.ogg
-test/assets/*_small_*.wav
-test/assets/*_small_*.mp3
-test/assets/*_small_*.flac
-test/assets/*_small_*.ogg
-test/assets/*_medium_*.wav
-test/assets/*_medium_*.mp3
-test/assets/*_medium_*.flac
-test/assets/*_medium_*.ogg
-test/assets/*_large_*.wav
-test/assets/*_large_*.mp3
-test/assets/*_large_*.flac
-test/assets/*_large_*.ogg
-test/assets/*_xlarge_*.wav
-test/assets/*_xlarge_*.mp3
-test/assets/*_xlarge_*.flac
-test/assets/*_xlarge_*.ogg
-test/assets/corrupted_*
-test/assets/invalid_*
-test/assets/garbage_*
-test/assets/empty_file.*
-test/assets/header_only.*
-test/assets/partial_*
-test/assets/text_file.*
-test/assets/truncated.*
-test/assets/mismatched_*
+test/assets/real_audio/
 
 native/windows/*
 test/assets/ffmpeg/*

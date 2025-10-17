@@ -83,8 +83,7 @@ jobs:
       - name: Install FFmpeg (macOS)
         if: matrix.platform == 'macos'
         run: |
-          brew update
-          brew list ffmpeg || brew install ffmpeg
+          brew install ffmpeg
 
       # Build the native library for distribution
       - name: Build native library for distribution
