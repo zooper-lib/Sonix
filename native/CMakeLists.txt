@@ -78,6 +78,26 @@ if(SONIX_USE_SYSTEM_FFMPEG)
         /usr/local/include
         /opt/local/include
     )
+    
+    # Add Windows-specific paths for Chocolatey and manual FFmpeg installations
+    if(WIN32)
+        list(APPEND _FFMPEG_LIB_HINTS
+            "C:/tools/msys64/mingw64/lib"
+            "C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/bin"
+            "C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/lib"
+            "C:/ffmpeg/bin"
+            "C:/ffmpeg/lib"
+            "$ENV{PROGRAMFILES}/ffmpeg/bin"
+            "$ENV{PROGRAMFILES}/ffmpeg/lib"
+        )
+        list(APPEND _FFMPEG_INCLUDE_HINTS
+            "C:/tools/msys64/mingw64/include"
+            "C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/include"
+            "C:/ffmpeg/include"
+            "$ENV{PROGRAMFILES}/ffmpeg/include"
+        )
+    endif()
+    
     find_library(AVFORMAT_LIBRARY NAMES avformat HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
     find_library(AVCODEC_LIBRARY  NAMES avcodec  HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
     find_library(AVUTIL_LIBRARY   NAMES avutil   HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
@@ -117,6 +137,10 @@ target_link_libraries(sonix_native
 if(WIN32)
     # Windows-specific settings
     target_compile_definitions(sonix_native PRIVATE WIN32_LEAN_AND_MEAN SONIX_NATIVE_EXPORTS)
+    # Ensure DLL name does not get a 'lib' prefix when using MinGW/Ninja
+    set_target_properties(sonix_native PROPERTIES PREFIX "")
+    # Place the DLL in the binary (build) directory for single-config generators like Ninja
+    set_target_properties(sonix_native PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 elseif(APPLE)
     # macOS-specific settings

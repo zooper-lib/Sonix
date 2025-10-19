@@ -22,8 +22,12 @@ import 'dart:async';
 /// - System FFmpeg installed (on macOS via Homebrew: brew install ffmpeg)
 ///
 class NativeDistributionBuilder {
-  // Distribution builds are supported for Linux and macOS only (system FFmpeg)
-  final Map<String, String> platformOutputs = {'linux': 'linux/libsonix_native.so', 'macos': 'macos/libsonix_native.dylib'};
+  // Distribution builds are supported for Linux, macOS, and Windows (system FFmpeg)
+  final Map<String, String> platformOutputs = {
+    'linux': 'linux/libsonix_native.so',
+    'macos': 'macos/libsonix_native.dylib',
+    'windows': 'windows/sonix_native.dll',
+  };
 
   /// Main entry point
   Future<void> run(List<String> arguments) async {
@@ -110,6 +114,17 @@ class NativeDistributionBuilder {
         print('   - Arch: sudo pacman -S ffmpeg');
         return false;
       }
+    } else if (Platform.isWindows) {
+      // Check for FFmpeg on Windows (installed via MSYS2)
+      final msys2Path = 'C:\\tools\\msys64\\mingw64\\bin\\ffmpeg.exe';
+      if (!File(msys2Path).existsSync()) {
+        print('❌ System FFmpeg not found in MSYS2.');
+        print('   Install MSYS2 and FFmpeg:');
+        print('   1. choco install msys2');
+        print('   2. C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -Syu"');
+        print('   3. C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -S mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkg-config"');
+        return false;
+      }
     }
 
     return true;
@@ -148,6 +163,9 @@ class NativeDistributionBuilder {
         break;
       case 'macos':
         await _buildMacOS();
+        break;
+      case 'windows':
+        await _buildWindows();
         break;
       default:
         throw ArgumentError('Unsupported platform: $platform');
@@ -236,6 +254,68 @@ class NativeDistributionBuilder {
     // Build directory preserved for incremental builds
   }
 
+  /// Builds Windows DLL
+  Future<void> _buildWindows() async {
+    final tempBuildDir = 'build/sonix/windows';
+    await _createBuildDirectory(tempBuildDir);
+
+    // Configure with CMake using system FFmpeg on Windows
+    // Use Ninja generator as it doesn't require Visual Studio to be installed
+    // Set PKG_CONFIG_PATH to help find FFmpeg from MSYS2
+    final environment = <String, String>{
+      'PKG_CONFIG_PATH': 'C:\\tools\\msys64\\mingw64\\lib\\pkgconfig',
+      'PATH': 'C:\\tools\\msys64\\mingw64\\bin;C:\\tools\\msys64\\usr\\bin;${Platform.environment['PATH'] ?? ''}',
+    };
+
+    final configResult = await Process.run('cmake', [
+      '-S',
+      'native',
+      '-B',
+      tempBuildDir,
+      '-DCMAKE_BUILD_TYPE=Release',
+      '-DSONIX_USE_SYSTEM_FFMPEG=ON',
+      '-G',
+      'Ninja',
+    ], environment: environment);
+
+    if (configResult.exitCode != 0) {
+      throw Exception('CMake configuration failed: ${configResult.stderr}');
+    }
+
+    // Build
+    final buildResult = await Process.run('cmake', ['--build', tempBuildDir, '--config', 'Release'], environment: environment);
+
+    if (buildResult.exitCode != 0) {
+      throw Exception('Build failed: ${buildResult.stderr}');
+    }
+
+    // Copy from build directory to plugin directory
+    // Ninja puts the DLL directly in the build directory
+    final targetFile = File('windows/sonix_native.dll');
+    final candidates = [
+      File('$tempBuildDir/sonix_native.dll'),
+      File('$tempBuildDir/libsonix_native.dll'),
+      File('$tempBuildDir/Release/sonix_native.dll'),
+      File('$tempBuildDir/Release/libsonix_native.dll'),
+    ];
+    File? found;
+    for (final f in candidates) {
+      if (await f.exists()) {
+        found = f;
+        break;
+      }
+    }
+    if (found != null) {
+      await targetFile.parent.create(recursive: true);
+      await found.copy(targetFile.path);
+      print('✅ Built and copied: ${targetFile.path}');
+    } else {
+      throw Exception('Built library not found in any of: ${candidates.map((f) => f.path).join(', ')}');
+    }
+
+    // Build directory preserved for incremental builds
+  }
+
   /// Detect host macOS CPU architecture (arm64 or x86_64)
   String _detectHostMacArch() {
     try {
@@ -268,7 +348,7 @@ class NativeDistributionBuilder {
     print('Cleaning build artifacts...');
 
     // Clean build directories (these are gitignored anyway)
-    final buildDirsToClean = ['build/sonix/linux', 'build/sonix/macos'];
+    final buildDirsToClean = ['build/sonix/linux', 'build/sonix/macos', 'build/sonix/windows'];
 
     // Clean built binaries from plugin directories
     final filesToClean = [...platformOutputs.values];
@@ -294,9 +374,10 @@ class NativeDistributionBuilder {
 
   /// Gets the current platform
   String _getCurrentPlatform() {
-    // Only linux/macos are supported here
+    // Supported platforms: linux, macos, windows
     if (Platform.isLinux) return 'linux';
     if (Platform.isMacOS) return 'macos';
+    if (Platform.isWindows) return 'windows';
     throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
   }
 
@@ -354,7 +435,7 @@ Usage:
 Options:
   -h, --help                    Show this help message
   -p, --platforms <list>        Comma-separated list of platforms to build
-                               Options: current, all, linux, macos
+                               Options: current, all, linux, macos, windows
   -c, --clean                   Clean build artifacts and exit
       --skip-validation         Skip build environment validation
 
@@ -366,19 +447,26 @@ Examples:
   dart run tool/build_native_for_distribution.dart --platforms all
 
   # Build for specific platforms
-  dart run tool/build_native_for_distribution.dart --platforms linux,macos
+  dart run tool/build_native_for_distribution.dart --platforms linux,macos,windows
 
   # Clean build artifacts
   dart run tool/build_native_for_distribution.dart --clean
 
 Prerequisites:
   1. CMake 3.10 or later installed
-  2. Platform-specific toolchains (Clang, GCC)
-  3. System FFmpeg installed (on macOS via Homebrew: brew install ffmpeg)
+  2. Platform-specific toolchains (Clang, GCC, MSVC)
+  3. System FFmpeg installed:
+     - macOS: brew install ffmpeg
+     - Linux: sudo apt-get install libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
+     - Windows: Install MSYS2 and FFmpeg development packages
+       * choco install msys2
+       * C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -Syu"
+       * C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -S mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkg-config"
 
 Output Locations:
   - Linux: linux/libsonix_native.so
   - macOS: macos/libsonix_native.dylib
+  - Windows: windows/sonix_native.dll
   
 
 Note: This tool prepares native libraries for package distribution.

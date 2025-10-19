@@ -1,0 +1,24 @@
+# Exclude development and test files from published package
+
+# Development configuration
+.kiro/
+.vscode/
+
+# Test assets (these are for testing only, not needed in published package)
+test/assets/corrupted_data.wav
+test/assets/corrupted_header.mp3
+test/assets/empty_file.mp3
+test/assets/invalid_format.xyz
+test/assets/truncated.flac
+
+# All generated test files
+test/assets/generated/
+test/assets/large_files/
+test/assets/test_file_inventory.json
+
+# Real audio files for integration testing
+test/assets/real_audio/
+
+# Build artifacts
+build/
+.dart_tool/
