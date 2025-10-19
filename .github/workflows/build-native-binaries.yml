@@ -37,7 +37,7 @@ jobs:
             os: windows-latest
             binary_name: sonix_native.dll
             binary_path: windows/sonix_native.dll
-            cmake_generator: "Visual Studio 16 2019"
+            cmake_generator: "Ninja"
 
     steps:
       - name: Checkout repository

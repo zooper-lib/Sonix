@@ -256,6 +256,7 @@ class NativeDistributionBuilder {
     await _createBuildDirectory(tempBuildDir);
 
     // Configure with CMake using system FFmpeg on Windows
+    // Use Ninja generator as it doesn't require Visual Studio to be installed
     final configResult = await Process.run('cmake', [
       '-S',
       'native',
@@ -264,9 +265,7 @@ class NativeDistributionBuilder {
       '-DCMAKE_BUILD_TYPE=Release',
       '-DSONIX_USE_SYSTEM_FFMPEG=ON',
       '-G',
-      'Visual Studio 16 2019',
-      '-A',
-      'x64',
+      'Ninja',
     ]);
 
     if (configResult.exitCode != 0) {
@@ -281,8 +280,8 @@ class NativeDistributionBuilder {
     }
 
     // Copy from build directory to plugin directory
-    // Visual Studio puts the DLL in a Release subfolder
-    final sourceFile = File('$tempBuildDir/Release/sonix_native.dll');
+    // Ninja puts the DLL directly in the build directory
+    final sourceFile = File('$tempBuildDir/sonix_native.dll');
     final targetFile = File('windows/sonix_native.dll');
 
     if (await sourceFile.exists()) {
