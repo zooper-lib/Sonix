@@ -2,6 +2,9 @@
 name: Publish to pub.dev
 
 on:
+  # Allow manual triggering
+  workflow_dispatch:
+
   push:
     tags: ['[0-9]+.[0-9]+.[0-9]+*']
 
