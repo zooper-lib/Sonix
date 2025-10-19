@@ -115,10 +115,14 @@ class NativeDistributionBuilder {
         return false;
       }
     } else if (Platform.isWindows) {
-      // Check for FFmpeg on Windows (installed via choco or manually)
-      final whereResult = await Process.run('where', ['ffmpeg']);
-      if (whereResult.exitCode != 0) {
-        print('❌ System FFmpeg not found. Install via Chocolatey: choco install ffmpeg');
+      // Check for FFmpeg on Windows (installed via MSYS2)
+      final msys2Path = 'C:\\tools\\msys64\\mingw64\\bin\\ffmpeg.exe';
+      if (!File(msys2Path).existsSync()) {
+        print('❌ System FFmpeg not found in MSYS2.');
+        print('   Install MSYS2 and FFmpeg:');
+        print('   1. choco install msys2');
+        print('   2. C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -Syu"');
+        print('   3. C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -S mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkg-config"');
         return false;
       }
     }
@@ -257,6 +261,12 @@ class NativeDistributionBuilder {
 
     // Configure with CMake using system FFmpeg on Windows
     // Use Ninja generator as it doesn't require Visual Studio to be installed
+    // Set PKG_CONFIG_PATH to help find FFmpeg from MSYS2
+    final environment = <String, String>{
+      'PKG_CONFIG_PATH': 'C:\\tools\\msys64\\mingw64\\lib\\pkgconfig',
+      'PATH': 'C:\\tools\\msys64\\mingw64\\bin;C:\\tools\\msys64\\usr\\bin;${Platform.environment['PATH'] ?? ''}',
+    };
+
     final configResult = await Process.run('cmake', [
       '-S',
       'native',
@@ -266,14 +276,14 @@ class NativeDistributionBuilder {
       '-DSONIX_USE_SYSTEM_FFMPEG=ON',
       '-G',
       'Ninja',
-    ]);
+    ], environment: environment);
 
     if (configResult.exitCode != 0) {
       throw Exception('CMake configuration failed: ${configResult.stderr}');
     }
 
     // Build
-    final buildResult = await Process.run('cmake', ['--build', tempBuildDir, '--config', 'Release']);
+    final buildResult = await Process.run('cmake', ['--build', tempBuildDir, '--config', 'Release'], environment: environment);
 
     if (buildResult.exitCode != 0) {
       throw Exception('Build failed: ${buildResult.stderr}');
@@ -437,7 +447,10 @@ Prerequisites:
   3. System FFmpeg installed:
      - macOS: brew install ffmpeg
      - Linux: sudo apt-get install libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
-     - Windows: choco install ffmpeg
+     - Windows: Install MSYS2 and FFmpeg development packages
+       * choco install msys2
+       * C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -Syu"
+       * C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -S mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkg-config"
 
 Output Locations:
   - Linux: linux/libsonix_native.so

@@ -78,6 +78,26 @@ if(SONIX_USE_SYSTEM_FFMPEG)
         /usr/local/include
         /opt/local/include
     )
+    
+    # Add Windows-specific paths for Chocolatey and manual FFmpeg installations
+    if(WIN32)
+        list(APPEND _FFMPEG_LIB_HINTS
+            "C:/tools/msys64/mingw64/lib"
+            "C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/bin"
+            "C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/lib"
+            "C:/ffmpeg/bin"
+            "C:/ffmpeg/lib"
+            "$ENV{PROGRAMFILES}/ffmpeg/bin"
+            "$ENV{PROGRAMFILES}/ffmpeg/lib"
+        )
+        list(APPEND _FFMPEG_INCLUDE_HINTS
+            "C:/tools/msys64/mingw64/include"
+            "C:/ProgramData/chocolatey/lib/ffmpeg/tools/ffmpeg/include"
+            "C:/ffmpeg/include"
+            "$ENV{PROGRAMFILES}/ffmpeg/include"
+        )
+    endif()
+    
     find_library(AVFORMAT_LIBRARY NAMES avformat HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
     find_library(AVCODEC_LIBRARY  NAMES avcodec  HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
     find_library(AVUTIL_LIBRARY   NAMES avutil   HINTS ${_FFMPEG_LIB_HINTS} REQUIRED)
