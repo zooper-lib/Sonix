@@ -264,7 +264,7 @@ class NativeDistributionBuilder {
       '-DCMAKE_BUILD_TYPE=Release',
       '-DSONIX_USE_SYSTEM_FFMPEG=ON',
       '-G',
-      'Visual Studio 17 2022',
+      'Visual Studio 16 2019',
       '-A',
       'x64',
     ]);
