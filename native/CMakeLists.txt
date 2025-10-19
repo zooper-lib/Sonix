@@ -137,6 +137,10 @@ target_link_libraries(sonix_native
 if(WIN32)
     # Windows-specific settings
     target_compile_definitions(sonix_native PRIVATE WIN32_LEAN_AND_MEAN SONIX_NATIVE_EXPORTS)
+    # Ensure DLL name does not get a 'lib' prefix when using MinGW/Ninja
+    set_target_properties(sonix_native PROPERTIES PREFIX "")
+    # Place the DLL in the binary (build) directory for single-config generators like Ninja
+    set_target_properties(sonix_native PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 elseif(APPLE)
     # macOS-specific settings

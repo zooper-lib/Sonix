@@ -291,15 +291,26 @@ class NativeDistributionBuilder {
 
     // Copy from build directory to plugin directory
     // Ninja puts the DLL directly in the build directory
-    final sourceFile = File('$tempBuildDir/sonix_native.dll');
     final targetFile = File('windows/sonix_native.dll');
-
-    if (await sourceFile.exists()) {
+    final candidates = [
+      File('$tempBuildDir/sonix_native.dll'),
+      File('$tempBuildDir/libsonix_native.dll'),
+      File('$tempBuildDir/Release/sonix_native.dll'),
+      File('$tempBuildDir/Release/libsonix_native.dll'),
+    ];
+    File? found;
+    for (final f in candidates) {
+      if (await f.exists()) {
+        found = f;
+        break;
+      }
+    }
+    if (found != null) {
       await targetFile.parent.create(recursive: true);
-      await sourceFile.copy(targetFile.path);
+      await found.copy(targetFile.path);
       print('✅ Built and copied: ${targetFile.path}');
     } else {
-      throw Exception('Built library not found: ${sourceFile.path}');
+      throw Exception('Built library not found in any of: ${candidates.map((f) => f.path).join(', ')}');
     }
 
     // Build directory preserved for incremental builds
