@@ -32,6 +32,12 @@ jobs:
             binary_name: libsonix_native.dylib
             binary_path: macos/libsonix_native.dylib
             cmake_generator: "Unix Makefiles"
+            
+          - platform: windows
+            os: windows-latest
+            binary_name: sonix_native.dll
+            binary_path: windows/sonix_native.dll
+            cmake_generator: "Visual Studio 17 2022"
 
     steps:
       - name: Checkout repository
@@ -75,6 +81,12 @@ jobs:
         run: |
           brew install ffmpeg
 
+      # Install FFmpeg and dependencies (Windows)
+      - name: Setup FFmpeg (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          choco install ffmpeg -y
+
       # Build the native library for distribution
       - name: Build native library for distribution
         run: dart run tool/build_native_for_distribution.dart --platforms current
@@ -116,16 +128,24 @@ jobs:
           name: sonix-native-macos
           path: macos/
 
+      - name: Download Windows binary
+        uses: actions/download-artifact@v4
+        with:
+          name: sonix-native-windows
+          path: windows/
+
       # Verify all binaries are present
       - name: Verify binaries
         run: |
           echo "Checking downloaded binaries..."
           ls -la linux/libsonix_native.so
           ls -la macos/libsonix_native.dylib
+          ls -la windows/sonix_native.dll
           
           echo "Binary sizes:"
           du -h linux/libsonix_native.so
           du -h macos/libsonix_native.dylib
+          du -h windows/sonix_native.dll
 
       # Configure git for committing
       - name: Configure Git
@@ -143,6 +163,7 @@ jobs:
           echo "Adding binary files..."
           git add linux/libsonix_native.so
           git add macos/libsonix_native.dylib
+          git add windows/sonix_native.dll
           
           echo "Checking staged changes..."
           git status
