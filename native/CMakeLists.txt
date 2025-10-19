@@ -36,6 +36,17 @@ if(SONIX_USE_SYSTEM_FFMPEG)
     # If a brew prefix is provided, prefer it explicitly, and also query the specific ffmpeg prefix.
     set(_FFMPEG_LIB_HINTS)
     set(_FFMPEG_INCLUDE_HINTS)
+    # If a SONIX_FFMPEG_ROOT environment variable is provided, prefer it first
+    if(DEFINED ENV{SONIX_FFMPEG_ROOT})
+        message(STATUS "Using SONIX_FFMPEG_ROOT: $ENV{SONIX_FFMPEG_ROOT}")
+        list(APPEND _FFMPEG_LIB_HINTS
+            "$ENV{SONIX_FFMPEG_ROOT}/lib"
+            "$ENV{SONIX_FFMPEG_ROOT}/bin"
+        )
+        list(APPEND _FFMPEG_INCLUDE_HINTS
+            "$ENV{SONIX_FFMPEG_ROOT}/include"
+        )
+    endif()
     if(DEFINED SONIX_BREW_PREFIX)
         message(STATUS "Using Homebrew prefix: ${SONIX_BREW_PREFIX}")
         list(APPEND _FFMPEG_LIB_HINTS
