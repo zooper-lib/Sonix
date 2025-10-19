@@ -62,8 +62,13 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
+          # Use FFmpeg 6.x from PPA to guarantee ABI (soname 60)
+          sudo add-apt-repository -y ppa:savoury1/ffmpeg4
+          sudo apt-get update
           sudo apt-get install -y build-essential pkg-config \
-            libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
+            ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
+          # Export SONIX_FFMPEG_ROOT if known (debian packages install into /usr/{lib,include})
+          echo "SONIX_FFMPEG_ROOT=/usr" >> $GITHUB_ENV
 
       - name: Setup Xcode (macOS)
         if: matrix.platform == 'macos'
@@ -79,7 +84,10 @@ jobs:
       - name: Install FFmpeg (macOS)
         if: matrix.platform == 'macos'
         run: |
-          brew install ffmpeg
+          # Prefer FFmpeg@6 for deterministic ABI
+          brew install ffmpeg@6 || brew install ffmpeg
+          FFMPEG_PREFIX=$(brew --prefix ffmpeg@6 || brew --prefix ffmpeg)
+          echo "SONIX_FFMPEG_ROOT=$FFMPEG_PREFIX" >> $GITHUB_ENV
 
       # Install FFmpeg and dependencies (Windows)
       - name: Setup FFmpeg (Windows)
@@ -90,11 +98,13 @@ jobs:
           
           # Update MSYS2 and install FFmpeg development packages
           C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
+          # Install FFmpeg 6 (current in MSYS2) and pkg-config
           C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkg-config"
           
           # Add MSYS2 MinGW64 to PATH for this step and subsequent steps
           echo "C:\tools\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           echo "C:\tools\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "SONIX_FFMPEG_ROOT=C:\tools\msys64\mingw64" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       # Build the native library for distribution
       - name: Build native library for distribution

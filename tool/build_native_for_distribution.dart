@@ -263,8 +263,10 @@ class NativeDistributionBuilder {
     // Use Ninja generator as it doesn't require Visual Studio to be installed
     // Set PKG_CONFIG_PATH to help find FFmpeg from MSYS2
     final environment = <String, String>{
-      'PKG_CONFIG_PATH': 'C:\\tools\\msys64\\mingw64\\lib\\pkgconfig',
-      'PATH': 'C:\\tools\\msys64\\mingw64\\bin;C:\\tools\\msys64\\usr\\bin;${Platform.environment['PATH'] ?? ''}',
+      'PKG_CONFIG_PATH': 'C\\tools\\msys64\\mingw64\\lib\\pkgconfig',
+      'PATH': 'C\\tools\\msys64\\mingw64\\bin;C\\tools\\msys64\\usr\\bin;${Platform.environment['PATH'] ?? ''}',
+      // Forward optional SONIX_FFMPEG_ROOT to CMake for deterministic lib/include hints
+      if (Platform.environment['SONIX_FFMPEG_ROOT'] != null) 'SONIX_FFMPEG_ROOT': Platform.environment['SONIX_FFMPEG_ROOT']!,
     };
 
     final configResult = await Process.run('cmake', [
@@ -462,6 +464,10 @@ Prerequisites:
        * choco install msys2
        * C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -Syu"
        * C:\\tools\\msys64\\usr\\bin\\bash.exe -lc "pacman -S mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkg-config"
+
+Deterministic FFmpeg selection:
+  - Optionally set SONIX_FFMPEG_ROOT to point to a specific FFmpeg 6.0 install (with include/lib folders).
+    The build will prefer this path for headers and libraries on all platforms.
 
 Output Locations:
   - Linux: linux/libsonix_native.so
