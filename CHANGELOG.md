@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-10-19
+
+### Fixed
+
+- Windows native library build in CI now succeeds and produces the expected DLL
+  - Ensured consistent DLL naming (no `lib` prefix) and predictable output location
+  - Robust artifact copy step that detects common output filenames/paths
+
+### Changed
+
+- Native build script (`tool/build_native_for_distribution.dart`)
+  - Added first-class Windows support using the Ninja generator (no Visual Studio required)
+  - Integrated MSYS2 MinGW toolchain: sets PATH/PKG_CONFIG_PATH for FFmpeg discovery
+  - Improved validation to check for MSYS2-installed FFmpeg dev tooling
+  - Hardened Windows copy step to check multiple candidate output paths
+  - Updated CLI help and platform mapping to include Windows
+
+- CMake configuration (`native/CMakeLists.txt`)
+  - Added Windows/MSYS2 library and include path hints for FFmpeg
+  - Set `PREFIX ""` on Windows to avoid `lib` prefix on DLLs
+  - Set `RUNTIME_OUTPUT_DIRECTORY` so DLLs land directly in the build directory (Ninja)
+
+- CI workflow (`.github/workflows/build-native-binaries.yml`)
+  - Added `windows-latest` to the build matrix and artifacts/commit steps
+  - Installed MSYS2 and FFmpeg dev packages (`mingw-w64-x86_64-ffmpeg`, `pkg-config`)
+  - Switched Windows builds to Ninja and ensured environment paths are exported
+
+This release focuses solely on stabilizing Windows native builds and distribution artifacts.
+
 ## [1.3.0] - 2025-10-16
 
 ### Fixed
