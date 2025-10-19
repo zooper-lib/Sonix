@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2025-10-19
+
+### Changed
+
+- Deterministic FFmpeg 6.0 targeting across all desktop builds
+  - CI explicitly installs FFmpeg 6.x and exports `SONIX_FFMPEG_ROOT` on Linux, macOS, and Windows
+  - Build now prefers `SONIX_FFMPEG_ROOT` for headers/libs to avoid drifting ABI
+  - Ensures Linux artifacts link against soname 60 (`libavformat.so.60`, etc.)
+
+- Build tooling
+  - `native/CMakeLists.txt`: honors `SONIX_FFMPEG_ROOT` (preferred include/lib hints)
+  - `tool/build_native_for_distribution.dart`: forwards `SONIX_FFMPEG_ROOT` and documents usage
+  - `.github/workflows/build-native-binaries.yml`: installs FFmpeg 6.x deterministically on each runner
+
+### Notes
+
+- Consuming apps must have FFmpeg 6 runtime libraries available at runtime, or co-locate them next to the plugin binary.
+  RPATH is already configured for local co-location. Be mindful of FFmpeg licensing when redistributing.
+
 ## [1.3.1] - 2025-10-19
 
 ### Fixed
