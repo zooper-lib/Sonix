@@ -448,7 +448,11 @@ class IsolateManager {
           if (errorMessage.contains('file is empty') ||
               errorMessage.contains('empty file') ||
               errorMessage.contains('invalid file') ||
-              errorMessage.contains('cannot decode empty')) {
+              errorMessage.contains('cannot decode empty') ||
+              // Native decoder init failures are not recoverable per-file
+              errorMessage.contains('failed to initialize native chunked decoder') ||
+              errorMessage.contains('could not initialize native decoder') ||
+              errorMessage.contains('failed to initialize native decoder')) {
             return false;
           }
         } else {
@@ -465,7 +469,10 @@ class IsolateManager {
           errorMessage.contains('file is empty') ||
           errorMessage.contains('empty file') ||
           errorMessage.contains('invalid file') ||
-          errorMessage.contains('cannot decode empty')) {
+          errorMessage.contains('cannot decode empty') ||
+          errorMessage.contains('failed to initialize native chunked decoder') ||
+          errorMessage.contains('could not initialize native decoder') ||
+          errorMessage.contains('failed to initialize native decoder')) {
         return false;
       }
     }
@@ -491,7 +498,9 @@ class IsolateManager {
     await Future.delayed(delay);
 
     // Create a new task for the retry
-    final retryTask = ProcessingTask(id: '${originalTask.id}_retry_$retryCount', filePath: originalTask.filePath, config: originalTask.config);
+    // IMPORTANT: Always build the retry task ID from the base task ID to avoid
+    // accumulating nested suffixes like _retry_1_retry_1_retry_2, etc.
+    final retryTask = ProcessingTask(id: '${baseTaskId}_retry_$retryCount', filePath: originalTask.filePath, config: originalTask.config);
 
     try {
       return await executeTask(retryTask);
