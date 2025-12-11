@@ -81,8 +81,11 @@ import 'package:sonix/sonix.dart';
 // Create a Sonix instance
 final sonix = Sonix();
 
-// Generate waveform from audio file (processed in background isolate)
-final waveformData = await sonix.generateWaveform('path/to/audio.mp3');
+// Generate waveform in background isolate (recommended for UI apps)
+final waveformData = await sonix.generateWaveformInIsolate('path/to/audio.mp3');
+
+// Or generate on main thread (simpler, but blocks the thread)
+// final waveformData = await sonix.generateWaveform('path/to/audio.mp3');
 
 // Display the waveform
 WaveformWidget(
@@ -292,7 +295,8 @@ The main entry point for generating waveforms. This is an instance-based class t
 
 **Instance Methods:**
 
-- `generateWaveform(String filePath, {...})` → `Future<WaveformData>`
+- `generateWaveform(String filePath, {...})` → `Future<WaveformData>` - Process on main thread
+- `generateWaveformInIsolate(String filePath, {...})` → `Future<WaveformData>` - Process in background isolate (recommended for UI apps)
 - `getResourceStatistics()` → `IsolateStatistics`
 - `optimizeResources()` → `void`
 - `cancelOperation(String taskId)` → `bool`

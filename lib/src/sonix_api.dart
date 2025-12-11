@@ -21,9 +21,17 @@ import 'utils/sonix_logger.dart';
 
 /// Main API class for the Sonix package
 ///
-/// This is an instance-based class that ensures all audio processing happens
-/// in background isolates, preventing UI thread blocking. Each instance manages
-/// its own isolate pool and configuration.
+/// This is an instance-based class that provides two methods for waveform generation:
+///
+/// - [generateWaveform]: Processes audio on the main thread. Simple and direct,
+///   but blocks the calling thread. Best for small files or non-UI contexts.
+///
+/// - [generateWaveformInIsolate]: Processes audio in background isolates to prevent
+///   UI thread blocking. Best for large files or Flutter applications where
+///   UI responsiveness is important.
+///
+/// Each instance manages its own isolate pool and configuration when using
+/// the isolate-based method.
 class Sonix {
   /// Configuration for this Sonix instance
   final SonixConfig config;
@@ -89,10 +97,14 @@ class Sonix {
     _isInitialized = true;
   }
 
-  /// Generate waveform data from an audio file
+  /// Generate waveform data from an audio file on the main thread
   ///
-  /// This method processes audio in background isolates to prevent UI thread blocking.
-  /// It automatically handles file format detection and optimal processing strategies.
+  /// This method processes audio directly on the calling thread. It's suitable for
+  /// small files or when you need synchronous-like behavior. For large files or
+  /// UI applications, consider using [generateWaveformInIsolate] to prevent blocking.
+  ///
+  /// **Warning**: This method will block the calling thread during processing.
+  /// For Flutter apps, use [generateWaveformInIsolate] to keep the UI responsive.
   ///
   /// [filePath] - Path to the audio file
   /// [resolution] - Number of data points in the waveform (default: 1000)
@@ -113,6 +125,62 @@ class Sonix {
   /// final waveformData = await sonix.generateWaveform('audio.mp3');
   /// ```
   Future<WaveformData> generateWaveform(
+    String filePath, {
+    int resolution = 1000,
+    WaveformType type = WaveformType.bars,
+    bool normalize = true,
+    WaveformConfig? config,
+  }) async {
+    _ensureNotDisposed();
+
+    // Validate file format
+    if (!AudioDecoderFactory.isFormatSupported(filePath)) {
+      final extension = _getFileExtension(filePath);
+      throw UnsupportedFormatException(
+        extension,
+        'Unsupported audio format: $extension. Supported formats: ${AudioDecoderFactory.getSupportedFormatNames().join(', ')}',
+      );
+    }
+
+    // Create waveform configuration
+    final waveformConfig = config ?? WaveformConfig(resolution: resolution, type: type, normalize: normalize);
+
+    // Create decoder and process on main thread
+    final decoder = AudioDecoderFactory.createDecoder(filePath);
+    try {
+      final audioData = await decoder.decode(filePath);
+      final waveformData = await WaveformGenerator.generateInMemory(audioData, config: waveformConfig);
+      return waveformData;
+    } finally {
+      decoder.dispose();
+    }
+  }
+
+  /// Generate waveform data from an audio file in a background isolate
+  ///
+  /// This method processes audio in background isolates to prevent UI thread blocking.
+  /// It automatically handles file format detection and optimal processing strategies.
+  /// Use this method for large files or in UI applications to keep the interface responsive.
+  ///
+  /// [filePath] - Path to the audio file
+  /// [resolution] - Number of data points in the waveform (default: 1000)
+  /// [type] - Type of waveform visualization (default: bars)
+  /// [normalize] - Whether to normalize amplitude values (default: true)
+  /// [config] - Advanced configuration options (optional)
+  ///
+  /// Returns [WaveformData] containing amplitude values and metadata
+  ///
+  /// Throws [StateError] if this instance has been disposed
+  /// Throws [UnsupportedFormatException] if the audio format is not supported
+  /// Throws [DecodingException] if audio decoding fails
+  /// Throws [FileSystemException] if the file cannot be accessed
+  ///
+  /// Example:
+  /// ```dart
+  /// final sonix = Sonix();
+  /// final waveformData = await sonix.generateWaveformInIsolate('audio.mp3');
+  /// ```
+  Future<WaveformData> generateWaveformInIsolate(
     String filePath, {
     int resolution = 1000,
     WaveformType type = WaveformType.bars,
