@@ -91,3 +91,6 @@ export 'src/utils/platform_validator.dart' show PlatformValidator;
 
 // Logging utilities (for advanced usage and debugging)
 export 'src/utils/sonix_logger.dart' show SonixLogger;
+
+// Native bindings (for checking FFMPEG availability)
+export 'src/native/native_audio_bindings.dart' show NativeAudioBindings;

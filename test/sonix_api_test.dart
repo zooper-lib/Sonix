@@ -4,6 +4,7 @@ import 'package:sonix/src/config/sonix_config.dart';
 import 'package:sonix/src/processing/waveform_use_case.dart';
 import 'package:sonix/src/isolate/isolate_config.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/native/native_audio_bindings.dart';
 import 'ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
@@ -97,6 +98,105 @@ void main() {
       } finally {
         await sonix.dispose();
       }
+    });
+
+    test('should throw UnsupportedFormatException for generateWaveformInIsolate with invalid format', () async {
+      final sonix = Sonix();
+
+      try {
+        await sonix.generateWaveformInIsolate('test.xyz');
+        fail('Expected UnsupportedFormatException to be thrown');
+      } catch (e) {
+        expect(e, isA<UnsupportedFormatException>());
+      } finally {
+        await sonix.dispose();
+      }
+    });
+
+    test('should not allow generateWaveformInIsolate after disposal', () async {
+      final sonix = Sonix();
+      await sonix.dispose();
+
+      expect(() => sonix.generateWaveformInIsolate('test.mp3'), throwsA(isA<StateError>()));
+    });
+  });
+
+  group('Sonix waveform generation', () {
+    late Sonix sonix;
+    // Use a known working MP3 file that other tests use successfully
+    const testFilePath = 'test/assets/Double-F the King - Your Blessing.mp3';
+
+    setUpAll(() async {
+      // Ensure FFMPEG is available and initialized for these tests
+      await FFMPEGSetupHelper.setupFFMPEGForTesting();
+      NativeAudioBindings.initialize();
+    });
+
+    setUp(() {
+      sonix = Sonix();
+    });
+
+    tearDown(() async {
+      await sonix.dispose();
+    });
+
+    test('generateWaveform should process audio on main thread', () async {
+      final waveformData = await sonix.generateWaveform(testFilePath);
+
+      expect(waveformData, isNotNull);
+      expect(waveformData.amplitudes, isNotEmpty);
+      expect(waveformData.amplitudes.length, equals(1000)); // default resolution
+      expect(waveformData.duration, greaterThan(Duration.zero));
+    });
+
+    test('generateWaveform should respect custom resolution', () async {
+      final waveformData = await sonix.generateWaveform(testFilePath, resolution: 500);
+
+      expect(waveformData.amplitudes.length, equals(500));
+    });
+
+    test('generateWaveformInIsolate should process audio in background', () async {
+      final waveformData = await sonix.generateWaveformInIsolate(testFilePath);
+
+      expect(waveformData, isNotNull);
+      expect(waveformData.amplitudes, isNotEmpty);
+      expect(waveformData.amplitudes.length, equals(1000)); // default resolution
+      expect(waveformData.duration, greaterThan(Duration.zero));
+    });
+
+    test('generateWaveformInIsolate should respect custom resolution', () async {
+      final waveformData = await sonix.generateWaveformInIsolate(testFilePath, resolution: 500);
+
+      expect(waveformData.amplitudes.length, equals(500));
+    });
+
+    test('both methods should produce valid comparable results', () async {
+      final mainThreadResult = await sonix.generateWaveform(testFilePath, resolution: 200);
+
+      final isolateResult = await sonix.generateWaveformInIsolate(testFilePath, resolution: 200);
+
+      // Both should have the same length
+      expect(mainThreadResult.amplitudes.length, equals(isolateResult.amplitudes.length));
+
+      // Both should have very similar duration (allow small differences due to floating point)
+      final durationDiffMs = (mainThreadResult.duration.inMilliseconds - isolateResult.duration.inMilliseconds).abs();
+      expect(durationDiffMs, lessThan(100), reason: 'Duration difference should be minimal');
+
+      // Both should have valid amplitude ranges
+      for (final amp in mainThreadResult.amplitudes) {
+        expect(amp, greaterThanOrEqualTo(0.0));
+        expect(amp, lessThanOrEqualTo(1.0));
+      }
+      for (final amp in isolateResult.amplitudes) {
+        expect(amp, greaterThanOrEqualTo(0.0));
+        expect(amp, lessThanOrEqualTo(1.0));
+      }
+
+      // Both should have similar overall characteristics (not all zeros, has variation)
+      final mainThreadMax = mainThreadResult.amplitudes.reduce((a, b) => a > b ? a : b);
+      final isolateMax = isolateResult.amplitudes.reduce((a, b) => a > b ? a : b);
+      expect(mainThreadMax, greaterThan(0.0), reason: 'Main thread should have non-zero amplitudes');
+      expect(isolateMax, greaterThan(0.0), reason: 'Isolate should have non-zero amplitudes');
     });
   });
 }
