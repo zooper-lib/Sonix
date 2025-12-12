@@ -137,7 +137,7 @@ class Sonix {
     _ensureNotDisposed();
 
     // Validate file format
-    if (!AudioDecoderFactory.isFormatSupported(filePath)) {
+    if (!AudioDecoderFactory.isFileSupported(filePath)) {
       final extension = _getFileExtension(filePath);
       throw UnsupportedFormatException(
         extension,
@@ -189,7 +189,7 @@ class Sonix {
     await _ensureInitialized();
 
     // Validate file format
-    if (!AudioDecoderFactory.isFormatSupported(filePath)) {
+    if (!AudioDecoderFactory.isFileSupported(filePath)) {
       final extension = _getFileExtension(filePath);
       throw UnsupportedFormatException(
         extension,
@@ -425,7 +425,7 @@ class Sonix {
   /// **Use Case:** Validation before file processing, UI filter setup,
   /// or batch operation planning.
   static bool isFormatSupported(String filePath) {
-    return AudioDecoderFactory.isFormatSupported(filePath);
+    return AudioDecoderFactory.isFileSupported(filePath);
   }
 
   /// Configure FFmpeg log level based on the current config

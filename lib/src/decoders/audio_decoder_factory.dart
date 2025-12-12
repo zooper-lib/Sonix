@@ -11,31 +11,11 @@ import 'mp4_decoder.dart';
 /// This factory creates stateless decoders that transform
 /// audio bytes to PCM samples without any file I/O.
 class AudioDecoderFactory {
-  /// Create a decoder for the given file path or audio format.
-  ///
-  /// Can accept either:
-  /// - A file path (String) - will auto-detect format from extension
-  /// - An AudioFormat enum value - will create decoder for that format
-  ///
-  /// Optional parameters:
-  /// - [memorySafe]: Deprecated, ignored (kept for backward compatibility)
-  /// - [samplingResolution]: Deprecated, ignored (kept for backward compatibility)
+  /// Create a decoder for the given audio format.
   ///
   /// Returns a decoder that implements AudioDecoder.
   /// Throws [UnsupportedError] if the format is unknown or unsupported.
-  static AudioDecoder createDecoder(dynamic formatOrPath, {bool? memorySafe, int? samplingResolution}) {
-    final AudioFormat format;
-
-    if (formatOrPath is String) {
-      // File path provided - detect format from extension
-      format = detectFormat(formatOrPath);
-    } else if (formatOrPath is AudioFormat) {
-      // Format enum provided directly
-      format = formatOrPath;
-    } else {
-      throw ArgumentError('formatOrPath must be either a String (file path) or AudioFormat enum');
-    }
-
+  static AudioDecoder createDecoderFromFormat(AudioFormat format) {
     switch (format) {
       case AudioFormat.mp3:
         return MP3Decoder();
@@ -54,23 +34,22 @@ class AudioDecoderFactory {
     }
   }
 
-  /// Check if a format or file is supported.
+  /// Create a decoder for the given file path.
   ///
-  /// Can accept either:
-  /// - A file path (String) - will check if file extension is supported
-  /// - An AudioFormat enum value - will check if format is supported
+  /// Auto-detects format from the file extension.
   ///
-  /// Returns true if the format/file is supported, false otherwise.
-  static bool isFormatSupported(dynamic formatOrPath) {
-    if (formatOrPath is String) {
-      // File path provided - check if extension is supported
-      return isFileSupported(formatOrPath);
-    } else if (formatOrPath is AudioFormat) {
-      // Format enum provided - check if it's supported
-      return formatOrPath != AudioFormat.unknown;
-    } else {
-      throw ArgumentError('formatOrPath must be either a String (file path) or AudioFormat enum');
-    }
+  /// Returns a decoder that implements AudioDecoder.
+  /// Throws [UnsupportedError] if the format is unknown or unsupported.
+  static AudioDecoder createDecoderFromPath(String filePath) {
+    final format = detectFormat(filePath);
+    return createDecoderFromFormat(format);
+  }
+
+  /// Check if an audio format is supported.
+  ///
+  /// Returns true if the format is supported, false otherwise.
+  static bool isFormatSupported(AudioFormat format) {
+    return format != AudioFormat.unknown;
   }
 
   /// Get list of supported formats.

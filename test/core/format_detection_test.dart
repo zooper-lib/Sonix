@@ -86,48 +86,48 @@ void main() {
     });
 
     group('Format Support Queries', () {
-      group('AudioDecoderFactory.isFormatSupported', () {
+      group('AudioDecoderFactory.isFileSupported', () {
         test('should detect supported MP3 formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.mp3'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.MP3'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.mp3'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.mp3'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.MP3'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('/path/to/audio.mp3'), isTrue);
         });
 
         test('should detect supported WAV formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.wav'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.WAV'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.wav'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.wav'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.WAV'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('/path/to/audio.wav'), isTrue);
         });
 
         test('should detect supported FLAC formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.flac'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.FLAC'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.flac'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.FLAC'), isTrue);
         });
 
         test('should detect supported OGG formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.ogg'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.OGG'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.ogg'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.OGG'), isTrue);
         });
 
         test('should detect supported Opus formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.opus'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.OPUS'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.opus'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.OPUS'), isTrue);
         });
 
         test('should detect supported MP4/M4A formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.mp4'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.MP4'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.m4a'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.M4A'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.mp4'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.m4a'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.mp4'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.MP4'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.m4a'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('test.M4A'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('/path/to/audio.mp4'), isTrue);
+          expect(AudioDecoderFactory.isFileSupported('/path/to/audio.m4a'), isTrue);
         });
 
         test('should reject unsupported formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.xyz'), isFalse);
-          expect(AudioDecoderFactory.isFormatSupported('test.txt'), isFalse);
-          expect(AudioDecoderFactory.isFormatSupported('test.pdf'), isFalse);
-          expect(AudioDecoderFactory.isFormatSupported('test'), isFalse);
+          expect(AudioDecoderFactory.isFileSupported('test.xyz'), isFalse);
+          expect(AudioDecoderFactory.isFileSupported('test.txt'), isFalse);
+          expect(AudioDecoderFactory.isFileSupported('test.pdf'), isFalse);
+          expect(AudioDecoderFactory.isFileSupported('test'), isFalse);
         });
       });
 

@@ -62,7 +62,7 @@ class AudioFileProcessor {
     }
 
     // Create decoder (pure bytes-to-samples)
-    final decoder = AudioDecoderFactory.createDecoder(format);
+    final decoder = AudioDecoderFactory.createDecoderFromFormat(format);
 
     try {
       // Check if file is small enough for full load
@@ -115,7 +115,7 @@ class AudioFileProcessor {
     }
 
     // Use decoder for streaming
-    final decoder = AudioDecoderFactory.createDecoder(format);
+    final decoder = AudioDecoderFactory.createDecoderFromFormat(format);
     try {
       // For now, read full file and yield as single chunk
       // TODO: Implement true chunked streaming in future iteration

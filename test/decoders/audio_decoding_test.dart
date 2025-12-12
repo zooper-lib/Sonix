@@ -9,36 +9,35 @@ void main() {
 
     group('Decoder Creation', () {
       test('should create appropriate decoder for each format', () {
-        // Use memorySafe: false to get the raw decoder types
-        final mp3Decoder = AudioDecoderFactory.createDecoder('test.mp3', memorySafe: false);
+        final mp3Decoder = AudioDecoderFactory.createDecoderFromPath('test.mp3');
         expect(mp3Decoder.runtimeType.toString(), contains('MP3'));
 
-        final wavDecoder = AudioDecoderFactory.createDecoder('test.wav', memorySafe: false);
+        final wavDecoder = AudioDecoderFactory.createDecoderFromPath('test.wav');
         expect(wavDecoder.runtimeType.toString(), contains('WAV'));
 
-        final flacDecoder = AudioDecoderFactory.createDecoder('test.flac', memorySafe: false);
+        final flacDecoder = AudioDecoderFactory.createDecoderFromPath('test.flac');
         expect(flacDecoder.runtimeType.toString(), contains('FLAC'));
 
-        final oggDecoder = AudioDecoderFactory.createDecoder('test.ogg', memorySafe: false);
+        final oggDecoder = AudioDecoderFactory.createDecoderFromPath('test.ogg');
         expect(oggDecoder.runtimeType.toString(), contains('Vorbis'));
 
-        final opusDecoder = AudioDecoderFactory.createDecoder('test.opus', memorySafe: false);
+        final opusDecoder = AudioDecoderFactory.createDecoderFromPath('test.opus');
         expect(opusDecoder.runtimeType.toString(), contains('Opus'));
 
-        final mp4Decoder = AudioDecoderFactory.createDecoder('test.mp4', memorySafe: false);
+        final mp4Decoder = AudioDecoderFactory.createDecoderFromPath('test.mp4');
         expect(mp4Decoder.runtimeType.toString(), contains('MP4'));
 
-        final m4aDecoder = AudioDecoderFactory.createDecoder('test.m4a', memorySafe: false);
+        final m4aDecoder = AudioDecoderFactory.createDecoderFromPath('test.m4a');
         expect(m4aDecoder.runtimeType.toString(), contains('MP4'));
       });
 
       test('should throw UnsupportedFormatException for unsupported formats', () {
-        expect(() => AudioDecoderFactory.createDecoder('test.xyz'), throwsA(isA<UnsupportedFormatException>()));
-        expect(() => AudioDecoderFactory.createDecoder('test.txt'), throwsA(isA<UnsupportedFormatException>()));
+        expect(() => AudioDecoderFactory.createDecoderFromPath('test.xyz'), throwsA(isA<UnsupportedFormatException>()));
+        expect(() => AudioDecoderFactory.createDecoderFromPath('test.txt'), throwsA(isA<UnsupportedFormatException>()));
       });
 
       test('should dispose decoders properly', () {
-        final decoder = AudioDecoderFactory.createDecoder('test.mp3');
+        final decoder = AudioDecoderFactory.createDecoderFromPath('test.mp3');
         expect(() => decoder.dispose(), returnsNormally);
       });
     });
