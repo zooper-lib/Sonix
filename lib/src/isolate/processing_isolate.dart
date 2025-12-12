@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'isolate_messages.dart';
-import 'package:sonix/src/decoders/audio_decoder_factory.dart';
-import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/models/audio_data.dart';
+import 'package:sonix/src/processing/audio_file_processor.dart';
 import 'package:sonix/src/processing/waveform_generator.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
@@ -149,90 +148,67 @@ Future<void> _processWaveformRequest(ProcessingRequest request, SendPort mainSen
   activeOperations[request.id] = operation;
 
   try {
-    // Check for cancellation before starting
+    // Step 1: Check for cancellation before starting
     if (operation.isCancelled) {
       _sendCancellationResponse(mainSendPort, request.id);
       return;
     }
 
-    // Step 1: Create appropriate decoder for the file format
-    AudioDecoder? decoder;
-    try {
-      // Check for cancellation before decoder creation
-      if (operation.isCancelled) {
-        _sendCancellationResponse(mainSendPort, request.id);
-        return;
-      }
+    // Step 2: Decode audio data using AudioFileProcessor
+    // AudioFileProcessor automatically handles:
+    // - Small files (≤50MB): Direct in-memory decoding for performance
+    // - Large files (>50MB): Chunked processing for memory efficiency
+    SonixLogger.debug('Starting audio decoding...');
 
-      // Use MemorySafeDecoder which automatically handles chunked processing for large files
-      // Pass the resolution so chunked processing uses the correct sample count
-      decoder = AudioDecoderFactory.createDecoder(request.filePath, samplingResolution: request.config.resolution);
-      SonixLogger.debug('Created decoder: ${decoder.runtimeType}');
-    } catch (error) {
-      // Handle decoder creation errors immediately
-      _sendErrorResponse(mainSendPort, request.id, error);
+    // Check for cancellation before decoding
+    if (operation.isCancelled) {
+      _sendCancellationResponse(mainSendPort, request.id);
       return;
     }
 
+    SonixLogger.trace('About to process audio file...');
+    final AudioData audioData;
     try {
-      // Step 2: Decode audio data
-      // The MemorySafeDecoder automatically handles:
-      // - Small files (≤5MB): Direct in-memory decoding for performance
-      // - Large files (>5MB): Chunked processing for memory efficiency
-      SonixLogger.debug('Starting audio decoding...');
-
-      // Check for cancellation before decoding
-      if (operation.isCancelled) {
-        _sendCancellationResponse(mainSendPort, request.id);
-        return;
-      }
-
-      SonixLogger.trace('About to call decoder.decode()...');
-      final AudioData audioData;
-      try {
-        audioData = await decoder.decode(request.filePath);
-        SonixLogger.debug('decoder.decode() completed successfully');
-      } catch (decodeError) {
-        SonixLogger.error('decoder.decode() failed', decodeError);
-        rethrow; // Re-throw to be handled by outer catch block
-      }
-
-      // Check for cancellation after decoding
-      if (operation.isCancelled) {
-        _sendCancellationResponse(mainSendPort, request.id);
-        return;
-      }
-
-      // Step 3: Generate waveform from audio data
-
-      // Check for cancellation before waveform generation
-      if (operation.isCancelled) {
-        _sendCancellationResponse(mainSendPort, request.id);
-        return;
-      }
-
-      final waveformData = await WaveformGenerator.generateInMemory(audioData, config: request.config);
-
-      // Check for cancellation after waveform generation
-      if (operation.isCancelled) {
-        _sendCancellationResponse(mainSendPort, request.id);
-        return;
-      }
-
-      // Send completion response
-      final response = ProcessingResponse(
-        id: 'response_${DateTime.now().millisecondsSinceEpoch}',
-        timestamp: DateTime.now(),
-        requestId: request.id,
-        waveformData: waveformData,
-        isComplete: true,
-      );
-
-      mainSendPort.send(response.toJson());
-    } finally {
-      // Always dispose of the decoder to free resources
-      decoder.dispose();
+      final processor = AudioFileProcessor();
+      audioData = await processor.process(request.filePath);
+      SonixLogger.debug('Audio processing completed successfully');
+    } catch (decodeError) {
+      SonixLogger.error('Audio processing failed', decodeError);
+      rethrow; // Re-throw to be handled by outer catch block
     }
+
+    // Check for cancellation after decoding
+    if (operation.isCancelled) {
+      _sendCancellationResponse(mainSendPort, request.id);
+      return;
+    }
+
+    // Step 3: Generate waveform from audio data
+
+    // Check for cancellation before waveform generation
+    if (operation.isCancelled) {
+      _sendCancellationResponse(mainSendPort, request.id);
+      return;
+    }
+
+    final waveformData = await WaveformGenerator.generateInMemory(audioData, config: request.config);
+
+    // Check for cancellation after waveform generation
+    if (operation.isCancelled) {
+      _sendCancellationResponse(mainSendPort, request.id);
+      return;
+    }
+
+    // Send completion response
+    final response = ProcessingResponse(
+      id: 'response_${DateTime.now().millisecondsSinceEpoch}',
+      timestamp: DateTime.now(),
+      requestId: request.id,
+      waveformData: waveformData,
+      isComplete: true,
+    );
+
+    mainSendPort.send(response.toJson());
   } catch (error, stackTrace) {
     SonixLogger.error('Caught error in main processing', error, stackTrace);
     // Send error response only if not cancelled

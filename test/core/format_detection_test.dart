@@ -6,7 +6,6 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/native/sonix_bindings.dart';
-import 'package:sonix/src/native/native_audio_bindings.dart';
 import 'package:sonix/sonix.dart';
 
 import '../test_helpers/test_data_loader.dart';

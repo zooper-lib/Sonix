@@ -46,7 +46,7 @@ export 'src/models/audio_data.dart';
 export 'src/models/mp4_models.dart';
 
 // Audio format enum (from decoders)
-export 'src/decoders/audio_decoder.dart' show AudioFormat, AudioFormatExtension;
+export 'src/decoders/audio_decoder.dart' show AudioFormat;
 
 // Processing and generation
 export 'src/processing/waveform_generator.dart' show WaveformGenerator;

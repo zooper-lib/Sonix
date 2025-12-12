@@ -13,6 +13,7 @@ import 'models/waveform_type.dart';
 import 'processing/waveform_generator.dart';
 import 'processing/waveform_config.dart';
 import 'processing/waveform_use_case.dart';
+import 'processing/audio_file_processor.dart';
 import 'decoders/audio_decoder_factory.dart';
 import 'exceptions/sonix_exceptions.dart';
 import 'native/native_audio_bindings.dart';
@@ -147,19 +148,11 @@ class Sonix {
     // Create waveform configuration
     final waveformConfig = config ?? WaveformConfig(resolution: resolution, type: type, normalize: normalize);
 
-    // Create decoder (automatically handles large files via MemorySafeDecoder)
-    // Pass the resolution so chunked processing uses the correct sample count
-    final decoder = AudioDecoderFactory.createDecoder(
-      filePath,
-      samplingResolution: waveformConfig.resolution,
-    );
-    try {
-      final audioData = await decoder.decode(filePath);
-      final waveformData = await WaveformGenerator.generateInMemory(audioData, config: waveformConfig);
-      return waveformData;
-    } finally {
-      decoder.dispose();
-    }
+    // Use AudioFileProcessor to handle decoding (automatically handles large files)
+    final processor = AudioFileProcessor();
+    final audioData = await processor.process(filePath);
+    final waveformData = await WaveformGenerator.generateInMemory(audioData, config: waveformConfig);
+    return waveformData;
   }
 
   /// Generate waveform data from an audio file in a background isolate

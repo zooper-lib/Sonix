@@ -1,42 +1,41 @@
-import 'dart:io';
-import 'dart:typed_data';
-
 import 'audio_decoder.dart';
-import 'memory_safe_decoder.dart';
 import 'mp3_decoder.dart';
 import 'wav_decoder.dart';
 import 'flac_decoder.dart';
 import 'vorbis_decoder.dart';
 import 'opus_decoder.dart';
 import 'mp4_decoder.dart';
-import '../exceptions/sonix_exceptions.dart';
-import '../native/native_audio_bindings.dart';
 
-/// Factory for creating appropriate audio decoders
+/// Factory for creating audio decoders based on format.
+///
+/// This factory creates stateless decoders that transform
+/// audio bytes to PCM samples without any file I/O.
 class AudioDecoderFactory {
-  /// Create a decoder for the given file path.
+  /// Create a decoder for the given file path or audio format.
   ///
-  /// By default, returns a [MemorySafeDecoder] that automatically handles
-  /// large files using chunked processing to prevent memory issues.
+  /// Can accept either:
+  /// - A file path (String) - will auto-detect format from extension
+  /// - An AudioFormat enum value - will create decoder for that format
   ///
-  /// Set [memorySafe] to `false` to get the raw decoder without the
-  /// memory-safe wrapper (useful for testing or when you want direct control).
+  /// Optional parameters:
+  /// - [memorySafe]: Deprecated, ignored (kept for backward compatibility)
+  /// - [samplingResolution]: Deprecated, ignored (kept for backward compatibility)
   ///
-  /// [samplingResolution] is used when chunked processing is needed for large
-  /// files. It determines how many sample points are extracted. Default is 1000.
-  static AudioDecoder createDecoder(String filePath, {bool memorySafe = true, int samplingResolution = 1000}) {
-    final format = detectFormat(filePath);
-    final decoder = _createRawDecoder(format, filePath);
+  /// Returns a decoder that implements AudioDecoder.
+  /// Throws [UnsupportedError] if the format is unknown or unsupported.
+  static AudioDecoder createDecoder(dynamic formatOrPath, {bool? memorySafe, int? samplingResolution}) {
+    final AudioFormat format;
 
-    if (memorySafe) {
-      return MemorySafeDecoder(decoder, samplingResolution: samplingResolution);
+    if (formatOrPath is String) {
+      // File path provided - detect format from extension
+      format = detectFormat(formatOrPath);
+    } else if (formatOrPath is AudioFormat) {
+      // Format enum provided directly
+      format = formatOrPath;
+    } else {
+      throw ArgumentError('formatOrPath must be either a String (file path) or AudioFormat enum');
     }
 
-    return decoder;
-  }
-
-  /// Create the raw decoder for a given format without any wrappers.
-  static AudioDecoder _createRawDecoder(AudioFormat format, String filePath) {
     switch (format) {
       case AudioFormat.mp3:
         return MP3Decoder();
@@ -51,11 +50,35 @@ class AudioDecoderFactory {
       case AudioFormat.mp4:
         return MP4Decoder();
       case AudioFormat.unknown:
-        throw UnsupportedFormatException(_getFileExtension(filePath), 'Unable to determine audio format for file: $filePath');
+        throw UnsupportedError('Cannot create decoder for unknown format');
     }
   }
 
-  /// Detect audio format from file path and optionally file content
+  /// Check if a format or file is supported.
+  ///
+  /// Can accept either:
+  /// - A file path (String) - will check if file extension is supported
+  /// - An AudioFormat enum value - will check if format is supported
+  ///
+  /// Returns true if the format/file is supported, false otherwise.
+  static bool isFormatSupported(dynamic formatOrPath) {
+    if (formatOrPath is String) {
+      // File path provided - check if extension is supported
+      return isFileSupported(formatOrPath);
+    } else if (formatOrPath is AudioFormat) {
+      // Format enum provided - check if it's supported
+      return formatOrPath != AudioFormat.unknown;
+    } else {
+      throw ArgumentError('formatOrPath must be either a String (file path) or AudioFormat enum');
+    }
+  }
+
+  /// Get list of supported formats.
+  static List<AudioFormat> getSupportedFormats() {
+    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg, AudioFormat.opus, AudioFormat.mp4];
+  }
+
+  /// Detect audio format from file path
   static AudioFormat detectFormat(String filePath) {
     // First try to detect by file extension
     final extension = _getFileExtension(filePath).toLowerCase();
@@ -64,6 +87,7 @@ class AudioDecoderFactory {
       case 'mp3':
         return AudioFormat.mp3;
       case 'wav':
+      case 'wave':
         return AudioFormat.wav;
       case 'flac':
         return AudioFormat.flac;
@@ -71,169 +95,35 @@ class AudioDecoderFactory {
         return AudioFormat.ogg;
       case 'opus':
         return AudioFormat.opus;
-      case 'mp4':
       case 'm4a':
+      case 'mp4':
+      case 'aac':
         return AudioFormat.mp4;
       default:
-        // Try to detect by file content if extension is unknown
-        return _detectFormatByContent(filePath);
-    }
-  }
-
-  /// Detect format by examining file content (magic bytes)
-  /// Uses FFMPEG probing when available for more accurate detection
-  static AudioFormat _detectFormatByContent(String filePath) {
-    try {
-      final file = File(filePath);
-      if (!file.existsSync()) {
         return AudioFormat.unknown;
-      }
-
-      // Read first chunk for format detection
-      final bytes = file.readAsBytesSync().take(8192).toList(); // Read more data for FFMPEG probing
-
-      if (bytes.length < 4) {
-        return AudioFormat.unknown;
-      }
-
-      // Try FFMPEG probing first if available (more accurate)
-      try {
-        if (NativeAudioBindings.isFFMPEGAvailable) {
-          final format = NativeAudioBindings.detectFormat(Uint8List.fromList(bytes));
-          if (format != AudioFormat.unknown) {
-            return format;
-          }
-        }
-      } catch (e) {
-        // Fall back to legacy detection if FFMPEG probing fails
-      }
-
-      // Legacy magic byte detection as fallback
-      if (_checkMP3Signature(bytes)) {
-        return AudioFormat.mp3;
-      }
-
-      if (_checkWAVSignature(bytes)) {
-        return AudioFormat.wav;
-      }
-
-      if (_checkFLACSignature(bytes)) {
-        return AudioFormat.flac;
-      }
-
-      if (_checkOggSignature(bytes)) {
-        return AudioFormat.ogg; // Could be Vorbis or Opus
-      }
-
-      if (_checkMP4Signature(bytes)) {
-        return AudioFormat.mp4;
-      }
-
-      return AudioFormat.unknown;
-    } catch (e) {
-      return AudioFormat.unknown;
     }
   }
 
-  /// Check if bytes match MP3 signature
-  static bool _checkMP3Signature(List<int> bytes) {
-    // MP3 files can start with ID3 tag or sync frame
-    if (bytes.length >= 3) {
-      // ID3v2 tag
-      if (bytes[0] == 0x49 && bytes[1] == 0x44 && bytes[2] == 0x33) {
-        return true;
-      }
-
-      // MP3 sync frame (first 11 bits are 1)
-      if (bytes.length >= 2) {
-        final syncWord = (bytes[0] << 8) | bytes[1];
-        if ((syncWord & 0xFFE0) == 0xFFE0) {
-          return true;
-        }
-      }
-    }
-    return false;
+  /// Check if a file format is supported based on file path
+  static bool isFileSupported(String filePath) {
+    return detectFormat(filePath) != AudioFormat.unknown;
   }
 
-  /// Check if bytes match WAV signature
-  static bool _checkWAVSignature(List<int> bytes) {
-    if (bytes.length >= 12) {
-      // RIFF header
-      return bytes[0] == 0x52 &&
-          bytes[1] == 0x49 &&
-          bytes[2] == 0x46 &&
-          bytes[3] == 0x46 &&
-          // WAVE format
-          bytes[8] == 0x57 &&
-          bytes[9] == 0x41 &&
-          bytes[10] == 0x56 &&
-          bytes[11] == 0x45;
-    }
-    return false;
+  /// Get list of supported format names
+  static List<String> getSupportedFormatNames() {
+    return ['MP3', 'WAV', 'FLAC', 'OGG', 'Opus', 'M4A/MP4/AAC'];
   }
 
-  /// Check if bytes match FLAC signature
-  static bool _checkFLACSignature(List<int> bytes) {
-    if (bytes.length >= 4) {
-      // fLaC signature
-      return bytes[0] == 0x66 && bytes[1] == 0x4C && bytes[2] == 0x61 && bytes[3] == 0x43;
-    }
-    return false;
+  /// Get list of supported file extensions
+  static List<String> getSupportedExtensions() {
+    return ['mp3', 'wav', 'wave', 'flac', 'ogg', 'opus', 'm4a', 'mp4', 'aac'];
   }
 
-  /// Check if bytes match OGG signature
-  static bool _checkOggSignature(List<int> bytes) {
-    if (bytes.length >= 4) {
-      // OggS signature
-      return bytes[0] == 0x4F && bytes[1] == 0x67 && bytes[2] == 0x67 && bytes[3] == 0x53;
-    }
-    return false;
-  }
-
-  /// Check if bytes match MP4 signature
-  static bool _checkMP4Signature(List<int> bytes) {
-    if (bytes.length >= 8) {
-      // Check for MP4 ftyp box signature
-      // Skip first 4 bytes (box size), check for 'ftyp'
-      return bytes[4] == 0x66 && bytes[5] == 0x74 && bytes[6] == 0x79 && bytes[7] == 0x70;
-    }
-    return false;
-  }
-
-  /// Get file extension from path
   static String _getFileExtension(String filePath) {
     final lastDot = filePath.lastIndexOf('.');
     if (lastDot == -1 || lastDot == filePath.length - 1) {
       return '';
     }
     return filePath.substring(lastDot + 1);
-  }
-
-  /// Check if a format is supported
-  static bool isFormatSupported(String filePath) {
-    final format = detectFormat(filePath);
-    return format != AudioFormat.unknown;
-  }
-
-  /// Get list of supported file extensions
-  static List<String> getSupportedExtensions() {
-    return [
-      ...AudioFormat.mp3.extensions,
-      ...AudioFormat.wav.extensions,
-      ...AudioFormat.flac.extensions,
-      ...AudioFormat.ogg.extensions,
-      ...AudioFormat.opus.extensions,
-      ...AudioFormat.mp4.extensions,
-    ];
-  }
-
-  /// Get list of supported formats
-  static List<AudioFormat> getSupportedFormats() {
-    return [AudioFormat.mp3, AudioFormat.wav, AudioFormat.flac, AudioFormat.ogg, AudioFormat.opus, AudioFormat.mp4];
-  }
-
-  /// Get human-readable list of supported formats
-  static List<String> getSupportedFormatNames() {
-    return getSupportedFormats().map((format) => format.name).toList();
   }
 }
