@@ -9,25 +9,26 @@ void main() {
 
     group('Decoder Creation', () {
       test('should create appropriate decoder for each format', () {
-        final mp3Decoder = AudioDecoderFactory.createDecoder('test.mp3');
+        // Use memorySafe: false to get the raw decoder types
+        final mp3Decoder = AudioDecoderFactory.createDecoder('test.mp3', memorySafe: false);
         expect(mp3Decoder.runtimeType.toString(), contains('MP3'));
 
-        final wavDecoder = AudioDecoderFactory.createDecoder('test.wav');
+        final wavDecoder = AudioDecoderFactory.createDecoder('test.wav', memorySafe: false);
         expect(wavDecoder.runtimeType.toString(), contains('WAV'));
 
-        final flacDecoder = AudioDecoderFactory.createDecoder('test.flac');
+        final flacDecoder = AudioDecoderFactory.createDecoder('test.flac', memorySafe: false);
         expect(flacDecoder.runtimeType.toString(), contains('FLAC'));
 
-        final oggDecoder = AudioDecoderFactory.createDecoder('test.ogg');
+        final oggDecoder = AudioDecoderFactory.createDecoder('test.ogg', memorySafe: false);
         expect(oggDecoder.runtimeType.toString(), contains('Vorbis'));
 
-        final opusDecoder = AudioDecoderFactory.createDecoder('test.opus');
+        final opusDecoder = AudioDecoderFactory.createDecoder('test.opus', memorySafe: false);
         expect(opusDecoder.runtimeType.toString(), contains('Opus'));
 
-        final mp4Decoder = AudioDecoderFactory.createDecoder('test.mp4');
+        final mp4Decoder = AudioDecoderFactory.createDecoder('test.mp4', memorySafe: false);
         expect(mp4Decoder.runtimeType.toString(), contains('MP4'));
 
-        final m4aDecoder = AudioDecoderFactory.createDecoder('test.m4a');
+        final m4aDecoder = AudioDecoderFactory.createDecoder('test.m4a', memorySafe: false);
         expect(m4aDecoder.runtimeType.toString(), contains('MP4'));
       });
 

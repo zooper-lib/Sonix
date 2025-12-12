@@ -12,14 +12,16 @@ void main() {
   group('AudioDecoderFactory Tests', () {
     group('Decoder Creation', () {
       test('should create OpusDecoder for Opus files', () {
-        final decoder = AudioDecoderFactory.createDecoder('test.opus');
+        // Use memorySafe: false to get the raw decoder type
+        final decoder = AudioDecoderFactory.createDecoder('test.opus', memorySafe: false);
         expect(decoder, isA<OpusDecoder>());
         decoder.dispose();
       });
 
       test('should create MP4Decoder for MP4 files', () {
-        final decoder1 = AudioDecoderFactory.createDecoder('test.mp4');
-        final decoder2 = AudioDecoderFactory.createDecoder('test.m4a');
+        // Use memorySafe: false to get the raw decoder type
+        final decoder1 = AudioDecoderFactory.createDecoder('test.mp4', memorySafe: false);
+        final decoder2 = AudioDecoderFactory.createDecoder('test.m4a', memorySafe: false);
 
         expect(decoder1, isA<MP4Decoder>());
         expect(decoder2, isA<MP4Decoder>());
@@ -74,7 +76,8 @@ void main() {
         expect(AudioDecoderFactory.isFormatSupported('non_existent_file.mp4'), isTrue);
 
         // Should still create decoder (file existence is checked during decode)
-        final decoder = AudioDecoderFactory.createDecoder('non_existent_file.mp4');
+        // Use memorySafe: false to get the raw decoder type
+        final decoder = AudioDecoderFactory.createDecoder('non_existent_file.mp4', memorySafe: false);
         expect(decoder, isA<MP4Decoder>());
         decoder.dispose();
       });
@@ -105,7 +108,8 @@ void main() {
           expect(AudioDecoderFactory.detectFormat(testCase), equals(AudioFormat.mp4), reason: 'Failed for case: $testCase');
           expect(AudioDecoderFactory.isFormatSupported(testCase), isTrue, reason: 'Failed for case: $testCase');
 
-          final decoder = AudioDecoderFactory.createDecoder(testCase);
+          // Use memorySafe: false to get the raw decoder type
+          final decoder = AudioDecoderFactory.createDecoder(testCase, memorySafe: false);
           expect(decoder, isA<MP4Decoder>(), reason: 'Failed for case: $testCase');
           decoder.dispose();
         }

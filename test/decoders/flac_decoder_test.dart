@@ -35,7 +35,8 @@ void main() {
       });
 
       test('should create FLAC decoder instance', () {
-        final decoder = AudioDecoderFactory.createDecoder('test.flac');
+        // Use memorySafe: false to get the raw decoder type
+        final decoder = AudioDecoderFactory.createDecoder('test.flac', memorySafe: false);
         expect(decoder, isA<FLACDecoder>());
       });
 

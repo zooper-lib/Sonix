@@ -5,7 +5,6 @@
 library;
 
 import 'dart:async';
-import 'dart:io';
 
 import 'config/sonix_config.dart';
 import 'isolate/isolate_manager.dart';
@@ -103,6 +102,9 @@ class Sonix {
   /// small files or when you need synchronous-like behavior. For large files or
   /// UI applications, consider using [generateWaveformInIsolate] to prevent blocking.
   ///
+  /// **Note**: Large files are automatically handled using memory-efficient
+  /// chunked processing to avoid memory issues.
+  ///
   /// **Warning**: This method will block the calling thread during processing.
   /// For Flutter apps, use [generateWaveformInIsolate] to keep the UI responsive.
   ///
@@ -145,8 +147,12 @@ class Sonix {
     // Create waveform configuration
     final waveformConfig = config ?? WaveformConfig(resolution: resolution, type: type, normalize: normalize);
 
-    // Create decoder and process on main thread
-    final decoder = AudioDecoderFactory.createDecoder(filePath);
+    // Create decoder (automatically handles large files via MemorySafeDecoder)
+    // Pass the resolution so chunked processing uses the correct sample count
+    final decoder = AudioDecoderFactory.createDecoder(
+      filePath,
+      samplingResolution: waveformConfig.resolution,
+    );
     try {
       final audioData = await decoder.decode(filePath);
       final waveformData = await WaveformGenerator.generateInMemory(audioData, config: waveformConfig);

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'audio_decoder.dart';
+import 'memory_safe_decoder.dart';
 import 'mp3_decoder.dart';
 import 'wav_decoder.dart';
 import 'flac_decoder.dart';
@@ -13,10 +14,29 @@ import '../native/native_audio_bindings.dart';
 
 /// Factory for creating appropriate audio decoders
 class AudioDecoderFactory {
-  /// Create a decoder for the given file path
-  static AudioDecoder createDecoder(String filePath) {
+  /// Create a decoder for the given file path.
+  ///
+  /// By default, returns a [MemorySafeDecoder] that automatically handles
+  /// large files using chunked processing to prevent memory issues.
+  ///
+  /// Set [memorySafe] to `false` to get the raw decoder without the
+  /// memory-safe wrapper (useful for testing or when you want direct control).
+  ///
+  /// [samplingResolution] is used when chunked processing is needed for large
+  /// files. It determines how many sample points are extracted. Default is 1000.
+  static AudioDecoder createDecoder(String filePath, {bool memorySafe = true, int samplingResolution = 1000}) {
     final format = detectFormat(filePath);
+    final decoder = _createRawDecoder(format, filePath);
 
+    if (memorySafe) {
+      return MemorySafeDecoder(decoder, samplingResolution: samplingResolution);
+    }
+
+    return decoder;
+  }
+
+  /// Create the raw decoder for a given format without any wrappers.
+  static AudioDecoder _createRawDecoder(AudioFormat format, String filePath) {
     switch (format) {
       case AudioFormat.mp3:
         return MP3Decoder();

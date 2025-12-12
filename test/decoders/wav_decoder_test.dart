@@ -85,7 +85,8 @@ void main() {
         expect(AudioDecoderFactory.isFormatSupported('test.wav'), isTrue);
         expect(AudioDecoderFactory.isFormatSupported('test.WAV'), isTrue);
 
-        final decoder = AudioDecoderFactory.createDecoder('test.wav');
+        // Use memorySafe: false to get the raw decoder type
+        final decoder = AudioDecoderFactory.createDecoder('test.wav', memorySafe: false);
         expect(decoder, isA<WAVDecoder>());
       });
 

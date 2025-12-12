@@ -22,8 +22,9 @@ void main() {
     group('Factory Integration', () {
       test('should be created by AudioDecoderFactory for MP4 files', () {
         // Test that the factory creates MP4 decoders for supported extensions
-        final decoder1 = AudioDecoderFactory.createDecoder('test.mp4');
-        final decoder2 = AudioDecoderFactory.createDecoder('test.m4a');
+        // Use memorySafe: false to get the raw decoder type
+        final decoder1 = AudioDecoderFactory.createDecoder('test.mp4', memorySafe: false);
+        final decoder2 = AudioDecoderFactory.createDecoder('test.m4a', memorySafe: false);
 
         expect(decoder1, isA<MP4Decoder>());
         expect(decoder2, isA<MP4Decoder>());

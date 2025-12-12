@@ -88,4 +88,24 @@ extension AudioFormatExtension on AudioFormat {
         return 10.0; // Conservative estimate
     }
   }
+
+  /// Get typical bitrate in bits per second for duration estimation
+  int get typicalBitrate {
+    switch (this) {
+      case AudioFormat.mp3:
+        return 192000; // 192 kbps
+      case AudioFormat.ogg:
+        return 160000; // 160 kbps
+      case AudioFormat.opus:
+        return 96000; // 96 kbps (Opus is very efficient)
+      case AudioFormat.mp4:
+        return 192000; // 192 kbps AAC
+      case AudioFormat.flac:
+        return 800000; // ~800 kbps average for FLAC
+      case AudioFormat.wav:
+        return 1411200; // CD quality: 44.1kHz * 16bit * 2ch
+      case AudioFormat.unknown:
+        return 128000; // Conservative 128 kbps
+    }
+  }
 }
