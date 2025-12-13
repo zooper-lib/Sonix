@@ -11,6 +11,26 @@ enum AudioFormat {
   mp4,
   unknown;
 
+  /// Get human-readable name for this format
+  String get name {
+    switch (this) {
+      case AudioFormat.mp3:
+        return 'MP3';
+      case AudioFormat.wav:
+        return 'WAV';
+      case AudioFormat.flac:
+        return 'FLAC';
+      case AudioFormat.ogg:
+        return 'OGG Vorbis';
+      case AudioFormat.opus:
+        return 'Opus';
+      case AudioFormat.mp4:
+        return 'MP4/AAC';
+      case AudioFormat.unknown:
+        return 'Unknown';
+    }
+  }
+
   /// Get typical compression ratio for this format
   double get typicalCompressionRatio {
     switch (this) {
@@ -28,26 +48,6 @@ enum AudioFormat {
         return 1.0; // WAV is uncompressed
       case AudioFormat.unknown:
         return 10.0; // Conservative estimate
-    }
-  }
-
-  /// Get typical bitrate in bits per second for duration estimation
-  int get typicalBitrate {
-    switch (this) {
-      case AudioFormat.mp3:
-        return 192000; // 192 kbps
-      case AudioFormat.ogg:
-        return 160000; // 160 kbps
-      case AudioFormat.opus:
-        return 96000; // 96 kbps (Opus is very efficient)
-      case AudioFormat.mp4:
-        return 192000; // 192 kbps AAC
-      case AudioFormat.flac:
-        return 1411000; // 1411 kbps (CD quality)
-      case AudioFormat.wav:
-        return 1411000; // 1411 kbps (CD quality)
-      case AudioFormat.unknown:
-        return 192000; // Conservative estimate
     }
   }
 
@@ -105,40 +105,4 @@ abstract class AudioDecoder {
 
   /// Release any native resources held by this decoder.
   void dispose();
-}
-
-/// Extended decoder interface for formats that benefit from
-/// stateful/streaming decoding (e.g., MP3 with frame boundaries).
-///
-/// This interface maintains state between decode calls, making it suitable
-/// for processing large files in chunks without loading the entire file.
-abstract class StreamingAudioDecoder implements AudioDecoder {
-  /// Initialize the decoder with format-specific metadata.
-  ///
-  /// Some formats (like MP3) need header info before decoding chunks.
-  /// This method should be called once before any decodeChunk() calls.
-  ///
-  /// [metadata] - Format-specific metadata extracted from file headers
-  void initialize(Map<String, dynamic> metadata);
-
-  /// Decode a chunk of audio data in a streaming context.
-  ///
-  /// Unlike [decode], this maintains state between calls for
-  /// formats with frame boundaries or inter-frame dependencies.
-  ///
-  /// [chunk] - A portion of the audio file
-  /// [isLast] - Whether this is the final chunk
-  /// Returns decoded samples from this chunk.
-  ///
-  /// Throws [DecodingException] if the chunk cannot be decoded.
-  AudioData decodeChunk(Uint8List chunk, {bool isLast = false});
-
-  /// Reset decoder state (e.g., after seeking or error recovery).
-  ///
-  /// This clears any internal buffers and returns the decoder to
-  /// a clean state, ready to process new data.
-  void reset();
-
-  /// Whether this decoder has been initialized and is ready for chunk processing.
-  bool get isInitialized;
 }

@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
+import 'package:sonix/src/decoders/audio_format_service.dart';
+import 'package:sonix/src/decoders/ffmpeg_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 void main() {
@@ -8,27 +10,34 @@ void main() {
     // Format detection tests moved to test/core/format_detection_test.dart
 
     group('Decoder Creation', () {
-      test('should create appropriate decoder for each format', () {
+      test('should create FFmpegDecoder with correct format hint for each format', () {
         final mp3Decoder = AudioDecoderFactory.createDecoderFromPath('test.mp3');
-        expect(mp3Decoder.runtimeType.toString(), contains('MP3'));
+        expect(mp3Decoder, isA<FFmpegDecoder>());
+        expect(mp3Decoder.format, equals(AudioFormat.mp3));
 
         final wavDecoder = AudioDecoderFactory.createDecoderFromPath('test.wav');
-        expect(wavDecoder.runtimeType.toString(), contains('WAV'));
+        expect(wavDecoder, isA<FFmpegDecoder>());
+        expect(wavDecoder.format, equals(AudioFormat.wav));
 
         final flacDecoder = AudioDecoderFactory.createDecoderFromPath('test.flac');
-        expect(flacDecoder.runtimeType.toString(), contains('FLAC'));
+        expect(flacDecoder, isA<FFmpegDecoder>());
+        expect(flacDecoder.format, equals(AudioFormat.flac));
 
         final oggDecoder = AudioDecoderFactory.createDecoderFromPath('test.ogg');
-        expect(oggDecoder.runtimeType.toString(), contains('Vorbis'));
+        expect(oggDecoder, isA<FFmpegDecoder>());
+        expect(oggDecoder.format, equals(AudioFormat.ogg));
 
         final opusDecoder = AudioDecoderFactory.createDecoderFromPath('test.opus');
-        expect(opusDecoder.runtimeType.toString(), contains('Opus'));
+        expect(opusDecoder, isA<FFmpegDecoder>());
+        expect(opusDecoder.format, equals(AudioFormat.opus));
 
         final mp4Decoder = AudioDecoderFactory.createDecoderFromPath('test.mp4');
-        expect(mp4Decoder.runtimeType.toString(), contains('MP4'));
+        expect(mp4Decoder, isA<FFmpegDecoder>());
+        expect(mp4Decoder.format, equals(AudioFormat.mp4));
 
         final m4aDecoder = AudioDecoderFactory.createDecoderFromPath('test.m4a');
-        expect(m4aDecoder.runtimeType.toString(), contains('MP4'));
+        expect(m4aDecoder, isA<FFmpegDecoder>());
+        expect(m4aDecoder.format, equals(AudioFormat.mp4));
       });
 
       test('should throw UnsupportedFormatException for unsupported formats', () {
@@ -44,7 +53,7 @@ void main() {
 
     group('Supported Formats API', () {
       test('should return all supported extensions', () {
-        final extensions = AudioDecoderFactory.getSupportedExtensions();
+        final extensions = AudioFormatService.getSupportedExtensions();
         expect(extensions, contains('mp3'));
         expect(extensions, contains('wav'));
         expect(extensions, contains('flac'));
@@ -56,7 +65,7 @@ void main() {
       });
 
       test('should return all supported formats', () {
-        final formats = AudioDecoderFactory.getSupportedFormats();
+        final formats = AudioFormatService.supportedFormats;
         expect(formats, contains(AudioFormat.mp3));
         expect(formats, contains(AudioFormat.wav));
         expect(formats, contains(AudioFormat.flac));
@@ -67,7 +76,7 @@ void main() {
       });
 
       test('should return human-readable format names', () {
-        final formatNames = AudioDecoderFactory.getSupportedFormatNames();
+        final formatNames = AudioFormatService.getSupportedFormatNames();
         expect(formatNames, contains('MP3'));
         expect(formatNames, contains('WAV'));
         expect(formatNames, contains('FLAC'));
@@ -81,11 +90,11 @@ void main() {
     group('AudioFormat Extension Methods', () {
       test('should provide correct extensions for each format', () {
         expect(AudioFormat.mp3.extensions, equals(['mp3']));
-        expect(AudioFormat.wav.extensions, equals(['wav']));
+        expect(AudioFormat.wav.extensions, equals(['wav', 'wave']));
         expect(AudioFormat.flac.extensions, equals(['flac']));
         expect(AudioFormat.ogg.extensions, equals(['ogg']));
         expect(AudioFormat.opus.extensions, equals(['opus']));
-        expect(AudioFormat.mp4.extensions, equals(['mp4', 'm4a']));
+        expect(AudioFormat.mp4.extensions, equals(['mp4', 'm4a', 'aac']));
         expect(AudioFormat.unknown.extensions, isEmpty);
       });
 

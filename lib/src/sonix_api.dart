@@ -14,7 +14,7 @@ import 'processing/waveform_generator.dart';
 import 'processing/waveform_config.dart';
 import 'processing/waveform_use_case.dart';
 import 'processing/audio_file_processor.dart';
-import 'decoders/audio_decoder_factory.dart';
+import 'decoders/audio_format_service.dart';
 import 'exceptions/sonix_exceptions.dart';
 import 'native/native_audio_bindings.dart';
 import 'utils/sonix_logger.dart';
@@ -137,11 +137,11 @@ class Sonix {
     _ensureNotDisposed();
 
     // Validate file format
-    if (!AudioDecoderFactory.isFileSupported(filePath)) {
+    if (!AudioFormatService.isFileSupported(filePath)) {
       final extension = _getFileExtension(filePath);
       throw UnsupportedFormatException(
         extension,
-        'Unsupported audio format: $extension. Supported formats: ${AudioDecoderFactory.getSupportedFormatNames().join(', ')}',
+        'Unsupported audio format: $extension. Supported formats: ${AudioFormatService.getSupportedFormatNames().join(', ')}',
       );
     }
 
@@ -189,11 +189,11 @@ class Sonix {
     await _ensureInitialized();
 
     // Validate file format
-    if (!AudioDecoderFactory.isFileSupported(filePath)) {
+    if (!AudioFormatService.isFileSupported(filePath)) {
       final extension = _getFileExtension(filePath);
       throw UnsupportedFormatException(
         extension,
-        'Unsupported audio format: $extension. Supported formats: ${AudioDecoderFactory.getSupportedFormatNames().join(', ')}',
+        'Unsupported audio format: $extension. Supported formats: ${AudioFormatService.getSupportedFormatNames().join(', ')}',
       );
     }
 
@@ -425,7 +425,7 @@ class Sonix {
   /// **Use Case:** Validation before file processing, UI filter setup,
   /// or batch operation planning.
   static bool isFormatSupported(String filePath) {
-    return AudioDecoderFactory.isFileSupported(filePath);
+    return AudioFormatService.isFileSupported(filePath);
   }
 
   /// Configure FFmpeg log level based on the current config
@@ -477,7 +477,7 @@ class Sonix {
   ///
   /// **See also:** [getSupportedExtensions] for file extensions
   static List<String> getSupportedFormats() {
-    return AudioDecoderFactory.getSupportedFormatNames();
+    return AudioFormatService.getSupportedFormatNames();
   }
 
   /// Returns a list of supported file extensions (without dots).
@@ -509,7 +509,7 @@ class Sonix {
   ///
   /// **See also:** [getSupportedFormats] for display names
   static List<String> getSupportedExtensions() {
-    return AudioDecoderFactory.getSupportedExtensions();
+    return AudioFormatService.getSupportedExtensions();
   }
 
   /// Checks if a specific file extension is supported by the library.
@@ -549,7 +549,7 @@ class Sonix {
       normalizedExt = normalizedExt.substring(1);
     }
 
-    return AudioDecoderFactory.getSupportedExtensions().contains(normalizedExt);
+    return AudioFormatService.getSupportedExtensions().contains(normalizedExt);
   }
 
   /// Returns optimized waveform configuration for specific use cases.

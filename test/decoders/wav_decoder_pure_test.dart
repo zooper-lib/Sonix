@@ -3,15 +3,15 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sonix/src/decoders/wav_decoder.dart';
+import 'package:sonix/src/decoders/ffmpeg_decoder.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 import 'package:sonix/src/models/audio_data.dart';
 import '../ffmpeg/ffmpeg_setup_helper.dart';
 
 void main() {
-  group('WAVDecoder Tests', () {
-    late WAVDecoder decoder;
+  group('WAV Decoding Tests', () {
+    late FFmpegDecoder decoder;
 
     setUpAll(() async {
       // Ensure FFMPEG is available for testing
@@ -22,7 +22,7 @@ void main() {
     });
 
     setUp(() {
-      decoder = WAVDecoder();
+      decoder = FFmpegDecoder(AudioFormat.wav);
     });
 
     tearDown(() {
@@ -30,7 +30,7 @@ void main() {
     });
 
     group('Basic Decoding', () {
-      test('should have correct format', () {
+      test('should have correct format hint', () {
         expect(decoder.format, equals(AudioFormat.wav));
       });
 
@@ -127,19 +127,13 @@ void main() {
       test('should throw DecodingException for invalid data', () {
         final invalidBytes = Uint8List.fromList([0x00, 0x01, 0x02, 0x03, 0x04]);
 
-        expect(
-          () => decoder.decode(invalidBytes),
-          throwsA(isA<DecodingException>()),
-        );
+        expect(() => decoder.decode(invalidBytes), throwsA(isA<DecodingException>()));
       });
 
       test('should throw DecodingException for empty data', () {
         final emptyBytes = Uint8List(0);
 
-        expect(
-          () => decoder.decode(emptyBytes),
-          throwsA(isA<DecodingException>()),
-        );
+        expect(() => decoder.decode(emptyBytes), throwsA(isA<DecodingException>()));
       });
 
       test('should handle corrupted WAV data gracefully', () async {
