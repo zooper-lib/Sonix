@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 
 import '../models/audio_data.dart';
 import '../decoders/audio_file_decoder.dart';
+import '../utils/audio_file_validator.dart';
 
 /// Processes audio files and returns decoded audio data.
 ///
@@ -40,12 +40,8 @@ class AudioFileProcessor {
   /// Throws [DecodingException] if the file cannot be decoded.
   /// Throws [UnsupportedError] if the format is not supported.
   Future<AudioData> process(String filePath) async {
-    final file = File(filePath);
-    if (!await file.exists()) {
-      throw FileSystemException('File not found', filePath);
-    }
-
-    final fileSize = await file.length();
+    // Validate file and get size in one call
+    final fileSize = await AudioFileValidator.validateAndGetSize(filePath);
 
     if (fileSize <= chunkThreshold) {
       // SMALL FILE: Use simple decoder
