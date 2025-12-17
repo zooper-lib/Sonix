@@ -247,7 +247,7 @@ class _PlaybackPositionExampleState extends State<PlaybackPositionExample> {
       });
 
       // Clean up the instance
-      await sonix.dispose();
+      sonix.dispose();
     } catch (e) {
       setState(() {
         _isLoading = false;

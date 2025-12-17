@@ -94,7 +94,7 @@ WaveformWidget(
 )
 
 // Clean up when done
-await sonix.dispose();
+sonix.dispose();
 ```
 
 ### With Playback Position
@@ -181,18 +181,16 @@ WaveformWidget(
 ### 2. Instance Configuration
 
 ```dart
-// Mobile-optimized configuration
+// Mobile-optimized configuration (lower memory limit)
 final mobileSonix = Sonix(SonixConfig.mobile());
 
-// Desktop-optimized configuration
+// Desktop-optimized configuration (higher memory limit)
 final desktopSonix = Sonix(SonixConfig.desktop());
 
 // Custom configuration
 final customSonix = Sonix(SonixConfig(
-  maxConcurrentOperations: 2,
-  isolatePoolSize: 1,
   maxMemoryUsage: 50 * 1024 * 1024, // 50MB
-  enableProgressReporting: true,
+  logLevel: 2, // ERROR level
 ));
 ```
 
@@ -222,29 +220,7 @@ final waveformData = await sonix.generateWaveform(
 );
 ```
 
-### 4. Resource Management
-
-```dart
-// Check resource usage
-final sonix = Sonix();
-final stats = sonix.getResourceStatistics();
-print('Active isolates: ${stats.activeIsolates}');
-print('Completed tasks: ${stats.completedTasks}');
-
-// Optimize resources when needed
-sonix.optimizeResources();
-
-// Cancel operations if needed
-final activeOps = sonix.getActiveOperations();
-for (final opId in activeOps) {
-  sonix.cancelOperation(opId);
-}
-
-// Always dispose when done
-await sonix.dispose();
-```
-
-### 5. Pre-generated Waveform Data
+### 4. Pre-generated Waveform Data
 
 ```dart
 // Use pre-computed waveform data
@@ -261,7 +237,7 @@ WaveformWidget(
 )
 ```
 
-### 6. Error Handling
+### 5. Error Handling
 
 ```dart
 final sonix = Sonix();
@@ -277,7 +253,7 @@ try {
 } on FileSystemException catch (e) {
   print('File access error: ${e.message}');
 } finally {
-  await sonix.dispose();
+  sonix.dispose();
 }
 ```
 
@@ -297,12 +273,7 @@ The main entry point for generating waveforms. This is an instance-based class t
 
 - `generateWaveform(String filePath, {...})` → `Future<WaveformData>` - Process on main thread
 - `generateWaveformInIsolate(String filePath, {...})` → `Future<WaveformData>` - Process in background isolate (recommended for UI apps)
-- `getResourceStatistics()` → `IsolateStatistics`
-- `optimizeResources()` → `void`
-- `cancelOperation(String taskId)` → `bool`
-- `cancelAllOperations()` → `int`
-- `getActiveOperations()` → `List<String>`
-- `dispose()` → `Future<void>`
+- `dispose()` → `void` - Clean up resources
 
 **Static Utility Methods:**
 
@@ -326,11 +297,8 @@ Configuration options for Sonix instances.
 
 **Properties:**
 
-- `maxConcurrentOperations`: Maximum concurrent operations
-- `isolatePoolSize`: Size of the isolate pool
-- `isolateIdleTimeout`: Timeout for idle isolates
 - `maxMemoryUsage`: Maximum memory usage in bytes
-- `enableProgressReporting`: Whether to enable progress reporting
+- `logLevel`: FFmpeg log level (0-6, default 2 for ERROR)
 
 ### Widgets
 
@@ -400,25 +368,7 @@ Pre-configured styles for common use cases:
 
 ## Performance & Monitoring
 
-Sonix includes performance monitoring and optimization tools for production applications.
-
-### Resource Monitoring
-
-Monitor isolate performance and resource usage:
-
-```dart
-final sonix = Sonix();
-
-// Get current resource statistics
-final stats = sonix.getResourceStatistics();
-print('Active isolates: ${stats.activeIsolates}');
-print('Completed tasks: ${stats.completedTasks}');
-print('Failed tasks: ${stats.failedTasks}');
-print('Average processing time: ${stats.averageProcessingTime}ms');
-
-// Optimize resources when needed
-sonix.optimizeResources();
-```
+Sonix includes performance monitoring tools for production applications.
 
 ### Performance Profiling
 
@@ -431,7 +381,7 @@ final profiler = PerformanceProfiler();
 final result = await profiler.profile('waveform_generation', () async {
   final sonix = Sonix();
   final waveformData = await sonix.generateWaveform('audio.mp3');
-  await sonix.dispose();
+  sonix.dispose();
   return waveformData;
 });
 
@@ -468,13 +418,12 @@ for (final rec in recommendations) {
 ### Best Practices
 
 1. **Use appropriate configuration**: Choose `SonixConfig.mobile()` or `SonixConfig.desktop()` based on your target platform
-2. **Dispose instances**: Always call `dispose()` on Sonix instances when done to clean up isolates
-3. **Monitor resources**: Use `getResourceStatistics()` to monitor isolate performance
-4. **Handle errors**: Wrap operations in try-catch blocks for proper error handling
-5. **Use optimal configs**: Use `Sonix.getOptimalConfig()` for different use cases
-6. **Cancel when needed**: Cancel long-running operations with `cancelOperation()` if user navigates away
-7. **Profile performance**: Use `PerformanceProfiler` to identify bottlenecks in production
-8. **Validate formats**: Check `Sonix.isFormatSupported()` before processing files
+2. **Dispose instances**: Always call `dispose()` on Sonix instances when done
+3. **Handle errors**: Wrap operations in try-catch blocks for proper error handling
+4. **Use optimal configs**: Use `Sonix.getOptimalConfig()` for different use cases
+5. **Profile performance**: Use `PerformanceProfiler` to identify bottlenecks in production
+6. **Validate formats**: Check `Sonix.isFormatSupported()` before processing files
+7. **Use isolate for UI apps**: Prefer `generateWaveformInIsolate()` in Flutter apps to keep UI responsive
 
 ### Platform-Specific Considerations
 
@@ -494,7 +443,7 @@ for (final rec in recommendations) {
 
 - macOS/Linux: Use system FFmpeg installed via your package manager (no bundling)
 - Windows: Provide FFmpeg DLLs via PATH or next to the app executable
-- Full isolate pool support for maximum performance
+- Background isolate processing for UI responsiveness
 - Runtime loading of FFmpeg libraries
 
 #### Troubleshooting FFmpeg setup

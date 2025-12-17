@@ -7,7 +7,7 @@ library;
 import 'dart:async';
 
 import 'config/sonix_config.dart';
-import 'isolate/isolate_manager.dart';
+import 'isolate/isolate_runner.dart';
 import 'models/waveform_data.dart';
 import 'models/waveform_type.dart';
 import 'processing/waveform_generator.dart';
@@ -26,27 +26,15 @@ import 'utils/sonix_logger.dart';
 /// - [generateWaveform]: Processes audio on the main thread. Simple and direct,
 ///   but blocks the calling thread. Best for small files or non-UI contexts.
 ///
-/// - [generateWaveformInIsolate]: Processes audio in background isolates to prevent
+/// - [generateWaveformInIsolate]: Processes audio in a background isolate to prevent
 ///   UI thread blocking. Best for large files or Flutter applications where
 ///   UI responsiveness is important.
-///
-/// Each instance manages its own isolate pool and configuration when using
-/// the isolate-based method.
 class Sonix {
   /// Configuration for this Sonix instance
   final SonixConfig config;
 
-  /// Isolate manager for background processing
-  late final IsolateManager _isolateManager;
-
   /// Whether this instance has been disposed
   bool _isDisposed = false;
-
-  /// Whether this instance has been initialized
-  bool _isInitialized = false;
-
-  /// Map of active tasks for cancellation support
-  final Map<String, ProcessingTask> _activeTasks = {};
 
   /// Create a new Sonix instance with the specified configuration
   ///
@@ -71,30 +59,6 @@ class Sonix {
     _configureLogLevel(this.config.logLevel);
     // Configure Dart logger to use the same log level
     SonixLogger.setLogLevel(this.config.logLevel);
-    _isolateManager = createIsolateManager();
-  }
-
-  /// Create the isolate manager - can be overridden for testing
-  IsolateManager createIsolateManager() {
-    return IsolateManager(config);
-  }
-
-  /// Initialize this Sonix instance
-  ///
-  /// This method sets up the isolate manager and prepares the instance for use.
-  /// It's automatically called when needed, but can be called explicitly for
-  /// better control over initialization timing.
-  Future<void> initialize() async {
-    if (_isDisposed) {
-      throw StateError('Cannot initialize a disposed Sonix instance');
-    }
-
-    if (_isInitialized) {
-      return; // Already initialized
-    }
-
-    await _isolateManager.initialize();
-    _isInitialized = true;
   }
 
   /// Generate waveform data from an audio file on the main thread
@@ -157,7 +121,7 @@ class Sonix {
 
   /// Generate waveform data from an audio file in a background isolate
   ///
-  /// This method processes audio in background isolates to prevent UI thread blocking.
+  /// This method processes audio in a background isolate to prevent UI thread blocking.
   /// It automatically handles file format detection and optimal processing strategies.
   /// Use this method for large files or in UI applications to keep the interface responsive.
   ///
@@ -186,7 +150,7 @@ class Sonix {
     bool normalize = true,
     WaveformConfig? config,
   }) async {
-    await _ensureInitialized();
+    _ensureNotDisposed();
 
     // Validate file format
     if (!AudioFormatService.isFileSupported(filePath)) {
@@ -200,188 +164,33 @@ class Sonix {
     // Create waveform configuration
     final waveformConfig = config ?? WaveformConfig(resolution: resolution, type: type, normalize: normalize);
 
-    // Create processing task
-    final task = ProcessingTask(id: _generateTaskId(), filePath: filePath, config: waveformConfig);
-
-    // Track the task for cancellation support
-    _activeTasks[task.id] = task;
-
-    try {
-      // Execute task in background isolate
-      final result = await _isolateManager.executeTask(task);
-      return result;
-    } finally {
-      // Remove task from active tasks when complete
-      _activeTasks.remove(task.id);
-    }
+    // Run in a background isolate
+    const runner = IsolateRunner();
+    return runner.run(filePath, waveformConfig);
   }
 
-  /// Get resource statistics for this Sonix instance
+  /// Dispose of this Sonix instance
   ///
-  /// Returns detailed information about current memory usage, isolate statistics,
-  /// active operations, and other resource metrics for this specific instance.
-  ///
-  /// Throws [StateError] if this instance has been disposed.
-  ///
-  /// Example:
-  /// ```dart
-  /// final sonix = Sonix();
-  /// final stats = sonix.getResourceStatistics();
-  /// print('Active isolates: ${stats.activeIsolates}');
-  /// print('Completed tasks: ${stats.completedTasks}');
-  /// ```
-  IsolateStatistics getResourceStatistics() {
-    _ensureNotDisposed();
-    return _isolateManager.getStatistics();
-  }
-
-  /// Optimize resource usage for this instance
-  ///
-  /// This method performs cleanup of idle isolates and optimizes memory usage.
-  /// It's automatically called periodically, but can be called manually when needed.
-  ///
-  /// Example:
-  /// ```dart
-  /// final sonix = Sonix();
-  /// sonix.optimizeResources(); // Clean up idle resources
-  /// ```
-  void optimizeResources() {
-    if (!_isDisposed && _isInitialized) {
-      _isolateManager.optimizeResources();
-    }
-  }
-
-  /// Cancel a specific operation by task ID
-  ///
-  /// This method cancels a specific waveform generation operation that is
-  /// currently in progress. The operation will be stopped and resources cleaned up.
-  ///
-  /// [taskId] - The ID of the task to cancel
-  ///
-  /// Returns true if the task was found and cancelled, false if the task
-  /// was not found (already completed or never existed).
-  ///
-  /// Example:
-  /// ```dart
-  /// final sonix = Sonix();
-  /// final taskId = 'my_task_id';
-  /// final cancelled = sonix.cancelOperation(taskId);
-  /// if (cancelled) {
-  ///   print('Operation cancelled successfully');
-  /// }
-  /// ```
-  bool cancelOperation(String taskId) {
-    _ensureNotDisposed();
-
-    final task = _activeTasks[taskId];
-    if (task != null) {
-      task.cancel();
-      _activeTasks.remove(taskId);
-      return true;
-    }
-    return false;
-  }
-
-  /// Cancel all active operations
-  ///
-  /// This method cancels all currently running waveform generation operations
-  /// for this instance. All operations will be stopped and resources cleaned up.
-  ///
-  /// Returns the number of operations that were cancelled.
-  ///
-  /// Example:
-  /// ```dart
-  /// final sonix = Sonix();
-  /// final cancelledCount = sonix.cancelAllOperations();
-  /// print('Cancelled $cancelledCount operations');
-  /// ```
-  int cancelAllOperations() {
-    _ensureNotDisposed();
-
-    final taskIds = _activeTasks.keys.toList();
-    for (final taskId in taskIds) {
-      final task = _activeTasks[taskId];
-      if (task != null) {
-        task.cancel();
-      }
-    }
-
-    final cancelledCount = _activeTasks.length;
-    _activeTasks.clear();
-    return cancelledCount;
-  }
-
-  /// Get a list of active operation IDs
-  ///
-  /// Returns a list of task IDs for operations that are currently in progress.
-  /// This can be useful for tracking and managing active operations.
-  ///
-  /// Example:
-  /// ```dart
-  /// final sonix = Sonix();
-  /// final activeOperations = sonix.getActiveOperations();
-  /// print('Active operations: ${activeOperations.length}');
-  /// ```
-  List<String> getActiveOperations() {
-    _ensureNotDisposed();
-    return _activeTasks.keys.toList();
-  }
-
-  /// Dispose of this Sonix instance and clean up all associated resources
-  ///
-  /// This method cleans up all resources associated with this specific instance,
-  /// including background isolates, active tasks, and memory allocations.
   /// After calling dispose, this instance cannot be used for any operations.
   ///
   /// Example:
   /// ```dart
   /// final sonix = Sonix();
   /// // ... use sonix for operations
-  /// await sonix.dispose(); // Clean up when done
+  /// sonix.dispose(); // Clean up when done
   /// ```
-  Future<void> dispose() async {
-    if (_isDisposed) {
-      return; // Already disposed
-    }
-
-    // Cancel all active operations before setting disposed flag
-    final taskIds = _activeTasks.keys.toList();
-    for (final taskId in taskIds) {
-      final task = _activeTasks[taskId];
-      if (task != null) {
-        task.cancel();
-      }
-    }
-    _activeTasks.clear();
-
+  void dispose() {
     _isDisposed = true;
-
-    if (_isInitialized) {
-      await _isolateManager.dispose();
-    }
   }
 
   /// Check if this instance has been disposed
   bool get isDisposed => _isDisposed;
-
-  /// Ensure this instance is initialized
-  Future<void> _ensureInitialized() async {
-    _ensureNotDisposed();
-    if (!_isInitialized) {
-      await initialize();
-    }
-  }
 
   /// Ensure this instance has not been disposed
   void _ensureNotDisposed() {
     if (_isDisposed) {
       throw StateError('This Sonix instance has been disposed and cannot be used');
     }
-  }
-
-  /// Generate a unique task ID
-  String _generateTaskId() {
-    return 'task_${DateTime.now().millisecondsSinceEpoch}_$hashCode';
   }
 
   /// Extract file extension from a file path
