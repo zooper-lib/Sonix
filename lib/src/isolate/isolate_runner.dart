@@ -47,28 +47,93 @@ class IsolateRunner {
   /// Throws [SonixException] subclasses for processing errors
   Future<WaveformData> run(String filePath, WaveformConfig config) async {
     final receivePort = ReceivePort();
+    final errorPort = ReceivePort();
+    final exitPort = ReceivePort();
     final completer = Completer<WaveformData>();
 
-    // Spawn the isolate
+    void cleanup(Isolate? isolate) {
+      receivePort.close();
+      errorPort.close();
+      exitPort.close();
+      isolate?.kill(priority: Isolate.immediate);
+    }
+
+    // Spawn the isolate with error and exit handlers
     late Isolate isolate;
     try {
-      isolate = await Isolate.spawn(_IsolateEntryPoint.process, _IsolateParams(filePath: filePath, config: config, sendPort: receivePort.sendPort));
+      isolate = await Isolate.spawn(
+        _IsolateEntryPoint.process,
+        _IsolateParams(
+          filePath: filePath,
+          config: config,
+          sendPort: receivePort.sendPort,
+        ),
+        onError: errorPort.sendPort,
+        onExit: exitPort.sendPort,
+      );
     } catch (e) {
-      receivePort.close();
+      cleanup(null);
       throw IsolateSpawnException('Failed to spawn processing isolate: $e');
     }
 
+    // Handle errors from the isolate
+    errorPort.listen((message) {
+      if (!completer.isCompleted) {
+        cleanup(isolate);
+        if (message is List && message.length >= 2) {
+          completer.completeError(
+            IsolateProcessingException(
+              'isolate_error',
+              message[0].toString(),
+              details: message[1]?.toString(),
+            ),
+          );
+        } else {
+          completer.completeError(
+            IsolateProcessingException(
+              'isolate_error',
+              'Unknown error from isolate: $message',
+            ),
+          );
+        }
+      }
+    });
+
+    // Handle isolate exit without sending a result
+    exitPort.listen((message) {
+      if (!completer.isCompleted) {
+        cleanup(isolate);
+        completer.completeError(
+          IsolateProcessingException(
+            'isolate_exit',
+            'Isolate exited unexpectedly without sending a result',
+          ),
+        );
+      }
+    });
+
     // Listen for the result
     receivePort.listen((message) {
-      receivePort.close();
-      isolate.kill(priority: Isolate.immediate);
+      if (completer.isCompleted) return;
+
+      cleanup(isolate);
 
       if (message is _IsolateSuccess) {
         completer.complete(message.waveformData);
       } else if (message is _IsolateError) {
-        completer.completeError(_ErrorReconstructor.reconstruct(message), message.stackTrace != null ? StackTrace.fromString(message.stackTrace!) : null);
+        completer.completeError(
+          _ErrorReconstructor.reconstruct(message),
+          message.stackTrace != null
+              ? StackTrace.fromString(message.stackTrace!)
+              : null,
+        );
       } else {
-        completer.completeError(IsolateProcessingException('unknown', 'Unexpected message type from isolate: ${message.runtimeType}'));
+        completer.completeError(
+          IsolateProcessingException(
+            'unknown',
+            'Unexpected message type from isolate: ${message.runtimeType}',
+          ),
+        );
       }
     });
 
@@ -82,7 +147,11 @@ class _IsolateParams {
   final WaveformConfig config;
   final SendPort sendPort;
 
-  const _IsolateParams({required this.filePath, required this.config, required this.sendPort});
+  const _IsolateParams({
+    required this.filePath,
+    required this.config,
+    required this.sendPort,
+  });
 }
 
 /// Result types from isolate processing
@@ -99,7 +168,12 @@ class _IsolateError extends _IsolateResult {
   final String? details;
   final String? stackTrace;
 
-  _IsolateError({required this.errorType, required this.message, this.details, this.stackTrace});
+  _IsolateError({
+    required this.errorType,
+    required this.message,
+    this.details,
+    this.stackTrace,
+  });
 }
 
 /// Entry point for the processing isolate
@@ -134,7 +208,10 @@ class _IsolateEntryPoint {
       final AudioData audioData = await processor.process(params.filePath);
 
       // Generate waveform
-      final waveformData = await WaveformGenerator.generateInMemory(audioData, config: params.config);
+      final waveformData = await WaveformGenerator.generateInMemory(
+        audioData,
+        config: params.config,
+      );
 
       // Cleanup before returning
       NativeAudioBindings.cleanup();
@@ -162,14 +239,25 @@ class _ErrorReconstructor {
 
   static SonixException reconstruct(_IsolateError error) {
     return switch (error.errorType) {
-      'UnsupportedFormatException' => UnsupportedFormatException(error.message, error.details),
+      'UnsupportedFormatException' => UnsupportedFormatException(
+          error.message,
+          error.details,
+        ),
       'DecodingException' => DecodingException(error.message, error.details),
       'MemoryException' => MemoryException(error.message, error.details),
-      'FileAccessException' => FileAccessException('', error.message, error.details),
+      'FileAccessException' => FileAccessException(
+          '',
+          error.message,
+          error.details,
+        ),
       'FileNotFoundException' => FileNotFoundException('', error.details),
       'CorruptedFileException' => CorruptedFileException('', error.details),
       'FFIException' => FFIException(error.message, error.details),
-      _ => IsolateProcessingException('unknown', error.message, details: error.details),
+      _ => IsolateProcessingException(
+          'unknown',
+          error.message,
+          details: error.details,
+        ),
     };
   }
 }
@@ -179,5 +267,6 @@ class IsolateSpawnException extends SonixException {
   IsolateSpawnException(super.message, [super.details]);
 
   @override
-  String toString() => 'IsolateSpawnException: $message${details != null ? ' ($details)' : ''}';
+  String toString() =>
+      'IsolateSpawnException: $message${details != null ? ' ($details)' : ''}';
 }
