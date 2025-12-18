@@ -20,7 +20,7 @@ class ConcurrentIsolateExample extends StatefulWidget {
 
 class _ConcurrentIsolateExampleState extends State<ConcurrentIsolateExample> with SingleTickerProviderStateMixin {
   static const int maxFiles = 50;
-  static const int maxConcurrentIsolates = 2; // Limit concurrent processing
+  static const int maxConcurrentIsolates = 8; // Limit concurrent processing
 
   final List<_AudioFileTask> _tasks = [];
   bool _isProcessing = false;

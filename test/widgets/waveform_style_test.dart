@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sonix/sonix.dart';
+import 'package:sonix/src/processing/display_sampler.dart';
 
 void main() {
   group('WaveformStyle Display Resolution', () {
