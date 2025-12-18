@@ -361,49 +361,21 @@ class Sonix {
     return AudioFormatService.getSupportedExtensions().contains(normalizedExt);
   }
 
-  /// Returns optimized waveform configuration for specific use cases.
+  /// Checks whether the FFmpeg backend is available.
   ///
-  /// This utility method provides pre-tuned configurations that work well
-  /// for common waveform visualization scenarios. Each use case has been
-  /// optimized for the best balance of quality, performance, and visual appeal.
+  /// This is a safe helper intended for apps to show setup instructions
+  /// (for example, prompting the user to install FFmpeg) without throwing.
   ///
-  /// **Parameters:**
-  /// - [useCase]: The intended use case (see [WaveformUseCase] for options)
-  /// - [customResolution]: Optional override for the resolution parameter
+  /// Returns `true` if the native library can be loaded and FFmpeg is
+  /// initialized/available, otherwise returns `false`.
+  static bool isFFmpegAvailable() {
+    return NativeAudioBindings.checkFFMPEGAvailable();
+  }
+
+  /// Returns optimized waveform configuration for a specific use case.
   ///
-  /// **Returns:** [WaveformConfig] optimized for the specified use case
-  ///
-  /// ## Available Use Cases
-  ///
-  /// - `WaveformUseCase.musicVisualization`: For music players and visualizers
-  /// - `WaveformUseCase.podcastPlayer`: Optimized for speech content
-  /// - `WaveformUseCase.audioEditor`: High detail for editing applications
-  /// - `WaveformUseCase.thumbnail`: Low resolution for preview/thumbnail
-  /// - `WaveformUseCase.streaming`: Balanced for real-time streaming
-  ///
-  /// ## Example
-  /// ```dart
-  /// // Get config for music player
-  /// final musicConfig = Sonix.getOptimalConfig(
-  ///   useCase: WaveformUseCase.musicVisualization,
-  /// );
-  ///
-  /// // Override resolution for specific needs
-  /// final customConfig = Sonix.getOptimalConfig(
-  ///   useCase: WaveformUseCase.audioEditor,
-  ///   customResolution: 5000, // High detail
-  /// );
-  ///
-  /// // Use with instance API
-  /// final sonix = Sonix();
-  /// final waveform = await sonix.generateWaveform(
-  ///   'audio.mp3',
-  ///   config: musicConfig,
-  /// );
-  /// ```
-  ///
-  /// **Benefits:** Saves time on configuration tuning and ensures optimal
-  /// settings for common scenarios.
+  /// Convenience helper for common UI scenarios. You can always construct a
+  /// [WaveformConfig] directly for full control.
   static WaveformConfig getOptimalConfig({required WaveformUseCase useCase, int? customResolution}) {
     return WaveformGenerator.getOptimalConfig(useCase: useCase, customResolution: customResolution);
   }

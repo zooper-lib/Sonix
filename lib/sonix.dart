@@ -48,6 +48,7 @@ export 'src/decoders/audio_decoder.dart' show AudioFormat;
 
 // Processing and generation
 export 'src/processing/waveform_config.dart';
+export 'src/processing/waveform_use_case.dart';
 export 'src/processing/downsampling_algorithm.dart';
 export 'src/processing/normalization_method.dart';
 export 'src/processing/scaling_curve.dart';
