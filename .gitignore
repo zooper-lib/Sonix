@@ -35,6 +35,7 @@ test/assets/generated/
 # Real audio files for integration testing (user-provided, may be copyrighted)
 # Use specific patterns instead of ignoring the whole directory to allow README.md
 test/assets/real_audio/*.mp3
+test/assets/real_audio/*.mp4
 test/assets/real_audio/*.wav
 test/assets/real_audio/*.flac
 test/assets/real_audio/*.ogg
