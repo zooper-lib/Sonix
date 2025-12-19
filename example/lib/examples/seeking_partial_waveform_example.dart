@@ -725,7 +725,7 @@ class _SeekingPartialWaveformExampleState extends State<SeekingPartialWaveformEx
       });
 
       // Clean up the instance
-      await sonix.dispose();
+      sonix.dispose();
     } catch (e) {
       stopwatch.stop();
       setState(() {
@@ -783,7 +783,7 @@ class _SeekingPartialWaveformExampleState extends State<SeekingPartialWaveformEx
       });
 
       // Clean up the instance
-      await sonix.dispose();
+      sonix.dispose();
     } catch (e) {
       stopwatch.stop();
       setState(() {

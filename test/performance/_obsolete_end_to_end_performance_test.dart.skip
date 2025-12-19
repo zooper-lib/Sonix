@@ -67,7 +67,8 @@ void main() {
         print('File size: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB');
 
         try {
-          final decoder = AudioDecoderFactory.createDecoder(filePath);
+          // Use raw decoder (not memory-safe wrapper) for performance testing
+          final decoder = AudioDecoderFactory.createDecoder(filePath, memorySafe: false);
 
           final stopwatch = Stopwatch()..start();
           final audioData = await decoder.decode(filePath);
@@ -272,7 +273,8 @@ void main() {
 
         try {
           // Complete MP3 decode → waveform pipeline
-          final decoder = AudioDecoderFactory.createDecoder(filePath);
+          // Use raw decoder (not memory-safe wrapper) for performance testing
+          final decoder = AudioDecoderFactory.createDecoder(filePath, memorySafe: false);
           
           final totalStopwatch = Stopwatch()..start();
           

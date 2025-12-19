@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-12-17
+
+### ⚠️ Breaking Changes
+
+- **Simplified Isolate Architecture**: Replaced isolate pool with single-isolate-per-request model
+  - Removed `IsolateManager`, `IsolateHealthMonitor`, `IsolateStatistics`, and related pool infrastructure
+  - Introduced new `IsolateRunner` class for simple background processing
+  - Each call to `generateWaveformInIsolate()` spawns a fresh isolate that terminates after processing
+
+- **SonixConfig API Changes**: Simplified configuration
+  - Removed `isolatePoolSize` property
+  - Removed `maxConcurrentOperations` property
+  - Removed `isolateIdleTimeout` property
+  - Removed `enableProgressReporting` property
+  - Retained `maxMemoryUsage` and `logLevel` properties
+
+- **Sonix API Changes**: Streamlined public API
+  - `dispose()` is now synchronous (`void` instead of `Future<void>`)
+  - Removed `initialize()` method (no longer needed without pool)
+  - Removed `getResourceStatistics()` method
+  - Removed `optimizeResources()` method
+  - Removed cancellation token support (`cancelOperation()`, `cancelAllOperations()`)
+
+- **Public API Surface Reduced**: Kept `sonix.dart` focused on core usage
+  - Internal helpers (native bindings, profilers/validators, isolate runner internals) are no longer exported
+  - Tests and advanced users can import from `package:sonix/src/...` as needed
+
+### Changed
+
+- Simplified isolate handling reduces memory overhead and complexity
+- Background processing still prevents UI thread blocking
+- Concurrent operations are still supported (multiple `IsolateRunner` instances)
+- Documentation and examples updated to match the minimal public API
+
+### Added
+
+- `Sonix.isFFmpegAvailable()` as a safe, non-throwing way to check FFmpeg availability
+- `Sonix.getOptimalConfig(...)` convenience using `WaveformUseCase` (exported from `sonix.dart`)
+
+### Fixed
+
+- Performance regression under high isolate concurrency:
+  - Typed sample conversion in native bindings (avoid per-sample boxing)
+  - Allocation-free downsampling/chunked waveform generation hot paths
+  - Safe `AudioData.dispose()` behavior for typed lists
+- Example compilation issue after API trimming (removed reliance on non-exported symbols)
+
+### Removed
+
+- `lib/src/isolate/isolate_manager.dart`
+- `lib/src/isolate/isolate_config.dart`
+- `lib/src/isolate/isolate_health_monitor.dart`
+- `lib/src/isolate/isolate_info.dart`
+- `lib/src/isolate/isolate_statistics.dart`
+- `lib/src/isolate/cancel_token.dart`
+- `lib/src/isolate/processing_isolate.dart`
+- `lib/src/isolate/error_serializer.dart`
+- `lib/src/isolate/isolate_messages.dart`
+
+### Migration Guide
+
+**Before (1.x):**
+```dart
+final sonix = Sonix(SonixConfig(
+  isolatePoolSize: 4,
+  maxConcurrentOperations: 8,
+));
+await sonix.initialize();
+final waveform = await sonix.generateWaveformInIsolate('audio.mp3');
+await sonix.dispose();
+```
+
+**After (2.0):**
+```dart
+final sonix = Sonix();
+final waveform = await sonix.generateWaveformInIsolate('audio.mp3');
+sonix.dispose();
+```
+
 ## [1.3.2] - 2025-10-19
 
 ### Changed

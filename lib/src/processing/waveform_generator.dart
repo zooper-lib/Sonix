@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/models/waveform_data.dart';
@@ -144,8 +145,9 @@ class WaveformGenerator {
 
     _validateConfig(config);
 
-    // Calculate chunk size based on memory constraints
-    final bytesPerSample = 8; // double = 8 bytes
+    // Calculate chunk size based on memory constraints.
+    // Note: Typed lists (e.g. Float32List) use fewer bytes per element.
+    final bytesPerSample = audioData.samples is TypedData ? (audioData.samples as TypedData).elementSizeInBytes : 8;
     final maxSamplesInMemory = maxMemoryUsage ~/ bytesPerSample;
     final chunkSize = math.min(maxSamplesInMemory, audioData.samples.length);
 
@@ -154,32 +156,97 @@ class WaveformGenerator {
       return generateInMemory(audioData, config: config);
     }
 
-    // Process in chunks
+    // Process without allocating per-bin sublists.
     final allAmplitudes = <double>[];
-    final samplesPerBin = audioData.samples.length / config.resolution;
+    final channels = audioData.channels;
+    final frames = audioData.samples.length ~/ channels;
+    final framesPerBin = frames / config.resolution;
 
-    for (int i = 0; i < config.resolution; i++) {
-      final startIdx = (i * samplesPerBin).floor();
-      final endIdx = math.min(((i + 1) * samplesPerBin).floor(), audioData.samples.length);
+    for (int bin = 0; bin < config.resolution; bin++) {
+      final startFrame = (bin * framesPerBin).floor();
+      final endFrame = math.min(((bin + 1) * framesPerBin).floor(), frames);
+      if (startFrame >= frames) break;
 
-      if (startIdx >= audioData.samples.length) break;
-
-      // Extract samples for this bin
-      final binSamples = audioData.samples.sublist(startIdx, endIdx);
-
-      // Calculate amplitude using the specified algorithm
       double amplitude;
       switch (config.algorithm) {
         case DownsamplingAlgorithm.rms:
-          amplitude = WaveformAlgorithms.calculateRMS(binSamples);
+          double sumSquares = 0.0;
+          int count = 0;
+          for (int frame = startFrame; frame < endFrame; frame++) {
+            final base = frame * channels;
+            double mixed = 0.0;
+            int mixedCount = 0;
+            for (int ch = 0; ch < channels; ch++) {
+              final idx = base + ch;
+              if (idx >= audioData.samples.length) break;
+              mixed += audioData.samples[idx];
+              mixedCount++;
+            }
+            if (mixedCount == 0) continue;
+            mixed /= mixedCount;
+            sumSquares += mixed * mixed;
+            count++;
+          }
+          amplitude = count == 0 ? 0.0 : math.sqrt(sumSquares / count);
           break;
+
         case DownsamplingAlgorithm.peak:
-          amplitude = WaveformAlgorithms.calculatePeak(binSamples);
+          double peak = 0.0;
+          for (int frame = startFrame; frame < endFrame; frame++) {
+            final base = frame * channels;
+            double mixed = 0.0;
+            int mixedCount = 0;
+            for (int ch = 0; ch < channels; ch++) {
+              final idx = base + ch;
+              if (idx >= audioData.samples.length) break;
+              mixed += audioData.samples[idx];
+              mixedCount++;
+            }
+            if (mixedCount == 0) continue;
+            mixed /= mixedCount;
+            final absValue = mixed.abs();
+            if (absValue > peak) peak = absValue;
+          }
+          amplitude = peak;
           break;
+
         case DownsamplingAlgorithm.average:
-          amplitude = WaveformAlgorithms.calculateAverage(binSamples);
+          double sumAbs = 0.0;
+          int count = 0;
+          for (int frame = startFrame; frame < endFrame; frame++) {
+            final base = frame * channels;
+            double mixed = 0.0;
+            int mixedCount = 0;
+            for (int ch = 0; ch < channels; ch++) {
+              final idx = base + ch;
+              if (idx >= audioData.samples.length) break;
+              mixed += audioData.samples[idx];
+              mixedCount++;
+            }
+            if (mixedCount == 0) continue;
+            mixed /= mixedCount;
+            sumAbs += mixed.abs();
+            count++;
+          }
+          amplitude = count == 0 ? 0.0 : (sumAbs / count);
           break;
+
         case DownsamplingAlgorithm.median:
+          final binSamples = <double>[];
+          for (int frame = startFrame; frame < endFrame; frame++) {
+            final base = frame * channels;
+            double mixed = 0.0;
+            int mixedCount = 0;
+            for (int ch = 0; ch < channels; ch++) {
+              final idx = base + ch;
+              if (idx >= audioData.samples.length) break;
+              mixed += audioData.samples[idx];
+              mixedCount++;
+            }
+            if (mixedCount == 0) continue;
+            mixed /= mixedCount;
+            binSamples.add(mixed);
+          }
           amplitude = WaveformAlgorithms.calculateMedian(binSamples);
           break;
       }

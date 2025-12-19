@@ -254,7 +254,7 @@ class _BasicUsageExampleState extends State<BasicUsageExample> {
       });
 
       // Clean up the instance
-      await sonix.dispose();
+      sonix.dispose();
     } catch (e) {
       setState(() {
         _error = e.toString();

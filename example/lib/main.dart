@@ -11,6 +11,7 @@ import 'examples/chunked_large_file_example.dart';
 import 'examples/chunked_progress_example.dart';
 import 'examples/seeking_partial_waveform_example.dart';
 import 'examples/performance_comparison_example.dart';
+import 'examples/concurrent_isolate_example.dart';
 
 void main() {
   runApp(const MyApp());
@@ -151,6 +152,14 @@ class ExampleHomePage extends StatelessWidget {
                           Icons.speed,
                           Colors.deepOrange,
                           () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PerformanceComparisonExample())),
+                        ),
+                        _buildExampleCard(
+                          context,
+                          'Concurrent Isolates',
+                          'Load up to 30 files with responsive UI',
+                          Icons.hub,
+                          Colors.cyan,
+                          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ConcurrentIsolateExample())),
                         ),
                         _buildExampleCard(
                           context,

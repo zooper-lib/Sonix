@@ -1,40 +1,17 @@
+import 'dart:typed_data';
 import '../models/audio_data.dart';
 
-/// Abstract interface for audio decoders
-abstract class AudioDecoder {
-  /// Decode an entire audio file to AudioData
-  Future<AudioData> decode(String filePath);
+/// Audio format enumeration.
+enum AudioFormat {
+  mp3,
+  wav,
+  flac,
+  ogg,
+  opus,
+  mp4,
+  unknown;
 
-  /// Clean up resources
-  void dispose();
-}
-
-/// Supported audio formats
-enum AudioFormat { mp3, wav, flac, ogg, opus, mp4, unknown }
-
-/// Extension methods for AudioFormat
-extension AudioFormatExtension on AudioFormat {
-  /// Get file extensions for this format
-  List<String> get extensions {
-    switch (this) {
-      case AudioFormat.mp3:
-        return ['mp3'];
-      case AudioFormat.wav:
-        return ['wav'];
-      case AudioFormat.flac:
-        return ['flac'];
-      case AudioFormat.ogg:
-        return ['ogg'];
-      case AudioFormat.opus:
-        return ['opus'];
-      case AudioFormat.mp4:
-        return ['mp4', 'm4a'];
-      case AudioFormat.unknown:
-        return [];
-    }
-  }
-
-  /// Get format name
+  /// Get human-readable name for this format
   String get name {
     switch (this) {
       case AudioFormat.mp3:
@@ -54,22 +31,7 @@ extension AudioFormatExtension on AudioFormat {
     }
   }
 
-  /// Check if this format supports chunked processing
-  bool get supportsChunkedProcessing {
-    switch (this) {
-      case AudioFormat.mp3:
-      case AudioFormat.wav:
-      case AudioFormat.flac:
-      case AudioFormat.ogg:
-      case AudioFormat.opus:
-      case AudioFormat.mp4:
-        return true;
-      case AudioFormat.unknown:
-        return false;
-    }
-  }
-
-  /// Get typical compression ratio for memory estimation
+  /// Get typical compression ratio for this format
   double get typicalCompressionRatio {
     switch (this) {
       case AudioFormat.mp3:
@@ -88,4 +50,59 @@ extension AudioFormatExtension on AudioFormat {
         return 10.0; // Conservative estimate
     }
   }
+
+  /// Get list of file extensions for this format
+  List<String> get extensions {
+    switch (this) {
+      case AudioFormat.mp3:
+        return ['mp3'];
+      case AudioFormat.wav:
+        return ['wav', 'wave'];
+      case AudioFormat.flac:
+        return ['flac'];
+      case AudioFormat.ogg:
+        return ['ogg'];
+      case AudioFormat.opus:
+        return ['opus'];
+      case AudioFormat.mp4:
+        return ['mp4', 'm4a', 'aac'];
+      case AudioFormat.unknown:
+        return [];
+    }
+  }
+
+  /// Check if this format supports chunked processing
+  bool get supportsChunkedProcessing {
+    switch (this) {
+      case AudioFormat.mp3:
+      case AudioFormat.wav:
+      case AudioFormat.flac:
+      case AudioFormat.ogg:
+      case AudioFormat.opus:
+      case AudioFormat.mp4:
+        return true;
+      case AudioFormat.unknown:
+        return false;
+    }
+  }
+}
+
+/// Audio decoder - converts audio bytes to PCM samples.
+///
+/// Decoders are stateless and handle NO file I/O.
+/// They simply transform encoded audio bytes into decoded samples.
+abstract class AudioDecoder {
+  /// Decode audio bytes into PCM samples.
+  ///
+  /// [data] - The encoded audio bytes (e.g., MP3 frame data, WAV file contents)
+  /// Returns [AudioData] containing PCM samples and metadata.
+  ///
+  /// Throws [DecodingException] if the data cannot be decoded.
+  AudioData decode(Uint8List data);
+
+  /// The audio format this decoder handles.
+  AudioFormat get format;
+
+  /// Release any native resources held by this decoder.
+  void dispose();
 }

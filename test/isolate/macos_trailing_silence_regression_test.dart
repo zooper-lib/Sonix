@@ -41,13 +41,12 @@ void main() {
       largeWavPath = path;
     });
 
-    setUp(() async {
-      sonix = TestSonixInstance(const TestSonixConfig(isolatePoolSize: 2, maxConcurrentOperations: 2));
-      await sonix.initialize();
+    setUp(() {
+      sonix = TestSonixInstance(const TestSonixConfig());
     });
 
-    tearDown(() async {
-      await sonix.dispose();
+    tearDown(() {
+      sonix.dispose();
     });
 
     test('no long run of trailing zeros at end of waveform', () async {

@@ -1,7 +1,7 @@
-/// Integration tests for isolate infrastructure and communication
+/// Tests for isolate-based waveform generation
 ///
-/// These tests verify the core isolate management, resource tracking, and
-/// error handling functionality without focusing on audio processing details.
+/// These tests verify the isolate runner and basic Sonix functionality
+/// without focusing on audio processing details.
 library;
 
 import 'dart:io';
@@ -22,29 +22,22 @@ void main() {
   group('Isolate Infrastructure Tests', () {
     late Sonix sonix;
 
-    setUp(() async {
+    setUp(() {
       // Create a new test Sonix instance for each test
-      sonix = TestSonixInstance(const TestSonixConfig(isolatePoolSize: 1, maxConcurrentOperations: 2, enableProgressReporting: true));
-      await sonix.initialize();
+      sonix = TestSonixInstance();
     });
 
-    tearDown(() async {
-      await sonix.dispose();
+    tearDown(() {
+      sonix.dispose();
     });
 
-    test('should initialize Sonix correctly', () async {
+    test('should create Sonix correctly', () {
       // Act & Assert
       expect(sonix.isDisposed, isFalse);
-
-      final stats = sonix.getResourceStatistics();
-      expect(stats.activeIsolates, greaterThanOrEqualTo(0));
-      expect(stats.queuedTasks, equals(0));
-      expect(stats.completedTasks, equals(0));
+      expect(sonix.config, isNotNull);
     });
 
-    // Format detection tests moved to test/core/format_detection_test.dart
-
-    test('should return correct supported formats list', () async {
+    test('should return correct supported formats list', () {
       // Act - Use static methods since these are utility functions
       final formats = Sonix.getSupportedFormats();
       final extensions = Sonix.getSupportedExtensions();
@@ -63,12 +56,12 @@ void main() {
       expect(extensions, contains('mp4'));
     });
 
-    test('should handle isolate task errors gracefully', () async {
+    test('should handle non-existent file errors', () async {
       // Act & Assert
       expect(() => sonix.generateWaveform('non_existent_file.mp3'), throwsA(isA<Exception>()));
     });
 
-    test('should handle isolate task with unsupported format', () async {
+    test('should handle unsupported format', () async {
       // Arrange
       final unsupportedFile = 'test_unsupported.xyz';
       await File(unsupportedFile).writeAsString('This is not an audio file');
@@ -84,76 +77,43 @@ void main() {
       }
     });
 
-    test('should prevent isolate operations after disposal', () async {
+    test('should prevent operations after disposal', () {
       // Arrange
       final tempSonix = TestSonixInstance();
-      await tempSonix.initialize();
 
       // Act - Dispose
-      await tempSonix.dispose();
+      tempSonix.dispose();
 
       // Assert - Should not be able to use after disposal
       expect(tempSonix.isDisposed, isTrue);
       expect(() => tempSonix.generateWaveform('test.wav'), throwsA(isA<StateError>()));
     });
 
-    test('should maintain isolate statistics correctly during operations', () async {
+    test('should create Sonix with correct configuration', () {
       // Arrange
-      final initialStats = sonix.getResourceStatistics();
-
-      // Act - Try to perform an operation (will fail but should update stats)
-      try {
-        await sonix.generateWaveform('non_existent.wav');
-      } catch (e) {
-        // Expected to fail
-      }
-
-      final finalStats = sonix.getResourceStatistics();
-
-      // Assert - Stats should be maintained
-      expect(finalStats.activeIsolates, greaterThanOrEqualTo(initialStats.activeIsolates));
-    });
-
-    test('should create isolate manager with correct configuration', () async {
-      // Arrange
-      final customConfig = SonixConfig(isolatePoolSize: 3, maxConcurrentOperations: 5, maxMemoryUsage: 200 * 1024 * 1024);
+      final customConfig = SonixConfig(maxMemoryUsage: 200 * 1024 * 1024);
 
       final customSonix = Sonix(customConfig);
 
       try {
-        await customSonix.initialize();
-
         // Assert
-        expect(customSonix.config.isolatePoolSize, equals(3));
-        expect(customSonix.config.maxConcurrentOperations, equals(5));
         expect(customSonix.config.maxMemoryUsage, equals(200 * 1024 * 1024));
       } finally {
-        await customSonix.dispose();
+        customSonix.dispose();
       }
     });
 
-    test('should handle multiple dispose calls gracefully', () async {
+    test('should handle multiple dispose calls gracefully', () {
       // Arrange
       final tempSonix = Sonix();
-      await tempSonix.initialize();
 
       // Act - Dispose multiple times
-      await tempSonix.dispose();
-      await tempSonix.dispose(); // Should not throw
-      await tempSonix.dispose(); // Should not throw
+      tempSonix.dispose();
+      tempSonix.dispose(); // Should not throw
+      tempSonix.dispose(); // Should not throw
 
       // Assert
       expect(tempSonix.isDisposed, isTrue);
-    });
-
-    test('should optimize resources without errors', () async {
-      // Act - Should not throw
-      sonix.optimizeResources();
-
-      // Assert - Instance should still be functional
-      expect(sonix.isDisposed, isFalse);
-      final stats = sonix.getResourceStatistics();
-      expect(stats, isNotNull);
     });
   });
 }

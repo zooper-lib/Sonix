@@ -4,9 +4,9 @@ import 'dart:ffi' as ffi;
 import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sonix/src/decoders/audio_decoder_factory.dart';
-import 'package:sonix/src/native/sonix_bindings.dart';
+import 'package:sonix/src/decoders/audio_format_service.dart';
 import 'package:sonix/src/native/native_audio_bindings.dart';
+import 'package:sonix/src/native/sonix_bindings.dart';
 import 'package:sonix/sonix.dart';
 
 import '../test_helpers/test_data_loader.dart';
@@ -31,104 +31,104 @@ void main() {
     });
 
     group('Extension-Based Format Detection', () {
-      group('AudioDecoderFactory.detectFormat', () {
+      group('AudioFormatService.detectFromFilePath', () {
         test('should detect MP3 format by extension', () {
-          expect(AudioDecoderFactory.detectFormat('test.mp3'), equals(AudioFormat.mp3));
-          expect(AudioDecoderFactory.detectFormat('test.MP3'), equals(AudioFormat.mp3));
-          expect(AudioDecoderFactory.detectFormat('AUDIO.Mp3'), equals(AudioFormat.mp3));
-          expect(AudioDecoderFactory.detectFormat('/path/to/audio.mp3'), equals(AudioFormat.mp3));
-          expect(AudioDecoderFactory.detectFormat('C:\\Users\\Music\\song.mp3'), equals(AudioFormat.mp3));
+          expect(AudioFormatService.detectFromFilePath('test.mp3'), equals(AudioFormat.mp3));
+          expect(AudioFormatService.detectFromFilePath('test.MP3'), equals(AudioFormat.mp3));
+          expect(AudioFormatService.detectFromFilePath('AUDIO.Mp3'), equals(AudioFormat.mp3));
+          expect(AudioFormatService.detectFromFilePath('/path/to/audio.mp3'), equals(AudioFormat.mp3));
+          expect(AudioFormatService.detectFromFilePath('C:\\Users\\Music\\song.mp3'), equals(AudioFormat.mp3));
         });
 
         test('should detect WAV format by extension', () {
-          expect(AudioDecoderFactory.detectFormat('test.wav'), equals(AudioFormat.wav));
-          expect(AudioDecoderFactory.detectFormat('test.WAV'), equals(AudioFormat.wav));
-          expect(AudioDecoderFactory.detectFormat('/path/to/audio.wav'), equals(AudioFormat.wav));
+          expect(AudioFormatService.detectFromFilePath('test.wav'), equals(AudioFormat.wav));
+          expect(AudioFormatService.detectFromFilePath('test.WAV'), equals(AudioFormat.wav));
+          expect(AudioFormatService.detectFromFilePath('/path/to/audio.wav'), equals(AudioFormat.wav));
         });
 
         test('should detect FLAC format by extension', () {
-          expect(AudioDecoderFactory.detectFormat('test.flac'), equals(AudioFormat.flac));
-          expect(AudioDecoderFactory.detectFormat('test.FLAC'), equals(AudioFormat.flac));
+          expect(AudioFormatService.detectFromFilePath('test.flac'), equals(AudioFormat.flac));
+          expect(AudioFormatService.detectFromFilePath('test.FLAC'), equals(AudioFormat.flac));
         });
 
         test('should detect OGG format by extension', () {
-          expect(AudioDecoderFactory.detectFormat('test.ogg'), equals(AudioFormat.ogg));
-          expect(AudioDecoderFactory.detectFormat('test.OGG'), equals(AudioFormat.ogg));
+          expect(AudioFormatService.detectFromFilePath('test.ogg'), equals(AudioFormat.ogg));
+          expect(AudioFormatService.detectFromFilePath('test.OGG'), equals(AudioFormat.ogg));
         });
 
         test('should detect Opus format by extension', () {
-          expect(AudioDecoderFactory.detectFormat('test.opus'), equals(AudioFormat.opus));
-          expect(AudioDecoderFactory.detectFormat('test.OPUS'), equals(AudioFormat.opus));
+          expect(AudioFormatService.detectFromFilePath('test.opus'), equals(AudioFormat.opus));
+          expect(AudioFormatService.detectFromFilePath('test.OPUS'), equals(AudioFormat.opus));
         });
 
         test('should detect MP4/M4A format by extension', () {
-          expect(AudioDecoderFactory.detectFormat('test.mp4'), equals(AudioFormat.mp4));
-          expect(AudioDecoderFactory.detectFormat('test.MP4'), equals(AudioFormat.mp4));
-          expect(AudioDecoderFactory.detectFormat('test.m4a'), equals(AudioFormat.mp4));
-          expect(AudioDecoderFactory.detectFormat('test.M4A'), equals(AudioFormat.mp4));
-          expect(AudioDecoderFactory.detectFormat('/path/to/audio.mp4'), equals(AudioFormat.mp4));
-          expect(AudioDecoderFactory.detectFormat('/path/to/audio.m4a'), equals(AudioFormat.mp4));
+          expect(AudioFormatService.detectFromFilePath('test.mp4'), equals(AudioFormat.mp4));
+          expect(AudioFormatService.detectFromFilePath('test.MP4'), equals(AudioFormat.mp4));
+          expect(AudioFormatService.detectFromFilePath('test.m4a'), equals(AudioFormat.mp4));
+          expect(AudioFormatService.detectFromFilePath('test.M4A'), equals(AudioFormat.mp4));
+          expect(AudioFormatService.detectFromFilePath('/path/to/audio.mp4'), equals(AudioFormat.mp4));
+          expect(AudioFormatService.detectFromFilePath('/path/to/audio.m4a'), equals(AudioFormat.mp4));
         });
 
         test('should handle complex file paths correctly', () {
           final pathCases = ['/home/user/music/song.mp4', 'C:\\Users\\Music\\song.mp4', './relative/path/song.m4a', '../parent/song.MP4', 'song.with.dots.mp4'];
           for (final pathCase in pathCases) {
-            expect(AudioDecoderFactory.detectFormat(pathCase), equals(AudioFormat.mp4), reason: 'Failed for path: $pathCase');
+            expect(AudioFormatService.detectFromFilePath(pathCase), equals(AudioFormat.mp4), reason: 'Failed for path: $pathCase');
           }
         });
 
         test('should return unknown for unsupported formats', () {
-          expect(AudioDecoderFactory.detectFormat('test.xyz'), equals(AudioFormat.unknown));
-          expect(AudioDecoderFactory.detectFormat('test.txt'), equals(AudioFormat.unknown));
-          expect(AudioDecoderFactory.detectFormat('test.pdf'), equals(AudioFormat.unknown));
-          expect(AudioDecoderFactory.detectFormat('test'), equals(AudioFormat.unknown));
+          expect(AudioFormatService.detectFromFilePath('test.xyz'), equals(AudioFormat.unknown));
+          expect(AudioFormatService.detectFromFilePath('test.txt'), equals(AudioFormat.unknown));
+          expect(AudioFormatService.detectFromFilePath('test.pdf'), equals(AudioFormat.unknown));
+          expect(AudioFormatService.detectFromFilePath('test'), equals(AudioFormat.unknown));
         });
       });
     });
 
     group('Format Support Queries', () {
-      group('AudioDecoderFactory.isFormatSupported', () {
+      group('AudioFormatService.isFileSupported', () {
         test('should detect supported MP3 formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.mp3'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.MP3'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.mp3'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.mp3'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.MP3'), isTrue);
+          expect(AudioFormatService.isFileSupported('/path/to/audio.mp3'), isTrue);
         });
 
         test('should detect supported WAV formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.wav'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.WAV'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.wav'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.wav'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.WAV'), isTrue);
+          expect(AudioFormatService.isFileSupported('/path/to/audio.wav'), isTrue);
         });
 
         test('should detect supported FLAC formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.flac'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.FLAC'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.flac'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.FLAC'), isTrue);
         });
 
         test('should detect supported OGG formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.ogg'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.OGG'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.ogg'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.OGG'), isTrue);
         });
 
         test('should detect supported Opus formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.opus'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.OPUS'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.opus'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.OPUS'), isTrue);
         });
 
         test('should detect supported MP4/M4A formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.mp4'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.MP4'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.m4a'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('test.M4A'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.mp4'), isTrue);
-          expect(AudioDecoderFactory.isFormatSupported('/path/to/audio.m4a'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.mp4'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.MP4'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.m4a'), isTrue);
+          expect(AudioFormatService.isFileSupported('test.M4A'), isTrue);
+          expect(AudioFormatService.isFileSupported('/path/to/audio.mp4'), isTrue);
+          expect(AudioFormatService.isFileSupported('/path/to/audio.m4a'), isTrue);
         });
 
         test('should reject unsupported formats', () {
-          expect(AudioDecoderFactory.isFormatSupported('test.xyz'), isFalse);
-          expect(AudioDecoderFactory.isFormatSupported('test.txt'), isFalse);
-          expect(AudioDecoderFactory.isFormatSupported('test.pdf'), isFalse);
-          expect(AudioDecoderFactory.isFormatSupported('test'), isFalse);
+          expect(AudioFormatService.isFileSupported('test.xyz'), isFalse);
+          expect(AudioFormatService.isFileSupported('test.txt'), isFalse);
+          expect(AudioFormatService.isFileSupported('test.pdf'), isFalse);
+          expect(AudioFormatService.isFileSupported('test'), isFalse);
         });
       });
 
@@ -174,9 +174,9 @@ void main() {
         });
       });
 
-      group('AudioDecoderFactory Comprehensive Queries', () {
+      group('AudioFormatService Comprehensive Queries', () {
         test('should include all formats in supported formats list', () {
-          final supportedFormats = AudioDecoderFactory.getSupportedFormats();
+          final supportedFormats = AudioFormatService.supportedFormats;
           expect(supportedFormats, contains(AudioFormat.mp3));
           expect(supportedFormats, contains(AudioFormat.wav));
           expect(supportedFormats, contains(AudioFormat.flac));
@@ -186,7 +186,7 @@ void main() {
         });
 
         test('should include all extensions in supported extensions list', () {
-          final supportedExtensions = AudioDecoderFactory.getSupportedExtensions();
+          final supportedExtensions = AudioFormatService.getSupportedExtensions();
           expect(supportedExtensions, contains('mp3'));
           expect(supportedExtensions, contains('wav'));
           expect(supportedExtensions, contains('flac'));
@@ -197,7 +197,7 @@ void main() {
         });
 
         test('should include all format names in supported format names list', () {
-          final supportedFormats = AudioDecoderFactory.getSupportedFormatNames();
+          final supportedFormats = AudioFormatService.getSupportedFormatNames();
           expect(supportedFormats, isA<List<String>>());
           expect(supportedFormats, isNotEmpty);
           expect(supportedFormats, contains('MP3'));

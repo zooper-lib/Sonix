@@ -437,7 +437,7 @@ class _StyleCustomizationExampleState extends State<StyleCustomizationExample> {
       });
 
       // Clean up the instance
-      await sonix.dispose();
+      sonix.dispose();
     } catch (e) {
       setState(() {
         _isLoading = false;

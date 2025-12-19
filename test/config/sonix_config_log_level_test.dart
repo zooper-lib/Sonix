@@ -73,8 +73,7 @@ void main() {
 
       // The toString should contain the essential config info
       expect(configString, contains('SonixConfig'));
-      expect(configString, contains('maxConcurrentOperations'));
-      expect(configString, contains('isolatePoolSize'));
+      expect(configString, contains('logLevel'));
     });
 
     group('Log Level Validation', () {
@@ -97,26 +96,18 @@ void main() {
     group('Integration with Existing Config Options', () {
       test('log level should work with other config options', () {
         const config = SonixConfig(
-          maxConcurrentOperations: 8,
-          isolatePoolSize: 4,
           maxMemoryUsage: 256 * 1024 * 1024,
           logLevel: 1, // FATAL level
-          enableProgressReporting: false,
         );
 
-        expect(config.maxConcurrentOperations, equals(8));
-        expect(config.isolatePoolSize, equals(4));
         expect(config.maxMemoryUsage, equals(256 * 1024 * 1024));
         expect(config.logLevel, equals(1));
-        expect(config.enableProgressReporting, equals(false));
       });
 
       test('mobile config should balance performance and logging', () {
         final config = SonixConfig.mobile();
 
         // Should be optimized for mobile (low resource usage)
-        expect(config.maxConcurrentOperations, equals(2));
-        expect(config.isolatePoolSize, equals(1));
         expect(config.maxMemoryUsage, equals(50 * 1024 * 1024));
 
         // Should suppress MP3 warnings for cleaner mobile logs
@@ -127,8 +118,6 @@ void main() {
         final config = SonixConfig.desktop();
 
         // Should utilize desktop resources
-        expect(config.maxConcurrentOperations, equals(4));
-        expect(config.isolatePoolSize, equals(3));
         expect(config.maxMemoryUsage, equals(200 * 1024 * 1024));
 
         // Should suppress MP3 warnings for clean desktop logs

@@ -509,7 +509,7 @@ class _ChunkedLargeFileExampleState extends State<ChunkedLargeFileExample> {
       });
 
       // Clean up the instance
-      await sonix.dispose();
+      sonix.dispose();
     } catch (e) {
       stopwatch.stop();
       setState(() {
@@ -548,7 +548,7 @@ class _ChunkedLargeFileExampleState extends State<ChunkedLargeFileExample> {
       });
 
       // Clean up the instance
-      await sonix.dispose();
+      sonix.dispose();
     } catch (e) {
       stopwatch.stop();
       setState(() {
