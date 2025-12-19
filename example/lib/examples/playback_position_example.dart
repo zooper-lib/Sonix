@@ -236,8 +236,15 @@ class _PlaybackPositionExampleState extends State<PlaybackPositionExample> {
       // Create a Sonix instance for processing
       final sonix = Sonix();
 
-      // Generate waveform optimized for music visualization
-      final config = Sonix.getOptimalConfig(useCase: WaveformUseCase.musicVisualization, customResolution: 300);
+      // Generate waveform optimized for music visualization (public API only)
+      const config = WaveformConfig(
+        resolution: 300,
+        algorithm: DownsamplingAlgorithm.rms,
+        normalize: true,
+        scalingCurve: ScalingCurve.logarithmic,
+        enableSmoothing: true,
+        smoothingWindowSize: 5,
+      );
 
       final waveformData = await sonix.generateWaveform(_selectedFilePath, config: config);
 
@@ -247,7 +254,7 @@ class _PlaybackPositionExampleState extends State<PlaybackPositionExample> {
       });
 
       // Clean up the instance
-      await sonix.dispose();
+      sonix.dispose();
     } catch (e) {
       setState(() {
         _isLoading = false;

@@ -4,51 +4,50 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:sonix/src/decoders/audio_decoder_factory.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
-import 'package:sonix/src/decoders/opus_decoder.dart';
-import 'package:sonix/src/decoders/mp4_decoder.dart';
+import 'package:sonix/src/decoders/audio_format_service.dart';
+import 'package:sonix/src/decoders/ffmpeg_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
 
 void main() {
   group('AudioDecoderFactory Tests', () {
     group('Decoder Creation', () {
-      test('should create OpusDecoder for Opus files', () {
-        final decoder = AudioDecoderFactory.createDecoder('test.opus');
-        expect(decoder, isA<OpusDecoder>());
+      test('should create FFmpegDecoder for Opus files', () {
+        final decoder = AudioDecoderFactory.createDecoderFromPath('test.opus');
+        expect(decoder, isA<FFmpegDecoder>());
+        expect(decoder.format, equals(AudioFormat.opus));
         decoder.dispose();
       });
 
-      test('should create MP4Decoder for MP4 files', () {
-        final decoder1 = AudioDecoderFactory.createDecoder('test.mp4');
-        final decoder2 = AudioDecoderFactory.createDecoder('test.m4a');
+      test('should create FFmpegDecoder for MP4 files', () {
+        final decoder1 = AudioDecoderFactory.createDecoderFromPath('test.mp4');
+        final decoder2 = AudioDecoderFactory.createDecoderFromPath('test.m4a');
 
-        expect(decoder1, isA<MP4Decoder>());
-        expect(decoder2, isA<MP4Decoder>());
+        expect(decoder1, isA<FFmpegDecoder>());
+        expect(decoder2, isA<FFmpegDecoder>());
+        expect(decoder1.format, equals(AudioFormat.mp4));
+        expect(decoder2.format, equals(AudioFormat.mp4));
 
         decoder1.dispose();
         decoder2.dispose();
       });
 
       test('should throw UnsupportedFormatException for unsupported formats', () {
-        expect(() => AudioDecoderFactory.createDecoder('test.xyz'), throwsA(isA<UnsupportedFormatException>()));
-        expect(() => AudioDecoderFactory.createDecoder('test.txt'), throwsA(isA<UnsupportedFormatException>()));
+        expect(() => AudioDecoderFactory.createDecoderFromPath('test.xyz'), throwsA(isA<UnsupportedFormatException>()));
+        expect(() => AudioDecoderFactory.createDecoderFromPath('test.txt'), throwsA(isA<UnsupportedFormatException>()));
       });
     });
 
     group('Factory Interface Verification', () {
       test('should expose all required factory methods', () {
-        // Verify interface methods exist
-        expect(AudioDecoderFactory.createDecoder, isA<Function>());
-        expect(AudioDecoderFactory.isFormatSupported, isA<Function>());
-        expect(AudioDecoderFactory.detectFormat, isA<Function>());
-        expect(AudioDecoderFactory.getSupportedFormats, isA<Function>());
-        expect(AudioDecoderFactory.getSupportedExtensions, isA<Function>());
-        expect(AudioDecoderFactory.getSupportedFormatNames, isA<Function>());
+        // Verify interface methods exist - only decoder creation methods remain on factory
+        expect(AudioDecoderFactory.createDecoderFromFormat, isA<Function>());
+        expect(AudioDecoderFactory.createDecoderFromPath, isA<Function>());
       });
 
       test('should have consistent format information', () {
-        final formats = AudioDecoderFactory.getSupportedFormats();
-        final extensions = AudioDecoderFactory.getSupportedExtensions();
-        final names = AudioDecoderFactory.getSupportedFormatNames();
+        final formats = AudioFormatService.supportedFormats;
+        final extensions = AudioFormatService.getSupportedExtensions();
+        final names = AudioFormatService.getSupportedFormatNames();
 
         // MP4 format should be present
         expect(formats, contains(AudioFormat.mp4));
@@ -61,7 +60,7 @@ void main() {
         expect(names, contains('MP4/AAC'));
 
         // Verify AudioFormat.mp4 properties
-        expect(AudioFormat.mp4.extensions, equals(['mp4', 'm4a']));
+        expect(AudioFormat.mp4.extensions, equals(['mp4', 'm4a', 'aac']));
         expect(AudioFormat.mp4.name, equals('MP4/AAC'));
         expect(AudioFormat.mp4.supportsChunkedProcessing, isTrue);
         expect(AudioFormat.mp4.typicalCompressionRatio, equals(10.0));
@@ -70,81 +69,67 @@ void main() {
 
     group('Edge Cases and Error Handling', () {
       test('should handle non-existent files gracefully', () {
-        expect(AudioDecoderFactory.detectFormat('non_existent_file.mp4'), equals(AudioFormat.mp4));
-        expect(AudioDecoderFactory.isFormatSupported('non_existent_file.mp4'), isTrue);
+        expect(AudioFormatService.detectFromFilePath('non_existent_file.mp4'), equals(AudioFormat.mp4));
+        expect(AudioFormatService.isFileSupported('non_existent_file.mp4'), isTrue);
 
         // Should still create decoder (file existence is checked during decode)
-        final decoder = AudioDecoderFactory.createDecoder('non_existent_file.mp4');
-        expect(decoder, isA<MP4Decoder>());
+        final decoder = AudioDecoderFactory.createDecoderFromPath('non_existent_file.mp4');
+        expect(decoder, isA<FFmpegDecoder>());
         decoder.dispose();
       });
 
       test('should handle empty file paths', () {
-        expect(AudioDecoderFactory.detectFormat(''), equals(AudioFormat.unknown));
-        expect(AudioDecoderFactory.isFormatSupported(''), isFalse);
-        expect(() => AudioDecoderFactory.createDecoder(''), throwsA(isA<UnsupportedFormatException>()));
+        expect(AudioFormatService.detectFromFilePath(''), equals(AudioFormat.unknown));
+        expect(AudioFormatService.isFileSupported(''), isFalse);
+        expect(() => AudioDecoderFactory.createDecoderFromPath(''), throwsA(isA<UnsupportedFormatException>()));
       });
 
       test('should handle files with no extension', () {
-        expect(AudioDecoderFactory.detectFormat('filename_without_extension'), equals(AudioFormat.unknown));
-        expect(AudioDecoderFactory.isFormatSupported('filename_without_extension'), isFalse);
-        expect(() => AudioDecoderFactory.createDecoder('filename_without_extension'), throwsA(isA<UnsupportedFormatException>()));
+        expect(AudioFormatService.detectFromFilePath('filename_without_extension'), equals(AudioFormat.unknown));
+        expect(AudioFormatService.isFileSupported('filename_without_extension'), isFalse);
+        expect(() => AudioDecoderFactory.createDecoderFromPath('filename_without_extension'), throwsA(isA<UnsupportedFormatException>()));
       });
 
       test('should handle files with multiple dots in name', () {
-        expect(AudioDecoderFactory.detectFormat('my.audio.file.mp4'), equals(AudioFormat.mp4));
-        expect(AudioDecoderFactory.detectFormat('my.audio.file.m4a'), equals(AudioFormat.mp4));
-        expect(AudioDecoderFactory.isFormatSupported('my.audio.file.mp4'), isTrue);
-        expect(AudioDecoderFactory.isFormatSupported('my.audio.file.m4a'), isTrue);
+        expect(AudioFormatService.detectFromFilePath('my.audio.file.mp4'), equals(AudioFormat.mp4));
+        expect(AudioFormatService.detectFromFilePath('my.audio.file.m4a'), equals(AudioFormat.mp4));
+        expect(AudioFormatService.isFileSupported('my.audio.file.mp4'), isTrue);
+        expect(AudioFormatService.isFileSupported('my.audio.file.m4a'), isTrue);
       });
 
       test('should handle case sensitivity correctly', () {
         final testCases = ['test.mp4', 'test.MP4', 'test.Mp4', 'test.mP4', 'test.m4a', 'test.M4A', 'test.M4a', 'test.m4A'];
 
         for (final testCase in testCases) {
-          expect(AudioDecoderFactory.detectFormat(testCase), equals(AudioFormat.mp4), reason: 'Failed for case: $testCase');
-          expect(AudioDecoderFactory.isFormatSupported(testCase), isTrue, reason: 'Failed for case: $testCase');
+          expect(AudioFormatService.detectFromFilePath(testCase), equals(AudioFormat.mp4), reason: 'Failed for case: $testCase');
+          expect(AudioFormatService.isFileSupported(testCase), isTrue, reason: 'Failed for case: $testCase');
 
-          final decoder = AudioDecoderFactory.createDecoder(testCase);
-          expect(decoder, isA<MP4Decoder>(), reason: 'Failed for case: $testCase');
+          final decoder = AudioDecoderFactory.createDecoderFromPath(testCase);
+          expect(decoder, isA<FFmpegDecoder>(), reason: 'Failed for case: $testCase');
           decoder.dispose();
         }
       });
     });
 
     group('Magic Byte Detection Comprehensive Tests', () {
-      test('should detect various MP4 container types', () async {
+      test('should detect various MP4 file extensions', () async {
+        // Test extension-based detection for MP4 formats
+        // Note: Magic byte detection is handled at the native FFmpeg level,
+        // the factory uses extension-based detection for initial format hints
         final testCases = [
-          {
-            'name': 'isom brand',
-            'bytes': [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6F, 0x6D],
-          },
-          {
-            'name': 'mp41 brand',
-            'bytes': [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x6D, 0x70, 0x34, 0x31],
-          },
-          {
-            'name': 'mp42 brand',
-            'bytes': [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x6D, 0x70, 0x34, 0x32],
-          },
-          {
-            'name': 'M4A brand',
-            'bytes': [0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x4D, 0x34, 0x41, 0x20],
-          },
+          {'extension': 'mp4', 'name': 'MP4 video container'},
+          {'extension': 'm4a', 'name': 'M4A audio container'},
         ];
 
-        final tempDir = Directory.systemTemp.createTempSync('mp4_magic_test_');
+        for (final testCase in testCases) {
+          final extension = testCase['extension']!;
+          final testPath = 'test_file.$extension';
 
-        try {
-          for (final testCase in testCases) {
-            final bytes = Uint8List.fromList(testCase['bytes'] as List<int>);
-            final tempFile = File('${tempDir.path}/${testCase['name']}.unknown');
-            await tempFile.writeAsBytes(bytes);
-
-            expect(AudioDecoderFactory.detectFormat(tempFile.path), equals(AudioFormat.mp4), reason: 'Failed to detect MP4 for ${testCase['name']}');
-          }
-        } finally {
-          await tempDir.delete(recursive: true);
+          expect(
+            AudioFormatService.detectFromFilePath(testPath),
+            equals(AudioFormat.mp4),
+            reason: 'Failed to detect MP4 for ${testCase['name']} ($extension extension)',
+          );
         }
       });
 
@@ -180,7 +165,11 @@ void main() {
             final tempFile = File('${tempDir.path}/${testCase['name']}.unknown');
             await tempFile.writeAsBytes(bytes);
 
-            expect(AudioDecoderFactory.detectFormat(tempFile.path), isNot(equals(AudioFormat.mp4)), reason: 'Incorrectly detected ${testCase['name']} as MP4');
+            expect(
+              AudioFormatService.detectFromFilePath(tempFile.path),
+              isNot(equals(AudioFormat.mp4)),
+              reason: 'Incorrectly detected ${testCase['name']} as MP4',
+            );
           }
         } finally {
           await tempDir.delete(recursive: true);

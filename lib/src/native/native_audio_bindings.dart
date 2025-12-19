@@ -77,6 +77,34 @@ class NativeAudioBindings {
     return _ffmpegInitialized && SonixNativeBindings.isFFMPEGAvailable;
   }
 
+  /// Check if FFMPEG is available without throwing exceptions
+  ///
+  /// This is a safe method to check FFMPEG availability from external packages.
+  /// Unlike [isFFMPEGAvailable], this method will not throw exceptions if
+  /// initialization fails - it will simply return false.
+  ///
+  /// Returns `true` if FFMPEG is properly initialized and available,
+  /// `false` otherwise.
+  ///
+  /// Example:
+  /// ```dart
+  /// if (NativeAudioBindings.checkFFMPEGAvailable()) {
+  ///   // FFMPEG is available, proceed with audio processing
+  /// } else {
+  ///   // FFMPEG not available, show user instructions
+  /// }
+  /// ```
+  static bool checkFFMPEGAvailable() {
+    try {
+      if (!_initialized) {
+        initialize();
+      }
+      return _ffmpegInitialized && SonixNativeBindings.isFFMPEGAvailable;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// Get current backend type - always FFMPEG now
   static String get backendType {
     _ensureInitialized();
@@ -360,11 +388,10 @@ class NativeAudioBindings {
       throw DecodingException('Invalid native audio data');
     }
 
-    // Convert native float array to Dart list
-    final samples = <double>[];
-    for (int i = 0; i < nativeData.sample_count; i++) {
-      samples.add(nativeData.samples[i]);
-    }
+    // Convert native float array to a typed list efficiently.
+    // We must copy because the native memory is freed after conversion.
+    final nativeView = nativeData.samples.asTypedList(nativeData.sample_count);
+    final samples = Float32List.fromList(nativeView);
 
     return AudioData(
       samples: samples,

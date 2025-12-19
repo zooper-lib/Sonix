@@ -35,14 +35,13 @@ void main() {
       }
     });
 
-    setUp(() async {
+    setUp(() {
       // Create a new test Sonix instance for each test
-      sonix = TestSonixInstance(const TestSonixConfig(isolatePoolSize: 2, maxConcurrentOperations: 3, enableProgressReporting: true));
-      await sonix.initialize();
+      sonix = TestSonixInstance(const TestSonixConfig());
     });
 
-    tearDown(() async {
-      await sonix.dispose();
+    tearDown(() {
+      sonix.dispose();
     });
 
     test('should generate waveform in background isolate', () async {
@@ -56,8 +55,8 @@ void main() {
       expect(waveformData.metadata.resolution, equals(100));
       expect(waveformData.metadata.type, equals(WaveformType.bars));
       expect(waveformData.metadata.normalized, isTrue);
-      expect(waveformData.sampleRate, equals(44100)); // Mock data default
-      expect(waveformData.duration.inSeconds, equals(3)); // Mock data default
+      expect(waveformData.sampleRate, equals(44100));
+      expect(waveformData.duration, greaterThan(Duration.zero));
     });
 
     test('should generate waveform with custom configuration', () async {
@@ -104,30 +103,15 @@ void main() {
       expect(() => sonix.generateWaveform('empty_file.wav'), throwsA(isA<Exception>()));
     });
 
-    test('should maintain isolate statistics correctly', () async {
-      // Act - Perform some operations
-      await sonix.generateWaveform(testAudioPath, resolution: 50);
-      await sonix.generateWaveform(testAudioPath, resolution: 100);
-
-      final stats = sonix.getResourceStatistics();
-
-      // Assert
-      expect(stats.activeIsolates, greaterThanOrEqualTo(1));
-      expect(stats.completedTasks, greaterThanOrEqualTo(2));
-      expect(stats.failedTasks, equals(0));
-      expect(stats.averageProcessingTime.inMilliseconds, greaterThan(0));
-    });
-
     test('should clean up resources properly after disposal', () async {
       // Arrange
       final tempSonix = TestSonixInstance();
-      await tempSonix.initialize();
 
       // Act - Use the instance
       await tempSonix.generateWaveform(testAudioPath, resolution: 50);
 
       // Dispose
-      await tempSonix.dispose();
+      tempSonix.dispose();
 
       // Assert - Should not be able to use after disposal
       expect(tempSonix.isDisposed, isTrue);

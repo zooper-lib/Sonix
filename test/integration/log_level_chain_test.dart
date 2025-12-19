@@ -54,7 +54,7 @@ void main() {
       print('✅ All direct setLogLevel calls succeeded');
     });
 
-    test('verify Sonix constructor calls _configureLogLevel', () async {
+    test('verify Sonix constructor calls _configureLogLevel', () {
       print('\n=== Testing Sonix Constructor Log Level Configuration ===');
 
       // Test that each SonixConfig actually triggers the log level setting
@@ -77,15 +77,11 @@ void main() {
 
           print('✅ TestSonixInstance created with logLevel: ${sonix.config.logLevel}');
 
-          // Initialize to ensure no errors
-          await sonix.initialize();
-          print('✅ Instance initialized successfully');
-
-          await sonix.dispose();
+          sonix.dispose();
           print('✅ Instance disposed successfully');
         } catch (e) {
           print('❌ Failed for $levelName level: $e');
-          fail('Sonix instance creation/initialization failed for $levelName: $e');
+          fail('Sonix instance creation failed for $levelName: $e');
         }
       }
 
@@ -110,7 +106,6 @@ void main() {
 
         try {
           final sonix = TestSonixInstance(const TestSonixConfig(logLevel: 2)); // ERROR level
-          await sonix.initialize();
 
           final waveform = await sonix.generateWaveform(
             mp3File,
@@ -121,7 +116,7 @@ void main() {
           expect(waveform.amplitudes, isNotEmpty);
           print('✅ Processed generated MP3 with ERROR level');
 
-          await sonix.dispose();
+          sonix.dispose();
         } catch (e) {
           print('❌ Failed to process generated MP3 $mp3File: $e');
         }
@@ -141,14 +136,13 @@ void main() {
 
         try {
           final sonix = TestSonixInstance(const TestSonixConfig(logLevel: 3)); // WARNING level
-          await sonix.initialize();
 
           final waveform = await sonix.generateWaveform(testFile, resolution: 25);
 
           expect(waveform, isNotNull);
           print('✅ Processed generated $format file with WARNING level');
 
-          await sonix.dispose();
+          sonix.dispose();
         } catch (e) {
           print('❌ Failed to process generated $format file: $e');
         }
@@ -174,7 +168,6 @@ void main() {
         // Test with ERROR level (should suppress warnings)
         try {
           final sonix = TestSonixInstance(const TestSonixConfig(logLevel: 2));
-          await sonix.initialize();
 
           final waveform = await sonix.generateWaveform(testFile, resolution: 30);
 
@@ -182,7 +175,7 @@ void main() {
           expect(waveform.amplitudes, isNotEmpty);
           print('✅ Processed verified file with ERROR level');
 
-          await sonix.dispose();
+          sonix.dispose();
         } catch (e) {
           print('❌ Failed to process verified file $testFile: $e');
         }
@@ -220,7 +213,6 @@ void main() {
         try {
           print('  Testing ERROR level (should suppress warnings)...');
           final sonixError = TestSonixInstance(const TestSonixConfig(logLevel: 2));
-          await sonixError.initialize();
 
           final waveformError = await sonixError.generateWaveform(realFile.path, resolution: 50);
 
@@ -233,12 +225,11 @@ void main() {
           print('     Sample Rate: ${waveformError.sampleRate}Hz');
           print('     Amplitudes: ${waveformError.amplitudes.length} points');
 
-          await sonixError.dispose();
+          sonixError.dispose();
 
           // Test WARNING level (should show more output)
           print('  Testing WARNING level (should show more output)...');
           final sonixWarning = TestSonixInstance(const TestSonixConfig(logLevel: 3));
-          await sonixWarning.initialize();
 
           final waveformWarning = await sonixWarning.generateWaveform(realFile.path, resolution: 50);
 
@@ -248,7 +239,7 @@ void main() {
           print('  ✅ WARNING level processing successful');
           print('     (Any MP3 warnings should be visible in console output)');
 
-          await sonixWarning.dispose();
+          sonixWarning.dispose();
         } catch (e) {
           print('  ❌ Failed to process real file $fileName: $e');
           // Don't fail the test for individual problematic files
@@ -285,26 +276,24 @@ void main() {
         // Test QUIET level (should produce minimal output)
         print('  Testing QUIET level...');
         final sonixQuiet = TestSonixInstance(const TestSonixConfig(logLevel: -1));
-        await sonixQuiet.initialize();
 
         final waveformQuiet = await sonixQuiet.generateWaveform(testFile.path, resolution: 30);
 
         expect(waveformQuiet, isNotNull);
         print('  ✅ QUIET level: Should see minimal console output');
 
-        await sonixQuiet.dispose();
+        sonixQuiet.dispose();
 
         // Test WARNING level (should show MP3 warnings if file is problematic)
         print('  Testing WARNING level...');
         final sonixWarning = TestSonixInstance(const TestSonixConfig(logLevel: 3));
-        await sonixWarning.initialize();
 
         final waveformWarning = await sonixWarning.generateWaveform(testFile.path, resolution: 30);
 
         expect(waveformWarning, isNotNull);
         print('  ✅ WARNING level: Should see more console output (including any MP3 warnings)');
 
-        await sonixWarning.dispose();
+        sonixWarning.dispose();
 
         print('  📊 Log Level Comparison Complete');
         print('     Compare the console output above to verify log suppression is working');

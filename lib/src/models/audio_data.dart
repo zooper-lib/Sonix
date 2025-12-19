@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 /// Raw decoded audio data from audio files
 class AudioData {
   /// Audio samples as floating point values (-1.0 to 1.0)
@@ -16,8 +18,15 @@ class AudioData {
 
   /// Dispose of resources (for memory management)
   void dispose() {
-    // Clear the samples list to help with garbage collection
-    samples.clear();
+    // Typed lists (e.g. Float32List) are fixed-length and cannot be cleared.
+    if (samples is TypedData) return;
+
+    // Some fixed-length List<double> implementations may also throw.
+    try {
+      samples.clear();
+    } on UnsupportedError {
+      // Ignore.
+    }
   }
 
   @override

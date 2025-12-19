@@ -16,7 +16,7 @@ void main() {
       expect(() => Sonix(SonixConfig(logLevel: 3)), returnsNormally);
     });
 
-    test('can generate waveform with reduced logging', () async {
+    test('can generate waveform with reduced logging', () {
       // Create Sonix with ERROR log level to suppress MP3 format warnings
       final sonix = Sonix(SonixConfig(logLevel: 2));
 
@@ -24,17 +24,17 @@ void main() {
       // The point is that it should work without verbose logging
       expect(Sonix.isFormatSupported('.mp3'), isTrue);
 
-      await sonix.dispose();
+      sonix.dispose();
     });
 
-    test('can create instances with all supported log levels', () async {
+    test('can create instances with all supported log levels', () {
       // Test all supported log levels
       const levels = [-1, 0, 1, 2, 3, 4, 5, 6];
 
       for (final level in levels) {
         final sonix = Sonix(SonixConfig(logLevel: level));
         expect(sonix.config.logLevel, equals(level));
-        await sonix.dispose();
+        sonix.dispose();
       }
     });
 

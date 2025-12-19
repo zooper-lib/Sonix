@@ -585,7 +585,7 @@ class _ChunkedProgressExampleState extends State<ChunkedProgressExample> with Ti
       });
 
       // Clean up the instance
-      await sonix.dispose();
+      sonix.dispose();
     } catch (e) {
       setState(() {
         _error = 'Processing failed: $e';
