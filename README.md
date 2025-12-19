@@ -194,22 +194,33 @@ final customSonix = Sonix(SonixConfig(
 ));
 ```
 
-### 3. Optimal Configuration for Use Cases
+### 3. WaveformConfig presets
 
 ```dart
-// Get optimal config for specific use cases
-final musicConfig = Sonix.getOptimalConfig(
-  useCase: WaveformUseCase.musicVisualization,
-  customResolution: 2000,
+// Create a config tuned for your UI
+const musicConfig = WaveformConfig(
+  resolution: 2000,
+  algorithm: DownsamplingAlgorithm.rms,
+  normalize: true,
+  scalingCurve: ScalingCurve.logarithmic,
+  enableSmoothing: true,
+  smoothingWindowSize: 5,
 );
 
-final podcastConfig = Sonix.getOptimalConfig(
-  useCase: WaveformUseCase.podcastPlayer,
+const podcastConfig = WaveformConfig(
+  resolution: 1500,
+  algorithm: DownsamplingAlgorithm.rms,
+  normalize: true,
+  scalingCurve: ScalingCurve.linear,
+  enableSmoothing: false,
 );
 
-final editorConfig = Sonix.getOptimalConfig(
-  useCase: WaveformUseCase.audioEditor,
-  customResolution: 5000, // High detail for editing
+const editorConfig = WaveformConfig(
+  resolution: 5000, // High detail for editing
+  algorithm: DownsamplingAlgorithm.peak,
+  normalize: true,
+  scalingCurve: ScalingCurve.linear,
+  enableSmoothing: false,
 );
 
 // Use with instance
@@ -218,6 +229,24 @@ final waveformData = await sonix.generateWaveform(
   'music.mp3',
   config: musicConfig,
 );
+```
+
+If you prefer a quick preset helper:
+
+```dart
+final musicConfig = Sonix.getOptimalConfig(
+  useCase: WaveformUseCase.musicVisualization,
+  customResolution: 2000,
+);
+```
+
+### Checking FFmpeg availability
+
+```dart
+final ffmpegOk = Sonix.isFFmpegAvailable();
+if (!ffmpegOk) {
+  // Show instructions to install/ship FFmpeg for the current platform.
+}
 ```
 
 ### 4. Pre-generated Waveform Data
@@ -420,7 +449,7 @@ for (final rec in recommendations) {
 1. **Use appropriate configuration**: Choose `SonixConfig.mobile()` or `SonixConfig.desktop()` based on your target platform
 2. **Dispose instances**: Always call `dispose()` on Sonix instances when done
 3. **Handle errors**: Wrap operations in try-catch blocks for proper error handling
-4. **Use optimal configs**: Use `Sonix.getOptimalConfig()` for different use cases
+4. **Use a config**: Pass a `WaveformConfig` tuned for your UI
 5. **Profile performance**: Use `PerformanceProfiler` to identify bottlenecks in production
 6. **Validate formats**: Check `Sonix.isFormatSupported()` before processing files
 7. **Use isolate for UI apps**: Prefer `generateWaveformInIsolate()` in Flutter apps to keep UI responsive

@@ -388,11 +388,10 @@ class NativeAudioBindings {
       throw DecodingException('Invalid native audio data');
     }
 
-    // Convert native float array to Dart list
-    final samples = <double>[];
-    for (int i = 0; i < nativeData.sample_count; i++) {
-      samples.add(nativeData.samples[i]);
-    }
+    // Convert native float array to a typed list efficiently.
+    // We must copy because the native memory is freed after conversion.
+    final nativeView = nativeData.samples.asTypedList(nativeData.sample_count);
+    final samples = Float32List.fromList(nativeView);
 
     return AudioData(
       samples: samples,

@@ -28,11 +28,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed `optimizeResources()` method
   - Removed cancellation token support (`cancelOperation()`, `cancelAllOperations()`)
 
+- **Public API Surface Reduced**: Kept `sonix.dart` focused on core usage
+  - Internal helpers (native bindings, profilers/validators, isolate runner internals) are no longer exported
+  - Tests and advanced users can import from `package:sonix/src/...` as needed
+
 ### Changed
 
 - Simplified isolate handling reduces memory overhead and complexity
 - Background processing still prevents UI thread blocking
 - Concurrent operations are still supported (multiple `IsolateRunner` instances)
+- Documentation and examples updated to match the minimal public API
+
+### Added
+
+- `Sonix.isFFmpegAvailable()` as a safe, non-throwing way to check FFmpeg availability
+- `Sonix.getOptimalConfig(...)` convenience using `WaveformUseCase` (exported from `sonix.dart`)
+
+### Fixed
+
+- Performance regression under high isolate concurrency:
+  - Typed sample conversion in native bindings (avoid per-sample boxing)
+  - Allocation-free downsampling/chunked waveform generation hot paths
+  - Safe `AudioData.dispose()` behavior for typed lists
+- Example compilation issue after API trimming (removed reliance on non-exported symbols)
 
 ### Removed
 

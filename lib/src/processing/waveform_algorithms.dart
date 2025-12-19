@@ -80,39 +80,101 @@ class WaveformAlgorithms {
     final samplesPerBin = samplesPerChannel / targetResolution;
 
     for (int i = 0; i < targetResolution; i++) {
-      final startIdx = (i * samplesPerBin).floor() * channels;
-      final endIdx = math.min(((i + 1) * samplesPerBin).floor() * channels, samples.length);
+      final startFrame = (i * samplesPerBin).floor();
+      final endFrame = math.min(((i + 1) * samplesPerBin).floor(), samplesPerChannel);
 
-      if (startIdx >= samples.length) break;
+      if (startFrame >= samplesPerChannel) break;
 
-      // Extract samples for this bin, handling multi-channel audio
-      final binSamples = <double>[];
-      for (int j = startIdx; j < endIdx; j += channels) {
-        // For multi-channel audio, mix down to mono by averaging channels
-        if (channels == 1) {
-          binSamples.add(samples[j]);
-        } else {
-          double channelSum = 0.0;
-          for (int ch = 0; ch < channels && j + ch < samples.length; ch++) {
-            channelSum += samples[j + ch];
-          }
-          binSamples.add(channelSum / channels);
-        }
-      }
-
-      // Apply the selected algorithm
+      // Fast paths: avoid allocating per-bin lists for common algorithms.
       double value;
       switch (algorithm) {
         case DownsamplingAlgorithm.rms:
-          value = calculateRMS(binSamples);
+          double sumSquares = 0.0;
+          int count = 0;
+          for (int frame = startFrame; frame < endFrame; frame++) {
+            final base = frame * channels;
+
+            double mixed = 0.0;
+            int mixedCount = 0;
+            for (int ch = 0; ch < channels; ch++) {
+              final idx = base + ch;
+              if (idx >= samples.length) break;
+              mixed += samples[idx];
+              mixedCount++;
+            }
+
+            if (mixedCount == 0) continue;
+            mixed /= mixedCount;
+            sumSquares += mixed * mixed;
+            count++;
+          }
+          value = count == 0 ? 0.0 : math.sqrt(sumSquares / count);
           break;
+
         case DownsamplingAlgorithm.peak:
-          value = calculatePeak(binSamples);
+          double peak = 0.0;
+          for (int frame = startFrame; frame < endFrame; frame++) {
+            final base = frame * channels;
+
+            double mixed = 0.0;
+            int mixedCount = 0;
+            for (int ch = 0; ch < channels; ch++) {
+              final idx = base + ch;
+              if (idx >= samples.length) break;
+              mixed += samples[idx];
+              mixedCount++;
+            }
+
+            if (mixedCount == 0) continue;
+            mixed /= mixedCount;
+            final absValue = mixed.abs();
+            if (absValue > peak) peak = absValue;
+          }
+          value = peak;
           break;
+
         case DownsamplingAlgorithm.average:
-          value = calculateAverage(binSamples);
+          double sumAbs = 0.0;
+          int count = 0;
+          for (int frame = startFrame; frame < endFrame; frame++) {
+            final base = frame * channels;
+
+            double mixed = 0.0;
+            int mixedCount = 0;
+            for (int ch = 0; ch < channels; ch++) {
+              final idx = base + ch;
+              if (idx >= samples.length) break;
+              mixed += samples[idx];
+              mixedCount++;
+            }
+
+            if (mixedCount == 0) continue;
+            mixed /= mixedCount;
+            sumAbs += mixed.abs();
+            count++;
+          }
+          value = count == 0 ? 0.0 : (sumAbs / count);
           break;
+
         case DownsamplingAlgorithm.median:
+          // Median needs access to all bin samples, so allocate only here.
+          final binSamples = <double>[];
+          for (int frame = startFrame; frame < endFrame; frame++) {
+            final base = frame * channels;
+
+            double mixed = 0.0;
+            int mixedCount = 0;
+            for (int ch = 0; ch < channels; ch++) {
+              final idx = base + ch;
+              if (idx >= samples.length) break;
+              mixed += samples[idx];
+              mixedCount++;
+            }
+
+            if (mixedCount == 0) continue;
+            mixed /= mixedCount;
+            binSamples.add(mixed);
+          }
           value = calculateMedian(binSamples);
           break;
       }
