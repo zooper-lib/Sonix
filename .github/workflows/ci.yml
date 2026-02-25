@@ -27,10 +27,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            ffmpeg \
+            build-essential \
+            cmake \
             pkg-config \
+            ffmpeg \
             libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
+          echo "SONIX_FFMPEG_ROOT=/usr" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/linux:${LD_LIBRARY_PATH:-}" >> $GITHUB_ENV
+
+      - name: Build native library (Linux)
+        run: dart run tool/build_native_for_distribution.dart --platforms current
 
       - name: Analyze
         run: flutter analyze
