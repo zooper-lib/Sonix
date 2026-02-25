@@ -23,6 +23,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Install system dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ffmpeg \
+            pkg-config \
+            libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
+          echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/linux:${LD_LIBRARY_PATH:-}" >> $GITHUB_ENV
+
       - name: Analyze
         run: flutter analyze
 
