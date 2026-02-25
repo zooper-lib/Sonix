@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install system dependencies (runtime)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/linux:${LD_LIBRARY_PATH:-}" >> $GITHUB_ENV
+
+      - name: Check native library compatibility
+        id: native_check
+        run: |
+          set -euo pipefail
+          if [ ! -f "$GITHUB_WORKSPACE/linux/libsonix_native.so" ]; then
+            echo "needs_rebuild=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          missing=$(ldd "$GITHUB_WORKSPACE/linux/libsonix_native.so" | grep -F "not found" || true)
+          if [ -n "$missing" ]; then
+            echo "Native library has missing deps:" >&2
+            echo "$missing" >&2
+            echo "needs_rebuild=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_rebuild=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install build dependencies (only when needed)
+        if: steps.native_check.outputs.needs_rebuild == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            pkg-config \
+            libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
+          echo "SONIX_FFMPEG_ROOT=/usr" >> $GITHUB_ENV
+
+      - name: Build native library (only when needed)
+        if: steps.native_check.outputs.needs_rebuild == 'true'
+        run: dart run tool/build_native_for_distribution.dart --platforms current
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test

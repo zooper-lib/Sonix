@@ -199,6 +199,18 @@ class SonixNativeBindings {
         // Continue to standard approach
       }
 
+      // Try package macOS folder (when binaries are checked into the repo)
+      try {
+        final currentDir = Directory.current.path;
+        final repoPath = '$currentDir/macos/lib$libName.dylib';
+        if (File(repoPath).existsSync()) {
+          _lib = ffi.DynamicLibrary.open(repoPath);
+          return _lib!;
+        }
+      } catch (e) {
+        // Continue to standard approach
+      }
+
       _lib = ffi.DynamicLibrary.open('lib$libName.dylib');
     } else if (Platform.isWindows) {
       // Try multiple locations for Windows DLL loading
@@ -260,6 +272,19 @@ class SonixNativeBindings {
         }
       } catch (e) {
         SonixLogger.debug('Linux test fixtures library not found: $e');
+        // Continue to standard approach
+      }
+
+      // Try package Linux folder (when binaries are checked into the repo)
+      try {
+        final currentDir = Directory.current.path;
+        final repoPath = '$currentDir/linux/lib$libName.so';
+        if (File(repoPath).existsSync()) {
+          _lib = ffi.DynamicLibrary.open(repoPath);
+          return _lib!;
+        }
+      } catch (e) {
+        SonixLogger.debug('Linux repo library not found: $e');
         // Continue to standard approach
       }
 
