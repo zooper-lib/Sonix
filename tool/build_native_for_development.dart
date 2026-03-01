@@ -1,8 +1,8 @@
 #!/usr/bin/env dart
 // ignore_for_file: avoid_print
 
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
 
 /// Quick development build script for Sonix native library
 ///
@@ -200,6 +200,32 @@ class NativeDevelopmentBuilder {
         return false;
       }
       print('✅ System FFmpeg detected at: $ffmpegPrefix');
+
+      // Extra validation: ensure FFmpeg dylibs don't reference missing transitive dependencies
+      // (common failure: libvpx.* referenced but not installed / mismatched).
+      final avcodec = File('${libDir.path}/libavcodec.dylib');
+      if (await avcodec.exists()) {
+        try {
+          final otool = await Process.run('otool', ['-L', avcodec.path]);
+          if (otool.exitCode == 0) {
+            final lines = (otool.stdout as String).split('\n');
+            for (final line in lines) {
+              final trimmed = line.trimLeft();
+              if (!trimmed.startsWith('/')) continue;
+              final dep = trimmed.split(' ').first;
+              if (dep.startsWith('/usr/lib/') || dep.startsWith('/System/')) continue;
+              if (!File(dep).existsSync()) {
+                print('❌ System FFmpeg has a missing dependency: $dep');
+                print('   This will crash at runtime when FFmpeg is loaded. Fix with:');
+                print('   brew reinstall ffmpeg libvpx');
+                return false;
+              }
+            }
+          }
+        } catch (_) {
+          // Non-fatal: if otool isn't available (unexpected on macOS), skip.
+        }
+      }
     }
 
     return true;

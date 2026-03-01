@@ -136,13 +136,24 @@ target_include_directories(sonix_native PRIVATE
     src/
 )
 
-# Link FFMPEG libraries
-target_link_libraries(sonix_native 
-    ${AVFORMAT_LIBRARY}
-    ${AVCODEC_LIBRARY} 
-    ${AVUTIL_LIBRARY}
-    ${SWRESAMPLE_LIBRARY}
-)
+# Link FFMPEG libraries.
+#
+# IMPORTANT macOS behavior:
+# We intentionally do NOT hard-link to FFmpeg dylibs on macOS.
+# Hard-linking embeds Homebrew absolute paths (and their transitive deps like libvpx),
+# which can cause consuming apps to crash at launch if the developer machine's Homebrew
+# environment differs or a dependency is missing.
+#
+# Instead, macOS builds use -undefined dynamic_lookup and Sonix dlopens FFmpeg at runtime
+# in `sonix_init_ffmpeg()`, returning SONIX_ERROR_FFMPEG_NOT_AVAILABLE when unavailable.
+if(NOT APPLE)
+    target_link_libraries(sonix_native 
+        ${AVFORMAT_LIBRARY}
+        ${AVCODEC_LIBRARY} 
+        ${AVUTIL_LIBRARY}
+        ${SWRESAMPLE_LIBRARY}
+    )
+endif()
 
 # Platform-specific configurations
 if(WIN32)
@@ -160,17 +171,13 @@ elseif(APPLE)
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS deployment version")
     endif()
     
-    # Base rpath always includes @loader_path so local colocated libs can be found
+    # Base rpath always includes @loader_path so local colocated libs can be found.
+    # We intentionally do NOT add Homebrew FFmpeg directories to rpath; FFmpeg is loaded
+    # dynamically at runtime instead.
     set(_SONIX_MAC_BASE_RPATH "@loader_path")
 
-    # If we're using system FFmpeg, also include the directory that contains the discovered FFmpeg libs
-    if(SONIX_USE_SYSTEM_FFMPEG)
-        get_filename_component(_FFMPEG_LIB_DIR ${AVFORMAT_LIBRARY} DIRECTORY)
-        if(_FFMPEG_LIB_DIR)
-            set(_SONIX_MAC_BASE_RPATH "${_SONIX_MAC_BASE_RPATH};${_FFMPEG_LIB_DIR}")
-            message(STATUS "Adding FFmpeg lib dir to INSTALL_RPATH: ${_FFMPEG_LIB_DIR}")
-        endif()
-    endif()
+    # Allow unresolved FFmpeg symbols (resolved after dlopen with RTLD_GLOBAL).
+    target_link_options(sonix_native PRIVATE "-Wl,-undefined,dynamic_lookup")
 
     set_target_properties(sonix_native PROPERTIES
         MACOSX_RPATH TRUE

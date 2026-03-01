@@ -112,6 +112,8 @@ When Sonix code runs:
 2. Sonix calls native functions for audio processing
 3. Native code uses FFMPEG libraries (provided separately by user)
 
+On macOS, Sonix loads FFmpeg dynamically at runtime (via `dlopen`) inside `sonix_init_ffmpeg()`. This avoids hard-linking against Homebrew absolute paths, which can otherwise cause the app to crash at launch when FFmpeg or a transitive dependency (for example `libvpx`) is missing.
+
 ## Separation of Concerns
 
 ### Sonix Native Library (MIT Licensed)
@@ -202,6 +204,17 @@ If users get FFmpeg-related errors:
 - Install FFmpeg using the system package manager and ensure shared libraries are available
 - On macOS, `brew install ffmpeg` provides dylibs in `/opt/homebrew/opt/ffmpeg/lib`
 - This is separate from the Sonix native library
+
+If the error mentions a missing transitive dependency (common example on macOS):
+- `Library not loaded: /opt/homebrew/opt/libvpx/lib/libvpx.*.dylib`
+
+Try reinstalling FFmpeg and the missing dependency:
+
+```bash
+brew reinstall ffmpeg libvpx
+```
+
+If you have FFmpeg installed in a non-standard location, you can point Sonix at it using the `SONIX_FFMPEG_ROOT` environment variable (expected to contain `lib/` and `include/`).
 
 ### Build Issues
 If native library compilation fails:

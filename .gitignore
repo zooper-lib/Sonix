@@ -55,6 +55,7 @@ test/assets/ffmpeg/*
 # FFMPEG binary directories (all platforms)
 build/ffmpeg/
 test/fixtures/ffmpeg/
+!test/fixtures/ffmpeg/README.txt
 
 # FFMPEG library files (Windows)
 avcodec-*.dll

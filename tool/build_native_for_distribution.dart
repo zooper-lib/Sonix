@@ -1,8 +1,8 @@
 #!/usr/bin/env dart
 // ignore_for_file: avoid_print
 
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
 
 /// Build script for creating sonix_native binaries for package distribution
 ///
@@ -102,6 +102,32 @@ class NativeDistributionBuilder {
       if (brew.exitCode != 0 || (brew.stdout as String).toString().trim().isEmpty) {
         print('❌ System FFmpeg not found. Install via Homebrew: brew install ffmpeg');
         return false;
+      }
+
+      // Ensure FFmpeg dylibs don't reference missing transitive deps (e.g. libvpx.*)
+      try {
+        final ffmpegPrefix = (brew.stdout as String).toString().trim();
+        final libDir = Directory('$ffmpegPrefix/lib');
+        final avcodec = File('${libDir.path}/libavcodec.dylib');
+        if (libDir.existsSync() && avcodec.existsSync()) {
+          final otool = Process.runSync('otool', ['-L', avcodec.path]);
+          if (otool.exitCode == 0) {
+            final lines = (otool.stdout as String).split('\n');
+            for (final line in lines) {
+              final trimmed = line.trimLeft();
+              if (!trimmed.startsWith('/')) continue;
+              final dep = trimmed.split(' ').first;
+              if (dep.startsWith('/usr/lib/') || dep.startsWith('/System/')) continue;
+              if (!File(dep).existsSync()) {
+                print('❌ System FFmpeg has a missing dependency: $dep');
+                print('   Fix with: brew reinstall ffmpeg libvpx');
+                return false;
+              }
+            }
+          }
+        }
+      } catch (_) {
+        // Non-fatal: keep validation lightweight.
       }
     } else if (Platform.isLinux) {
       // Check for FFmpeg development libraries using pkg-config

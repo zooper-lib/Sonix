@@ -1,12 +1,13 @@
 import 'dart:ffi' as ffi;
 import 'dart:typed_data';
-import 'package:ffi/ffi.dart';
 
-import 'sonix_bindings.dart';
-import 'package:sonix/src/models/audio_data.dart';
+import 'package:ffi/ffi.dart';
 import 'package:sonix/src/decoders/audio_decoder.dart';
 import 'package:sonix/src/exceptions/sonix_exceptions.dart';
+import 'package:sonix/src/models/audio_data.dart';
 import 'package:sonix/src/utils/sonix_logger.dart';
+
+import 'sonix_bindings.dart';
 
 /// High-level wrapper for native audio bindings
 class NativeAudioBindings {
@@ -360,7 +361,7 @@ class NativeAudioBindings {
       case SONIX_ERROR_FFMPEG_RESAMPLE_FAILED:
         return 'FFMPEG failed to resample audio data. This may indicate incompatible audio parameters.';
       case SONIX_ERROR_FFMPEG_NOT_AVAILABLE:
-        return 'FFMPEG libraries are not available. Please run the setup script to build FFMPEG libraries.';
+        return 'FFMPEG libraries are not available. Install system FFmpeg (macOS: brew install ffmpeg) and ensure its shared libraries are present.';
       default:
         return _getLastErrorMessage();
     }
@@ -368,6 +369,7 @@ class NativeAudioBindings {
 
   /// Check if an error code is FFMPEG-related
   static bool isFFMPEGError(int errorCode) {
+    if (errorCode == SONIX_ERROR_FFMPEG_NOT_AVAILABLE) return true;
     return errorCode >= SONIX_ERROR_FFMPEG_RESAMPLE_FAILED && errorCode <= SONIX_ERROR_FFMPEG_INIT_FAILED;
   }
 

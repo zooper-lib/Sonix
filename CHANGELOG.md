@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- macOS: prevent app launch crashes when system FFmpeg (or transitive dependencies like `libvpx`) is missing by loading FFmpeg dynamically at runtime and returning a safe `SONIX_ERROR_FFMPEG_NOT_AVAILABLE` instead of letting dyld abort the process.
+- Native error codes: synchronized native header macros with Dart constants so FFmpeg init failures report the expected codes in Dart.
+
+### Changed
+
+- macOS build validation now detects missing FFmpeg transitive dylib dependencies earlier (for example `libvpx`) and prints actionable remediation.
+
 ## [2.0.1] - 2026-02-25
 
 ### Fixed

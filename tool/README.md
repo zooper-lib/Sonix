@@ -20,6 +20,8 @@ Install FFmpeg on your system and CMake will find it automatically:
 - Linux: Use your distro’s package manager (for example: `sudo apt install ffmpeg`)
 - Windows: Provide development libraries via vcpkg/conda/msys2 as appropriate (not bundled here)
 
+If FFmpeg is installed in a non-standard location, set `SONIX_FFMPEG_ROOT` to point at the installation root (expected to contain `include/` and `lib/`).
+
 ### `build_native_for_development.dart`
 
 **This tool is for Sonix package developers during development!**
@@ -143,6 +145,12 @@ Currently supported platforms for development:
 - Ensure system FFmpeg is installed and provides shared libraries.
 - Check that native build scripts have execute permissions (Unix systems).
 - Verify CMake finds FFmpeg in common system locations (Homebrew on macOS).
+
+If a consuming macOS app fails at runtime with a missing transitive dependency (for example `libvpx`), reinstall FFmpeg and that dependency:
+
+```bash
+brew reinstall ffmpeg libvpx
+```
 
 ### Test Issues
 

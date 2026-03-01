@@ -12,12 +12,153 @@
 #include <string.h>
 #include <stdarg.h>
 
+#if defined(__APPLE__) || defined(__linux__)
+#include <dlfcn.h>
+#endif
+
 // Global error message buffer
 static char g_error_message[512] = {0};
 static int g_ffmpeg_initialized = 0;
 // Controls whether FFmpeg logs are forwarded to stderr (console).
 // Default is disabled to prevent noisy logs from leaking to consuming apps.
 static int g_forward_ffmpeg_logs = 0;
+
+#if defined(__APPLE__)
+// On macOS we load FFmpeg dynamically at runtime to avoid hard dependencies on
+// Homebrew paths and their transitive dependencies (e.g., libvpx).
+static void *g_ffmpeg_handles[4] = {0, 0, 0, 0};
+
+static int sonix_try_dlopen_one(const char *path, void **out_handle, char *err_buf, size_t err_buf_size)
+{
+    if (!path || !out_handle)
+    {
+        return 0;
+    }
+
+    // Clear any previous dlerror so we capture the correct message.
+    (void)dlerror();
+    void *handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+    if (!handle)
+    {
+        const char *err = dlerror();
+        if (err && err_buf && err_buf_size > 0)
+        {
+            strncpy(err_buf, err, err_buf_size - 1);
+            err_buf[err_buf_size - 1] = '\0';
+        }
+        return 0;
+    }
+
+    *out_handle = handle;
+    return 1;
+}
+
+static int sonix_dlopen_ffmpeg_macos(char *err_buf, size_t err_buf_size)
+{
+    // Already loaded.
+    if (g_ffmpeg_handles[0] || g_ffmpeg_handles[1] || g_ffmpeg_handles[2] || g_ffmpeg_handles[3])
+    {
+        return 1;
+    }
+
+    // 1) Try system loader lookup (works if FFmpeg is already in the process rpath / bundled frameworks).
+    const char *names_only[] = {"libavutil.dylib", "libswresample.dylib", "libavcodec.dylib", "libavformat.dylib"};
+    for (int i = 0; i < 4; i++)
+    {
+        (void)sonix_try_dlopen_one(names_only[i], &g_ffmpeg_handles[i], err_buf, err_buf_size);
+    }
+    if (g_ffmpeg_handles[0] && g_ffmpeg_handles[1] && g_ffmpeg_handles[2] && g_ffmpeg_handles[3])
+    {
+        return 1;
+    }
+
+    // Close partial loads before trying explicit paths.
+    for (int i = 0; i < 4; i++)
+    {
+        if (g_ffmpeg_handles[i])
+        {
+            dlclose(g_ffmpeg_handles[i]);
+            g_ffmpeg_handles[i] = 0;
+        }
+    }
+
+    // 2) Try explicit common locations (Homebrew Apple Silicon + Intel, MacPorts), plus optional env override.
+    const char *env_root = getenv("SONIX_FFMPEG_ROOT");
+
+    const char *roots[] = {
+        env_root,
+        "/opt/homebrew/opt/ffmpeg",
+        "/usr/local/opt/ffmpeg",
+        "/opt/local", // MacPorts
+        "/opt/homebrew",
+        "/usr/local",
+    };
+
+    char path_buf[1024];
+    for (int r = 0; r < (int)(sizeof(roots) / sizeof(roots[0])); r++)
+    {
+        const char *root = roots[r];
+        if (!root || root[0] == '\0')
+        {
+            continue;
+        }
+
+        const char *libdir = root;
+        // If root ends with /opt/ffmpeg we should use root/lib; if it's /usr/local use /usr/local/lib.
+        snprintf(path_buf, sizeof(path_buf), "%s/lib", root);
+        libdir = path_buf;
+
+        char full[1024];
+        snprintf(full, sizeof(full), "%s/%s", libdir, "libavutil.dylib");
+        if (!sonix_try_dlopen_one(full, &g_ffmpeg_handles[0], err_buf, err_buf_size))
+            continue;
+        snprintf(full, sizeof(full), "%s/%s", libdir, "libswresample.dylib");
+        if (!sonix_try_dlopen_one(full, &g_ffmpeg_handles[1], err_buf, err_buf_size))
+        {
+            dlclose(g_ffmpeg_handles[0]);
+            g_ffmpeg_handles[0] = 0;
+            continue;
+        }
+        snprintf(full, sizeof(full), "%s/%s", libdir, "libavcodec.dylib");
+        if (!sonix_try_dlopen_one(full, &g_ffmpeg_handles[2], err_buf, err_buf_size))
+        {
+            dlclose(g_ffmpeg_handles[1]);
+            dlclose(g_ffmpeg_handles[0]);
+            g_ffmpeg_handles[1] = 0;
+            g_ffmpeg_handles[0] = 0;
+            continue;
+        }
+        snprintf(full, sizeof(full), "%s/%s", libdir, "libavformat.dylib");
+        if (!sonix_try_dlopen_one(full, &g_ffmpeg_handles[3], err_buf, err_buf_size))
+        {
+            dlclose(g_ffmpeg_handles[2]);
+            dlclose(g_ffmpeg_handles[1]);
+            dlclose(g_ffmpeg_handles[0]);
+            g_ffmpeg_handles[2] = 0;
+            g_ffmpeg_handles[1] = 0;
+            g_ffmpeg_handles[0] = 0;
+            continue;
+        }
+
+        if (g_ffmpeg_handles[0] && g_ffmpeg_handles[1] && g_ffmpeg_handles[2] && g_ffmpeg_handles[3])
+        {
+            return 1;
+        }
+    }
+
+    // Failed to load.
+    for (int i = 0; i < 4; i++)
+    {
+        if (g_ffmpeg_handles[i])
+        {
+            dlclose(g_ffmpeg_handles[i]);
+            g_ffmpeg_handles[i] = 0;
+        }
+    }
+
+    return 0;
+}
+#endif
 
 // Memory management tracking for debugging
 #ifdef DEBUG
@@ -46,8 +187,8 @@ struct SonixChunkedDecoder
     int64_t total_samples;
     int64_t current_sample;
     // Encoder delay handling
-    int64_t encoder_delay;      // Total encoder delay samples to skip
-    int64_t samples_skipped;    // Number of samples skipped so far
+    int64_t encoder_delay;   // Total encoder delay samples to skip
+    int64_t samples_skipped; // Number of samples skipped so far
 };
 
 // Set error message
@@ -159,6 +300,29 @@ int32_t sonix_init_ffmpeg(void)
 
     clear_error_message();
 
+    // On macOS we load FFmpeg dynamically at runtime so missing system dependencies
+    // don't crash consuming apps at launch.
+#if defined(__APPLE__)
+    {
+        char dl_err[512] = {0};
+        if (!sonix_dlopen_ffmpeg_macos(dl_err, sizeof(dl_err)))
+        {
+            if (dl_err[0] != '\0')
+            {
+                snprintf(g_error_message, sizeof(g_error_message),
+                         "FFMPEG libraries could not be loaded: %s\n"
+                         "Install system FFmpeg (macOS: brew install ffmpeg). If you see a missing dependency like libvpx, try: brew reinstall ffmpeg libvpx",
+                         dl_err);
+            }
+            else
+            {
+                set_error_message("FFMPEG libraries not found. Install system FFmpeg (macOS: brew install ffmpeg)");
+            }
+            return SONIX_ERROR_FFMPEG_NOT_AVAILABLE;
+        }
+    }
+#endif
+
     // Verify FFMPEG libraries are available by testing core functions
     if (avformat_version() == 0 || avcodec_version() == 0 || avutil_version() == 0 || swresample_version() == 0)
     {
@@ -217,6 +381,18 @@ void sonix_cleanup_ffmpeg(void)
         g_ffmpeg_initialized = 0;
         clear_error_message();
     }
+
+#if defined(__APPLE__)
+    // Release dynamically loaded FFmpeg handles (safe no-op if not loaded).
+    for (int i = 0; i < 4; i++)
+    {
+        if (g_ffmpeg_handles[i])
+        {
+            dlclose(g_ffmpeg_handles[i]);
+            g_ffmpeg_handles[i] = 0;
+        }
+    }
+#endif
 }
 
 // Set FFMPEG log level
@@ -622,7 +798,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
         fprintf(stderr, "[SONIX] Encoder delay detected: %ld samples (%.2f ms) for codec %s\n",
                 encoder_delay, delay_ms, codec->name);
     }
-    
+
     // Validate known codec delays
     if (strcmp(codec->name, "opus") == 0)
     {
@@ -792,7 +968,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
                 {
                     // Calculate how many samples to skip from this frame
                     int skip_from_frame = samples_to_skip - samples_skipped;
-                    
+
                     if (skip_from_frame >= samples_in_frame)
                     {
                         // Skip the entire frame
@@ -835,7 +1011,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
 
                 // Convert to float samples (handling frame_offset for encoder delay skip)
                 uint8_t *output_buffer = (uint8_t *)(audio_data->samples + sample_index);
-                
+
                 // Prepare input pointers with offset if we're skipping samples
                 const uint8_t *input_data[AV_NUM_DATA_POINTERS];
                 for (int i = 0; i < AV_NUM_DATA_POINTERS; i++)
@@ -845,7 +1021,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
                         // Calculate byte offset based on sample format
                         int bytes_per_sample = av_get_bytes_per_sample(codec_ctx->sample_fmt);
                         int plane_offset;
-                        
+
                         if (av_sample_fmt_is_planar(codec_ctx->sample_fmt))
                         {
                             // Planar format: each plane has one channel
@@ -856,7 +1032,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
                             // Packed format: samples are interleaved
                             plane_offset = frame_offset * channels * bytes_per_sample;
                         }
-                        
+
                         input_data[i] = frame->data[i] + plane_offset;
                     }
                     else
@@ -864,7 +1040,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
                         input_data[i] = frame->data[i];
                     }
                 }
-                
+
                 int converted_samples = swr_convert(swr_ctx, &output_buffer, samples_in_frame,
                                                     input_data, samples_in_frame);
 
@@ -901,7 +1077,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
         if (samples_skipped < samples_to_skip)
         {
             int skip_from_frame = samples_to_skip - samples_skipped;
-            
+
             if (skip_from_frame >= samples_in_frame)
             {
                 samples_skipped += samples_in_frame;
@@ -916,7 +1092,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
         }
 
         uint8_t *output_buffer = (uint8_t *)(audio_data->samples + sample_index);
-        
+
         // Prepare input with offset
         const uint8_t *input_data[AV_NUM_DATA_POINTERS];
         for (int i = 0; i < AV_NUM_DATA_POINTERS; i++)
@@ -925,7 +1101,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
             {
                 int bytes_per_sample = av_get_bytes_per_sample(codec_ctx->sample_fmt);
                 int plane_offset;
-                
+
                 if (av_sample_fmt_is_planar(codec_ctx->sample_fmt))
                 {
                     plane_offset = frame_offset * bytes_per_sample;
@@ -934,7 +1110,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
                 {
                     plane_offset = frame_offset * channels * bytes_per_sample;
                 }
-                
+
                 input_data[i] = frame->data[i] + plane_offset;
             }
             else
@@ -942,7 +1118,7 @@ SonixAudioData *sonix_decode_audio(const uint8_t *data, size_t size, int32_t for
                 input_data[i] = frame->data[i];
             }
         }
-        
+
         int converted_samples = swr_convert(swr_ctx, &output_buffer, samples_in_frame,
                                             input_data, samples_in_frame);
 
@@ -1325,7 +1501,7 @@ SonixChunkResult *sonix_process_file_chunk(SonixChunkedDecoder *decoder, SonixFi
             {
                 // Calculate how many samples to skip from this frame
                 int skip_from_frame = decoder->encoder_delay - decoder->samples_skipped;
-                
+
                 if (skip_from_frame >= samples_in_frame)
                 {
                     // Skip the entire frame
@@ -1349,7 +1525,7 @@ SonixChunkResult *sonix_process_file_chunk(SonixChunkedDecoder *decoder, SonixFi
 
             // Convert samples using resampler (handling frame_offset for encoder delay skip)
             uint8_t *output_buffer = (uint8_t *)(result->audio_data->samples + samples_processed);
-            
+
             // Prepare input pointers with offset if we're skipping samples
             const uint8_t *input_data[AV_NUM_DATA_POINTERS];
             for (int i = 0; i < AV_NUM_DATA_POINTERS; i++)
@@ -1359,7 +1535,7 @@ SonixChunkResult *sonix_process_file_chunk(SonixChunkedDecoder *decoder, SonixFi
                     // Calculate byte offset based on sample format
                     int bytes_per_sample = av_get_bytes_per_sample(decoder->codec_ctx->sample_fmt);
                     int plane_offset;
-                    
+
                     if (av_sample_fmt_is_planar(decoder->codec_ctx->sample_fmt))
                     {
                         // Planar format: each plane has one channel
@@ -1370,7 +1546,7 @@ SonixChunkResult *sonix_process_file_chunk(SonixChunkedDecoder *decoder, SonixFi
                         // Packed format: samples are interleaved
                         plane_offset = frame_offset * channels * bytes_per_sample;
                     }
-                    
+
                     input_data[i] = frame->data[i] + plane_offset;
                 }
                 else
@@ -1378,7 +1554,7 @@ SonixChunkResult *sonix_process_file_chunk(SonixChunkedDecoder *decoder, SonixFi
                     input_data[i] = frame->data[i];
                 }
             }
-            
+
             int converted_samples = swr_convert(decoder->swr_ctx, &output_buffer, samples_in_frame,
                                                 input_data, samples_in_frame);
 
@@ -1507,9 +1683,12 @@ int32_t sonix_get_decoder_media_info(SonixChunkedDecoder *decoder,
         dur_ms = (uint32_t)(decoder->format_ctx->duration / (AV_TIME_BASE / 1000));
     }
 
-    if (duration_ms) *duration_ms = dur_ms;
-    if (sample_rate) *sample_rate = sr;
-    if (channels) *channels = ch;
+    if (duration_ms)
+        *duration_ms = dur_ms;
+    if (sample_rate)
+        *sample_rate = sr;
+    if (channels)
+        *channels = ch;
 
     return SONIX_OK;
 }
